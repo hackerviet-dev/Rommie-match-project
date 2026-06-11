@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Modules\Users\RoomieMatch.Modules.Users.csproj" />
+    <ProjectReference Include="..\Modules\Matching\RoomieMatch.Modules.Matching.csproj" />
+    <ProjectReference Include="..\Modules\Hyperlocal\RoomieMatch.Modules.Hyperlocal.csproj" />
+    <ProjectReference Include="..\Shared\RoomieMatch.Shared\RoomieMatch.Shared.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

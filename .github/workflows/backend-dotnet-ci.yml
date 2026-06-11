@@ -1,0 +1,22 @@
+name: Backend .NET CI
+
+on:
+  push:
+    paths:
+      - "backend/src/**"
+      - ".github/workflows/backend-dotnet-ci.yml"
+  pull_request:
+    paths:
+      - "backend/src/**"
+      - ".github/workflows/backend-dotnet-ci.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: dotnet restore backend/src/RoomieMatch.slnx
+      - run: dotnet build backend/src/RoomieMatch.slnx --configuration Release --no-restore

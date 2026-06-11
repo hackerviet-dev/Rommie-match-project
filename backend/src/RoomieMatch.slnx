@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/Modules/" />
+  <Folder Name="/Modules/Hyperlocal/">
+    <Project Path="Modules/Hyperlocal/RoomieMatch.Modules.Hyperlocal.csproj" />
+  </Folder>
+  <Folder Name="/Modules/Matching/">
+    <Project Path="Modules/Matching/RoomieMatch.Modules.Matching.csproj" />
+  </Folder>
+  <Folder Name="/Modules/Users/">
+    <Project Path="Modules/Users/RoomieMatch.Modules.Users.csproj" />
+  </Folder>
+  <Folder Name="/Shared/">
+    <Project Path="Shared/RoomieMatch.Shared/RoomieMatch.Shared.csproj" />
+  </Folder>
+  <Project Path="RoomieMatch.Bootstrapper/RoomieMatch.Bootstrapper.csproj" />
+</Solution>
