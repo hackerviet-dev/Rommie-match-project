@@ -1,0 +1,13 @@
+{
+  "name": "roomiematch-frontend",
+  "private": true,
+  "description": "Biome là công cụ format code chung cho toàn bộ frontend (web-app + mobile-app).",
+  "scripts": {
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "check": "biome check ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.0"
+  }
+}
