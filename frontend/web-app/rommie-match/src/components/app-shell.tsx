@@ -18,9 +18,7 @@ const nav = [
 export function Logo({ className = "" }: { className?: string }) {
   return (
     <Link to="/" className={`flex items-center gap-2 font-display font-bold text-lg ${className}`}>
-      <div className="grid h-9 w-9 place-items-center rounded-xl gradient-brand text-white shadow-md shadow-teal/20">
-        <Heart className="h-4 w-4 fill-white" />
-      </div>
+      <img src="/logo-mark.png" alt="RoomieMatch" className="h-10 w-10 object-contain" />
       <span>
         <span className="text-navy">Roomie</span>
         <span className="text-teal">Match</span>
