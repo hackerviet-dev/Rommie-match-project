@@ -11,7 +11,7 @@ type Config struct {
 func Load() Config {
 	return Config{
 		ListenAddress: getEnv("CHAT_LISTEN_ADDRESS", ":8081"),
-		DatabaseURL:   getEnv("CHAT_DATABASE_URL", "sqlserver://localhost:1433?database=RoomieMatch"),
+		DatabaseURL:   getEnv("CHAT_DATABASE_URL", "postgres://roomiematch:roomiematch_dev@localhost:5432/roomiematch?sslmode=disable"),
 		JWTSecret:     getEnv("CHAT_JWT_SECRET", "dev-secret-change-me"),
 	}
 }

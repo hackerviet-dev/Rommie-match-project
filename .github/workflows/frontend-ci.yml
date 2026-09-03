@@ -1,7 +1,9 @@
 name: Frontend CI
 
 on:
+  workflow_dispatch:
   push:
+    branches: [main, Bao-Branch]
     paths:
       - "frontend/**"
       - ".github/workflows/frontend-ci.yml"
@@ -10,16 +12,88 @@ on:
       - "frontend/**"
       - ".github/workflows/frontend-ci.yml"
 
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   web-app:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend/web-app
+        working-directory: frontend/web-app/rommie-match
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
         with:
-          node-version: "22"
-      - run: npm install
-      - run: npm run build
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/web-app/rommie-match/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        env:
+          VITE_BASE_PATH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && format('/{0}/', github.event.repository.name) || '/' }}
+        run: npm run build
+
+      - name: Add SPA fallback
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: cp dist/index.html dist/404.html
+
+      - name: Configure GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/configure-pages@v5
+
+      - name: Upload GitHub Pages artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: frontend/web-app/rommie-match/dist
+
+  mobile-app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/mobile-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/mobile-app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+  deploy-pages:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [web-app, mobile-app]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

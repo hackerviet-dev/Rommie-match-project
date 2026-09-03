@@ -1,0 +1,65 @@
+name: roomiematch
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-roomiematch}
+      POSTGRES_USER: ${POSTGRES_USER:-roomiematch}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-roomiematch_dev}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/src/RoomieMatch.Bootstrapper/Dockerfile
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=${POSTGRES_DB:-roomiematch};Username=${POSTGRES_USER:-roomiematch};Password=${POSTGRES_PASSWORD:-roomiematch_dev}
+    ports:
+      - "${API_PORT:-5000}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  chat:
+    build:
+      context: backend/chat-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      CHAT_LISTEN_ADDRESS: :8081
+      CHAT_DATABASE_URL: postgres://${POSTGRES_USER:-roomiematch}:${POSTGRES_PASSWORD:-roomiematch_dev}@postgres:5432/${POSTGRES_DB:-roomiematch}?sslmode=disable
+      CHAT_JWT_SECRET: ${CHAT_JWT_SECRET:-dev-secret-change-me}
+    ports:
+      - "${CHAT_PORT:-8081}:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: frontend/web-app/rommie-match
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-3000}:80"
+    depends_on:
+      - api
+      - chat
+
+volumes:
+  postgres_data:

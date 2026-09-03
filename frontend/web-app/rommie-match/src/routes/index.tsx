@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import * as m from "motion/react-m";
 import { Logo } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -72,7 +73,11 @@ export default function Landing() {
           <div className="absolute top-20 -right-32 h-96 w-96 rounded-full bg-teal/30 blur-3xl" />
         </div>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-16 pb-24 grid lg:grid-cols-2 gap-12 items-center">
-          <div>
+          <m.div
+            initial={{ opacity: 0, x: -28 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.55 }}
+          >
             <Badge className="rounded-full bg-mint/30 text-navy border-0 hover:bg-mint/30 px-3 py-1.5">
               <Sparkles className="h-3 w-3 mr-1.5" /> Ghép đôi bằng AI · v2.0
             </Badge>
@@ -111,9 +116,14 @@ export default function Landing() {
                 được ghép
               </div>
             </div>
-          </div>
+          </m.div>
 
-          <div className="relative">
+          <m.div
+            className="relative"
+            initial={{ opacity: 0, x: 28, scale: 0.97 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.08 }}
+          >
             <div className="absolute -inset-6 gradient-brand opacity-10 rounded-[3rem] blur-2xl" />
             <Card className="relative p-6 rounded-3xl shadow-2xl border-0 bg-card animate-float">
               <div className="flex items-center gap-4">
@@ -161,7 +171,7 @@ export default function Landing() {
                 </div>
               </div>
             </Card>
-          </div>
+          </m.div>
         </div>
       </section>
 

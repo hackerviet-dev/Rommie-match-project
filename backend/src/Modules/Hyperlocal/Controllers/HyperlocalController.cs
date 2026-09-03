@@ -19,4 +19,13 @@ public sealed class HyperlocalController : ControllerBase
     {
         return Ok(hyperlocalService.GetModuleStatus());
     }
+
+    [HttpGet("services")]
+    public async Task<ActionResult<IReadOnlyList<LocalServiceDto>>> GetServices(
+        [FromQuery] string city = "TP.HCM",
+        [FromQuery] string? district = null,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await hyperlocalService.GetNearbyServicesAsync(city, district, cancellationToken));
+    }
 }

@@ -1,0 +1,39 @@
+name: Docker CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, Bao-Branch]
+    paths:
+      - "backend/**"
+      - "database/**"
+      - "frontend/web-app/rommie-match/**"
+      - "docker-compose.yml"
+      - ".dockerignore"
+      - ".github/workflows/docker-ci.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - "database/**"
+      - "frontend/web-app/rommie-match/**"
+      - "docker-compose.yml"
+      - ".dockerignore"
+      - ".github/workflows/docker-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+      - name: Build application images
+        run: docker compose build api chat web

@@ -14,9 +14,10 @@ import {
   Wrench,
   Zap,
   Wifi,
+  type LucideIcon,
 } from "lucide-react";
 
-const catIcons: Record<string, any> = {
+const catIcons: Record<string, LucideIcon> = {
   "Giao nước": Droplet,
   "Giặt ủi": Shirt,
   "Dọn dẹp": Sparkles,

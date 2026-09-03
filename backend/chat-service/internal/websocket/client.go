@@ -1,10 +1,15 @@
 package websocket
 
 import (
+	"context"
+	"encoding/json"
+	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	gorilla "github.com/gorilla/websocket"
+	"github.com/roomiematch/chat-service/internal/repository"
 )
 
 const (
@@ -23,6 +28,12 @@ type Client struct {
 	hub  *Hub
 	conn *gorilla.Conn
 	send chan []byte
+}
+
+type incomingMessage struct {
+	ConversationID string `json:"conversationId"`
+	SenderID       string `json:"senderId"`
+	Content        string `json:"content"`
 }
 
 func Serve(hub *Hub, w http.ResponseWriter, r *http.Request) {
@@ -53,6 +64,27 @@ func (c *Client) readPump() {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			break
+		}
+
+		var payload incomingMessage
+		if err := json.Unmarshal(message, &payload); err != nil {
+			log.Printf("ignoring non-JSON chat message: %v", err)
+			continue
+		}
+
+		payload.Content = strings.TrimSpace(payload.Content)
+		if payload.ConversationID == "" || payload.SenderID == "" || payload.Content == "" {
+			log.Print("ignoring chat message with missing conversationId, senderId, or content")
+			continue
+		}
+
+		if err := c.hub.repository.Save(context.Background(), repository.Message{
+			RoomID:   payload.ConversationID,
+			SenderID: payload.SenderID,
+			Content:  payload.Content,
+		}); err != nil {
+			log.Printf("failed to persist chat message: %v", err)
+			continue
 		}
 		c.hub.broadcast <- message
 	}

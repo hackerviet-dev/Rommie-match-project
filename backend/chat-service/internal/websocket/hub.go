@@ -1,18 +1,22 @@
 package websocket
 
+import "github.com/roomiematch/chat-service/internal/repository"
+
 type Hub struct {
 	clients    map[*Client]bool
 	broadcast  chan []byte
 	register   chan *Client
 	unregister chan *Client
+	repository repository.MessageRepository
 }
 
-func NewHub() *Hub {
+func NewHub(messageRepository repository.MessageRepository) *Hub {
 	return &Hub{
 		clients:    make(map[*Client]bool),
 		broadcast:  make(chan []byte),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
+		repository: messageRepository,
 	}
 }
 

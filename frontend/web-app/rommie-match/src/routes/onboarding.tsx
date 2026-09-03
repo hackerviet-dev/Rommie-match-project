@@ -8,8 +8,15 @@ import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import type { MouseEventHandler, ReactNode } from "react";
 
-function Pill({ active, onClick, children }: any) {
+type PillProps = {
+  active: boolean;
+  children: ReactNode;
+  onClick: MouseEventHandler<HTMLButtonElement>;
+};
+
+function Pill({ active, onClick, children }: PillProps) {
   return (
     <button
       type="button"

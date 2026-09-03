@@ -1,0 +1,9 @@
+.git
+.github
+.claude
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/.env
+**/*.log

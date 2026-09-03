@@ -5,11 +5,11 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        ink: "#171717",
-        paper: "#f8fafc",
-        coral: "#f9735b",
-        mint: "#14b8a6",
-        violet: "#7c3aed",
+        navy: "#0B3B6E",
+        teal: "#15A9B8",
+        mint: "#8FD3C1",
+        ink: "#17243A",
+        paper: "#F7FBFC",
       },
     },
   },

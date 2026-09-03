@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import * as m from "motion/react-m";
 import { AppShell, CompatRing } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -99,7 +100,11 @@ export default function Dashboard() {
   ];
   return (
     <AppShell>
-      <div className="flex items-end justify-between flex-wrap gap-4">
+      <m.div
+        className="flex items-end justify-between flex-wrap gap-4"
+        initial={{ opacity: 0, y: -14 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
         <div>
           <h1 className="text-3xl font-display font-bold">Chào mừng trở lại, Linh 👋</h1>
           <p className="text-muted-foreground mt-1">
@@ -111,21 +116,28 @@ export default function Dashboard() {
             Xem ghép đôi <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </Link>
-      </div>
+      </m.div>
 
       <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s) => (
-          <Card
+        {stats.map((s, index) => (
+          <m.div
             key={s.label}
-            className={`p-5 rounded-2xl border-0 shadow-sm bg-gradient-to-br ${s.color}`}
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.07 }}
+            whileHover={{ y: -4 }}
           >
-            <div className={`h-10 w-10 rounded-xl bg-white/70 grid place-items-center ${s.icon}`}>
-              <s.i className="h-5 w-5" />
-            </div>
-            <div className="mt-4 text-3xl font-display font-bold">{s.value}</div>
-            <div className="text-sm font-medium mt-0.5">{s.label}</div>
-            <div className="text-xs text-muted-foreground mt-1">{s.change}</div>
-          </Card>
+            <Card
+              className={`h-full p-5 rounded-2xl border-0 shadow-sm bg-gradient-to-br ${s.color}`}
+            >
+              <div className={`h-10 w-10 rounded-xl bg-white/70 grid place-items-center ${s.icon}`}>
+                <s.i className="h-5 w-5" />
+              </div>
+              <div className="mt-4 text-3xl font-display font-bold">{s.value}</div>
+              <div className="text-sm font-medium mt-0.5">{s.label}</div>
+              <div className="text-xs text-muted-foreground mt-1">{s.change}</div>
+            </Card>
+          </m.div>
         ))}
       </div>
 

@@ -25,26 +25,26 @@ const ButtonContext = createContext<{
 });
 
 const solidByAction: Record<ButtonAction, string> = {
-  primary: "bg-ink",
-  secondary: "bg-violet",
-  positive: "bg-mint",
-  negative: "bg-coral",
+  primary: "bg-navy",
+  secondary: "bg-teal",
+  positive: "bg-teal",
+  negative: "bg-navy",
   muted: "bg-slate-200",
 };
 
 const outlineByAction: Record<ButtonAction, string> = {
-  primary: "border-ink",
-  secondary: "border-violet",
-  positive: "border-mint",
-  negative: "border-coral",
+  primary: "border-navy",
+  secondary: "border-teal",
+  positive: "border-teal",
+  negative: "border-navy",
   muted: "border-slate-300",
 };
 
 const textByAction: Record<ButtonAction, string> = {
-  primary: "text-ink",
-  secondary: "text-violet",
-  positive: "text-mint",
-  negative: "text-coral",
+  primary: "text-navy",
+  secondary: "text-teal",
+  positive: "text-teal",
+  negative: "text-navy",
   muted: "text-slate-600",
 };
 
@@ -104,26 +104,41 @@ type ButtonTextProps = TextProps & {
 
 export function ButtonText({ className, ...props }: ButtonTextProps) {
   const { action, size, variant } = useContext(ButtonContext);
-  const textSize = size === "sm" ? "text-sm" : size === "xl" ? "text-lg" : "text-base";
-  const color = variant === "solid" && action !== "muted" ? "text-white" : textByAction[action];
+  const textSize =
+    size === "sm" ? "text-sm" : size === "xl" ? "text-lg" : "text-base";
+  const color =
+    variant === "solid" && action !== "muted"
+      ? "text-white"
+      : textByAction[action];
 
-  return <Text className={cn("font-semibold", textSize, color, className)} {...props} />;
+  return (
+    <Text
+      className={cn("font-semibold", textSize, color, className)}
+      {...props}
+    />
+  );
 }
 
 export function ButtonSpinner() {
   const { action, variant } = useContext(ButtonContext);
-  const color = variant === "solid" && action !== "muted" ? "#ffffff" : "#171717";
+  const color =
+    variant === "solid" && action !== "muted" ? "#ffffff" : "#0B3B6E";
   return <ActivityIndicator color={color} />;
 }
 
 type ButtonIconProps = ViewProps & {
-  as?: React.ComponentType<{ color?: string; size?: number; strokeWidth?: number }>;
+  as?: React.ComponentType<{
+    color?: string;
+    size?: number;
+    strokeWidth?: number;
+  }>;
   className?: string;
 };
 
 export function ButtonIcon({ as: Icon, className, ...props }: ButtonIconProps) {
   const { action, size, variant } = useContext(ButtonContext);
-  const color = variant === "solid" && action !== "muted" ? "#ffffff" : "#171717";
+  const color =
+    variant === "solid" && action !== "muted" ? "#ffffff" : "#0B3B6E";
   const iconSize = size === "sm" ? 16 : size === "xl" ? 22 : 18;
 
   return (
@@ -138,7 +153,11 @@ type ButtonGroupProps = ViewProps & {
   space?: "sm" | "md" | "lg";
 };
 
-export function ButtonGroup({ className, space = "md", ...props }: ButtonGroupProps) {
+export function ButtonGroup({
+  className,
+  space = "md",
+  ...props
+}: ButtonGroupProps) {
   const gap = space === "sm" ? "gap-2" : space === "lg" ? "gap-4" : "gap-3";
   return <View className={cn("flex-row", gap, className)} {...props} />;
 }

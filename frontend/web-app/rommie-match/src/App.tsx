@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { LazyMotion, MotionConfig, domAnimation } from "motion/react";
 import { Route, Routes } from "react-router-dom";
 
 import Landing from "./routes/index";
@@ -20,23 +21,27 @@ const queryClient = new QueryClient();
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/quiz" element={<Quiz />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/matches" element={<Matches />} />
-        <Route path="/chat" element={<Chat />} />
-        <Route path="/services" element={<Services />} />
-        <Route path="/premium" element={<Premium />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/admin" element={<Admin />} />
-        <Route path="/profile/:id" element={<Profile />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </QueryClientProvider>
+    <MotionConfig reducedMotion="user" transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
+      <LazyMotion features={domAnimation} strict>
+        <QueryClientProvider client={queryClient}>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/quiz" element={<Quiz />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/matches" element={<Matches />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/services" element={<Services />} />
+            <Route path="/premium" element={<Premium />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/profile/:id" element={<Profile />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </QueryClientProvider>
+      </LazyMotion>
+    </MotionConfig>
   );
 }

@@ -1,0 +1,111 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/web-app/rommie-match
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/web-app/rommie-match/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Package web app
+        run: tar -czf roomiematch-web.tar.gz -C dist .
+      - name: Upload web artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: roomiematch-web
+          path: frontend/web-app/rommie-match/roomiematch-web.tar.gz
+          archive: false
+
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+      - name: Test API
+        run: dotnet test backend/src/RoomieMatch.slnx --configuration Release
+      - name: Publish API
+        run: dotnet publish backend/src/RoomieMatch.Bootstrapper/RoomieMatch.Bootstrapper.csproj --configuration Release --runtime linux-x64 --self-contained false --output artifacts/api
+      - name: Package API
+        run: tar -czf artifacts/roomiematch-api-linux-x64.tar.gz -C artifacts/api .
+      - name: Upload API artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: roomiematch-api-linux-x64
+          path: artifacts/roomiematch-api-linux-x64.tar.gz
+          archive: false
+
+  chat:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/chat-service
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: backend/chat-service/go.mod
+          cache-dependency-path: backend/chat-service/go.mod
+      - name: Validate chat service
+        shell: bash
+        run: test -z "$(gofmt -l .)" && go vet ./... && go test -race ./...
+      - name: Build chat service
+        env:
+          CGO_ENABLED: "0"
+          GOOS: linux
+          GOARCH: amd64
+        run: go build -trimpath -ldflags="-s -w" -o roomiematch-chat-linux-amd64 .
+      - name: Package chat service
+        run: tar -czf roomiematch-chat-linux-amd64.tar.gz roomiematch-chat-linux-amd64
+      - name: Upload chat artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: roomiematch-chat-linux-amd64
+          path: backend/chat-service/roomiematch-chat-linux-amd64.tar.gz
+          archive: false
+
+  publish:
+    if: github.event_name == 'push'
+    needs: [web, api, chat]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: gh release create "$TAG_NAME" release-assets/* --repo "$GITHUB_REPOSITORY" --generate-notes --verify-tag
