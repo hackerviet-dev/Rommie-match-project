@@ -31,8 +31,8 @@ function Nav() {
   return (
     <header className="sticky top-0 z-40 glass border-b border-border/50">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-        <Logo />
-        <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-muted-foreground">
+        <Logo className="shrink-0 [&>span]:hidden min-[400px]:[&>span]:inline" />
+        <nav aria-label="Giới thiệu RoomieMatch" className="hidden lg:flex items-center gap-5 text-sm font-medium text-muted-foreground">
           <a href="#features" className="hover:text-foreground">
             Tính năng
           </a>
@@ -48,14 +48,12 @@ function Nav() {
           </a>
         </nav>
         <div className="flex items-center gap-2">
-          <Link to="/login">
-            <Button variant="ghost" className="rounded-full">
-              Đăng nhập
-            </Button>
-          </Link>
-          <Link to="/register">
-            <Button className="rounded-full bg-navy hover:bg-navy/90 text-white">Đăng ký</Button>
-          </Link>
+          <Button asChild variant="ghost" className="rounded-full px-2 sm:px-4">
+            <Link to="/login">Đăng nhập</Link>
+          </Button>
+          <Button asChild className="rounded-full bg-navy hover:bg-navy/90 text-white px-3 sm:px-5">
+            <Link to="/register">Đăng ký</Link>
+          </Button>
         </div>
       </div>
     </header>
@@ -68,7 +66,7 @@ export default function Landing() {
       <Nav />
 
       {/* HERO */}
-      <section className="relative">
+      <section className="relative roomie-hero">
         <div className="absolute inset-0 -z-10 overflow-hidden">
           <div className="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-mint/40 blur-3xl" />
           <div className="absolute top-20 -right-32 h-96 w-96 rounded-full bg-teal/30 blur-3xl" />
@@ -82,7 +80,7 @@ export default function Landing() {
             <Badge className="rounded-full bg-mint/30 text-navy border-0 hover:bg-mint/30 px-3 py-1.5">
               <Sparkles className="h-3 w-3 mr-1.5" /> Ghép đôi bằng AI · v2.0
             </Badge>
-            <h1 className="mt-5 text-5xl sm:text-6xl font-display font-extrabold leading-[1.05] tracking-tight">
+            <h1 className="mt-5 text-[2.5rem] sm:text-6xl font-display font-extrabold leading-[1.12] tracking-tight text-balance">
               Tìm bạn cùng phòng&nbsp;thật sự{" "}
               <span className="text-gradient-brand">hợp với bạn</span>.
             </h1>
@@ -102,8 +100,8 @@ export default function Landing() {
                 </Button>
               </Link>
             </div>
-            <div className="mt-8 flex items-center gap-6 text-sm text-muted-foreground">
-              <div className="flex -space-x-2">
+            <div className="mt-8 flex flex-wrap items-center gap-3 sm:gap-6 text-sm text-muted-foreground">
+              <div className="flex shrink-0 -space-x-2">
                 {["A", "B", "C", "D"].map((s) => (
                   <img
                     key={s}
@@ -179,8 +177,8 @@ export default function Landing() {
       {/* CTA — moved above problem */}
       <section className="py-16">
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
-          <Card className="rounded-[2.5rem] border-0 p-12 text-center gradient-brand text-white shadow-2xl">
-            <h2 className="text-4xl md:text-5xl font-display font-extrabold">
+          <Card className="rounded-[2.5rem] border-0 p-6 sm:p-12 text-center gradient-brand text-white shadow-2xl">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-extrabold">
               Bạn cùng phòng lý tưởng chỉ cách bạn một bài trắc nghiệm.
             </h2>
             <p className="mt-4 text-white/90 max-w-xl mx-auto">

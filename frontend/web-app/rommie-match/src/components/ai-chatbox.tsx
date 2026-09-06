@@ -113,7 +113,7 @@ export function AIChatbox() {
   };
 
   return (
-    <div className="fixed bottom-20 right-3 md:bottom-5 md:right-5 z-50">
+    <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-3 lg:bottom-5 lg:right-5 z-40">
       <style>{`
         @keyframes mascot-bob {
           0%, 100% { transform: translateY(0) rotate(-3deg) scale(1); }

@@ -55,10 +55,10 @@
 :root {
   --radius: 1rem;
   --navy: #0B3B6E;
-  --teal: #15A9B8;
+  --teal: #087F8C;
   --mint: #8FD3C1;
 
-  --background: oklch(0.99 0.005 220);
+  --background: #F5F9F8;
   --foreground: oklch(0.20 0.04 250);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.20 0.04 250);
@@ -66,7 +66,7 @@
   --popover-foreground: oklch(0.20 0.04 250);
   --primary: oklch(0.34 0.10 252);            /* navy */
   --primary-foreground: oklch(0.99 0.005 220);
-  --secondary: oklch(0.69 0.10 200);          /* teal */
+  --secondary: #087F8C;
   --secondary-foreground: oklch(1 0 0);
   --muted: oklch(0.96 0.01 220);
   --muted-foreground: oklch(0.48 0.03 245);
@@ -75,8 +75,9 @@
   --destructive: oklch(0.60 0.22 25);
   --destructive-foreground: oklch(0.99 0 0);
   --border: oklch(0.92 0.01 230);
-  --input: oklch(0.94 0.01 230);
-  --ring: oklch(0.69 0.10 200);
+  --input: #A5B8BF;
+  --ring: #087F8C;
+  --surface-shadow: 0 2px 4px rgb(11 59 110 / 3%), 0 16px 40px -24px rgb(11 59 110 / 24%);
   --chart-1: oklch(0.34 0.10 252);
   --chart-2: oklch(0.69 0.10 200);
   --chart-3: oklch(0.86 0.07 175);
@@ -93,6 +94,7 @@
 }
 
 .dark {
+  --surface-shadow: 0 12px 32px -18px rgb(0 0 0 / 55%);
   --background: oklch(0.17 0.03 252);
   --foreground: oklch(0.97 0.01 220);
   --card: oklch(0.22 0.04 252);
@@ -131,12 +133,19 @@
     -webkit-font-smoothing: antialiased;
   }
   h1, h2, h3, h4, h5 { font-family: var(--font-display); letter-spacing: -0.02em; }
+  html { scroll-padding-top: 6rem; }
+  button:not(:disabled), [role="button"]:not([aria-disabled="true"]) { cursor: pointer; }
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 4px;
+  }
+  ::selection { background: var(--mint); color: var(--navy); }
 }
 
 @utility glass {
-  background: color-mix(in oklab, white 60%, transparent);
+  background: color-mix(in oklab, var(--card) 92%, transparent);
   backdrop-filter: blur(16px) saturate(140%);
-  border: 1px solid color-mix(in oklab, white 70%, transparent);
+  border: 1px solid var(--border);
 }
 .dark .glass {
   background: color-mix(in oklab, var(--card) 60%, transparent);
@@ -144,7 +153,7 @@
 }
 
 @utility gradient-brand {
-  background-image: linear-gradient(135deg, var(--navy) 0%, var(--teal) 60%, var(--mint) 100%);
+  background-image: linear-gradient(135deg, var(--navy), var(--teal));
 }
 @utility text-gradient-brand {
   background-image: linear-gradient(135deg, var(--navy), var(--teal));
@@ -158,3 +167,26 @@
   50% { transform: translateY(-12px); }
 }
 .animate-float { animation: float-slow 6s ease-in-out infinite; }
+
+.roomie-hero {
+  background: radial-gradient(ellipse at 85% 25%, rgb(143 211 193 / 32%), transparent 55%),
+    radial-gradient(ellipse at 10% 90%, rgb(8 127 140 / 7%), transparent 50%);
+}
+
+.skip-link {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 100;
+  transform: translateY(-200%);
+  border-radius: .75rem;
+  padding: .75rem 1rem;
+  background: var(--card);
+  color: var(--foreground);
+}
+.skip-link:focus { transform: translateY(0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float { animation: none; }
+  html { scroll-behavior: auto; }
+}

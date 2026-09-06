@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useAuthStore } from "@/stores/auth-store";
 
 const NOTIFICATIONS = [
@@ -21,14 +21,14 @@ function NotificationBell() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="rounded-full relative">
+        <Button variant="ghost" size="icon" aria-label="Thông báo" className="rounded-full relative">
           <Bell className="h-5 w-5" />
           {unread > 0 && (
             <span className="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-teal text-white text-[10px] font-bold grid place-items-center">{unread}</span>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-0 rounded-2xl overflow-hidden">
+      <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] p-0 rounded-2xl overflow-hidden">
         <div className="px-4 py-3 border-b flex items-center justify-between">
           <div className="font-display font-bold">Thông báo</div>
           <span className="text-xs text-muted-foreground">{unread} chưa đọc</span>
@@ -79,18 +79,20 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
+      <a href="#main-content" className="skip-link">Đến nội dung chính</a>
       <header className="sticky top-0 z-40 glass border-b border-border/60">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
           <div className="flex items-center gap-6">
             <Logo />
-            <nav className="hidden md:flex items-center gap-1">
+            <nav aria-label="Điều hướng chính" className="hidden lg:flex items-center gap-1">
               {nav.map((n) => {
                 const active = path.startsWith(n.to);
                 return (
                   <Link
                     key={n.to}
                     to={n.to}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${active ? "bg-accent/40 text-navy" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
+                    aria-current={active ? "page" : undefined}
+                    className={`px-3 py-3 rounded-xl text-sm font-semibold transition-colors ${active ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
                   >
                     {n.label}
                   </Link>
@@ -100,7 +102,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <div className="flex items-center gap-2">
             <NotificationBell />
-            <Link to="/settings">
+            <Link to="/settings" aria-label="Cài đặt tài khoản" className="grid h-11 w-11 place-items-center rounded-full">
               <Avatar className="h-9 w-9 ring-2 ring-mint">
                 <AvatarImage
                   src={user?.avatar ?? "https://api.dicebear.com/9.x/avataaars/svg?seed=Me"}
@@ -110,16 +112,19 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden">
+                <Button variant="ghost" size="icon" aria-label="Mở menu" className="lg:hidden">
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-72">
+                <SheetTitle>Khám phá RoomieMatch</SheetTitle>
+                <SheetDescription>Hồ sơ, ghép đôi và cuộc sống ở chung.</SheetDescription>
                 <div className="mt-8 flex flex-col gap-1">
                   {nav.map((n) => (
                     <Link
                       key={n.to}
                       to={n.to}
+                      aria-current={path.startsWith(n.to) ? "page" : undefined}
                       onClick={() => setOpen(false)}
                       className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-muted"
                     >
@@ -140,9 +145,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 pb-28 md:pb-10 pt-6">{children}</main>
+      <main id="main-content" tabIndex={-1} className="mx-auto max-w-7xl px-4 sm:px-6 pb-28 lg:pb-10 pt-8 sm:pt-10">{children}</main>
 
-      <nav className="md:hidden fixed bottom-3 inset-x-3 z-40 glass rounded-2xl shadow-lg border border-border/60">
+      <nav aria-label="Điều hướng nhanh" className="lg:hidden fixed bottom-[max(.75rem,env(safe-area-inset-bottom))] inset-x-3 z-40 glass rounded-2xl shadow-lg border border-border/60">
         <div className="grid grid-cols-5">
           {nav.map((n) => {
             const active = path.startsWith(n.to);
@@ -150,6 +155,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Link
                 key={n.to}
                 to={n.to}
+                aria-current={active ? "page" : undefined}
                 className={`flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium ${active ? "text-teal" : "text-muted-foreground"}`}
               >
                 <n.icon className={`h-5 w-5 ${active ? "fill-mint/40" : ""}`} />
