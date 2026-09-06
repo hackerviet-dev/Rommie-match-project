@@ -1,4 +1,7 @@
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { getSaved, toggleSaved } from "@/lib/saved-profiles";
+import { toast } from "sonner";
 import * as m from "motion/react-m";
 import { AppShell, CompatRing } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
@@ -9,6 +12,21 @@ import { roommates } from "@/lib/mock-data";
 import { MessageCircle, Bookmark, SlidersHorizontal, Search } from "lucide-react";
 
 export default function Matches() {
+  const [savedIds, setSavedIds] = useState(getSaved);
+  useEffect(() => {
+    const sync = () => setSavedIds(getSaved());
+    window.addEventListener("saved-profiles-changed", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener("saved-profiles-changed", sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  const save = (id: string) => {
+    try { toggleSaved(id); }
+    catch { toast.error("Không thể lưu hồ sơ trên trình duyệt này."); }
+  };
   return (
     <AppShell>
       <div className="flex items-end justify-between flex-wrap gap-4">
@@ -105,8 +123,8 @@ export default function Matches() {
                       <MessageCircle className="h-4 w-4" />
                     </Button>
                   </Link>
-                  <Button size="icon" variant="outline" className="rounded-xl">
-                    <Bookmark className="h-4 w-4" />
+                  <Button size="icon" variant="outline" className="rounded-xl" aria-label={`${savedIds.includes(r.id) ? "Bỏ lưu" : "Lưu"} ${r.name}`} aria-pressed={savedIds.includes(r.id)} onClick={() => save(r.id)}>
+                    <Bookmark className={`h-4 w-4 ${savedIds.includes(r.id) ? "fill-teal text-teal" : ""}`} />
                   </Button>
                 </div>
               </div>

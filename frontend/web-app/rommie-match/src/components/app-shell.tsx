@@ -1,11 +1,55 @@
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Link, useLocation } from "react-router-dom";
-import { Home, Heart, MessageCircle, Store, Settings, Sparkles, Menu, Bell } from "lucide-react";
+import { Home, Heart, MessageCircle, Store, Settings, Sparkles, Menu, Bell, TrendingUp } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuthStore } from "@/stores/auth-store";
+
+const NOTIFICATIONS = [
+  { i: Heart, t: "Linh đã xem hồ sơ của bạn", time: "2 phút", color: "text-rose-500 bg-rose-50", unread: true },
+  { i: MessageCircle, t: "Minh: Mình ok chia tiền điện nước 50/50.", time: "1 giờ", color: "text-teal bg-mint/30", unread: true },
+  { i: Sparkles, t: "Ghép đôi mới 92% với Hà My", time: "3 giờ", color: "text-amber-600 bg-amber-50", unread: true },
+  { i: TrendingUp, t: "Hồ sơ của bạn đang nổi ở Quận 1", time: "1 ngày", color: "text-navy bg-mint/20", unread: false },
+  { i: Store, t: "Dịch vụ Giặt ủi mới gần bạn (0,6 km)", time: "2 ngày", color: "text-navy bg-muted", unread: false },
+];
+
+function NotificationBell() {
+  const unread = NOTIFICATIONS.filter(n => n.unread).length;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="icon" className="rounded-full relative">
+          <Bell className="h-5 w-5" />
+          {unread > 0 && (
+            <span className="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-teal text-white text-[10px] font-bold grid place-items-center">{unread}</span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-0 rounded-2xl overflow-hidden">
+        <div className="px-4 py-3 border-b flex items-center justify-between">
+          <div className="font-display font-bold">Thông báo</div>
+          <span className="text-xs text-muted-foreground">{unread} chưa đọc</span>
+        </div>
+        <ul className="max-h-96 overflow-y-auto">
+          {NOTIFICATIONS.map((n, i) => (
+            <li key={i} className={`flex gap-3 px-4 py-3 border-b last:border-0 hover:bg-muted/50 ${n.unread ? "bg-mint/5" : ""}`}>
+              <div className={`h-9 w-9 shrink-0 rounded-xl grid place-items-center ${n.color}`}><n.i className="h-4 w-4" /></div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm leading-snug">{n.t}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">{n.time} trước</div>
+              </div>
+              {n.unread && <div className="h-2 w-2 rounded-full bg-teal mt-2 shrink-0" />}
+            </li>
+          ))}
+        </ul>
+        <Link to="/dashboard" className="block text-center text-sm font-medium text-teal hover:bg-muted py-3 border-t">Xem tất cả</Link>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 const nav = [
   { to: "/dashboard", label: "Trang chính", icon: Home },
@@ -18,7 +62,7 @@ const nav = [
 export function Logo({ className = "" }: { className?: string }) {
   return (
     <Link to="/" className={`flex items-center gap-2 font-display font-bold text-lg ${className}`}>
-      <img src="/logo-mark.png" alt="RoomieMatch" className="h-10 w-10 object-contain" />
+      <img src={`${import.meta.env.BASE_URL}logo-mark.png`} alt="RoomieMatch" className="h-10 w-10 object-contain" />
       <span>
         <span className="text-navy">Roomie</span>
         <span className="text-teal">Match</span>
@@ -55,9 +99,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </nav>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="rounded-full">
-              <Bell className="h-5 w-5" />
-            </Button>
+            <NotificationBell />
             <Link to="/settings">
               <Avatar className="h-9 w-9 ring-2 ring-mint">
                 <AvatarImage

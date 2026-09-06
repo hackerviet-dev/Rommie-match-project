@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, X, Sparkles, Zap, Eye, Filter, TrendingUp } from "lucide-react";
 
+
 const features = [
   { name: "Ghép đôi cơ bản", free: true, pro: true },
   { name: "Trò chuyện trong ứng dụng", free: true, pro: true },
@@ -20,38 +21,20 @@ export default function Premium() {
   return (
     <AppShell>
       <div className="text-center max-w-2xl mx-auto">
-        <Badge className="rounded-full bg-mint/40 text-navy border-0 px-3 py-1">
-          <Sparkles className="h-3 w-3 mr-1.5" /> Premium
-        </Badge>
-        <h1 className="mt-4 text-4xl sm:text-5xl font-display font-extrabold">
-          Ghép thông minh. <span className="text-gradient-brand">Dọn vào nhanh.</span>
-        </h1>
-        <p className="mt-3 text-muted-foreground">
-          Mở khoá bộ lọc nâng cao, hiển thị ưu tiên và phân tích AI.
-        </p>
+        <Badge className="rounded-full bg-mint/40 text-navy border-0 px-3 py-1"><Sparkles className="h-3 w-3 mr-1.5" /> Premium</Badge>
+        <h1 className="mt-4 text-4xl sm:text-4xl font-display font-extrabold">Ghép thông minh. <span className="text-gradient-brand">Dọn vào nhanh.</span></h1>
+        <p className="mt-3 text-muted-foreground">Mở khoá bộ lọc nâng cao, hiển thị ưu tiên và phân tích AI.</p>
       </div>
 
-      <div className="mt-10 grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+      <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
         <Card className="p-8 rounded-3xl border-0 shadow-sm">
           <div className="text-sm font-medium text-muted-foreground">Miễn phí</div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-4xl font-display font-extrabold">0₫</span>
-            <span className="text-muted-foreground">/mãi mãi</span>
-          </div>
+          <div className="mt-2 flex items-baseline gap-2"><span className="text-4xl font-display font-extrabold">0₫</span><span className="text-muted-foreground">/mãi mãi</span></div>
           <p className="mt-2 text-sm text-muted-foreground">Mọi thứ để bắt đầu hành trình.</p>
-          <Button variant="outline" className="w-full mt-6 rounded-xl">
-            Gói hiện tại
-          </Button>
+          <Button variant="outline" className="w-full mt-6 rounded-xl">Gói hiện tại</Button>
           <ul className="mt-6 space-y-3 text-sm">
-            {[
-              "Ghép đôi cơ bản",
-              "Trò chuyện trong ứng dụng",
-              "5 lượt quét/tháng",
-              "Bộ lọc tiêu chuẩn",
-            ].map((f) => (
-              <li key={f} className="flex gap-2">
-                <Check className="h-4 w-4 text-mint mt-0.5" /> {f}
-              </li>
+            {["Ghép đôi cơ bản","Trò chuyện trong ứng dụng","5 lượt quét/tháng","Bộ lọc tiêu chuẩn"].map(f=>(
+              <li key={f} className="flex gap-2"><Check className="h-4 w-4 text-mint mt-0.5" /> {f}</li>
             ))}
           </ul>
         </Card>
@@ -61,14 +44,9 @@ export default function Premium() {
             <Badge className="bg-white/20 text-white border-0 rounded-full">Phổ biến nhất</Badge>
           </div>
           <div className="text-sm font-medium text-white/80">Premium</div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-4xl font-display font-extrabold">20.000₫</span>
-            <span className="text-white/80">/tháng</span>
-          </div>
+          <div className="mt-2 flex items-baseline gap-2"><span className="text-4xl font-display font-extrabold">20.000₫</span><span className="text-white/80">/tháng</span></div>
           <p className="mt-2 text-sm text-white/80">Huỷ bất cứ lúc nào.</p>
-          <Button className="w-full mt-6 rounded-xl bg-white text-navy hover:bg-white/90 font-semibold">
-            Nâng cấp ngay
-          </Button>
+          <Button className="w-full mt-6 rounded-xl bg-white text-navy hover:bg-white/90 font-semibold">Nâng cấp ngay</Button>
           <ul className="mt-6 space-y-3 text-sm">
             {[
               { i: Sparkles, t: "Phân tích hợp nhau nâng cao" },
@@ -76,10 +54,29 @@ export default function Premium() {
               { i: Filter, t: "Bộ lọc nâng cao" },
               { i: Eye, t: "Xem ai đã xem bạn" },
               { i: TrendingUp, t: "Boost hồ sơ — xem gấp 5 lần" },
-            ].map((f, i) => (
-              <li key={i} className="flex gap-2">
-                <f.i className="h-4 w-4 mt-0.5" /> {f.t}
-              </li>
+            ].map((f,i)=>(
+              <li key={i} className="flex gap-2"><f.i className="h-4 w-4 mt-0.5" /> {f.t}</li>
+            ))}
+          </ul>
+        </Card>
+
+        <Card className="p-8 rounded-3xl border-0 shadow-sm relative overflow-hidden">
+          <div className="absolute top-4 right-4">
+            <Badge className="bg-mint/40 text-navy border-0 rounded-full">Tiết kiệm</Badge>
+          </div>
+          <div className="text-sm font-medium text-muted-foreground">Premium năm</div>
+          <div className="mt-2 flex items-baseline gap-2"><span className="text-4xl font-display font-extrabold">180.000đ</span><span className="text-muted-foreground">/năm</span></div>
+          <p className="mt-2 text-sm text-muted-foreground">Tiết kiệm 60.000đ so với trả theo tháng.</p>
+          <Button className="w-full mt-6 rounded-xl bg-navy hover:bg-navy/90 text-white font-semibold">Chọn gói năm</Button>
+          <ul className="mt-6 space-y-3 text-sm">
+            {[
+              { i: Sparkles, t: "Tất cả tính năng Premium tháng" },
+              { i: Zap, t: "Quét hợp nhau không giới hạn" },
+              { i: Filter, t: "Bộ lọc nâng cao theo khu vực và lối sống" },
+              { i: Eye, t: "Ưu tiên hiển thị cả năm" },
+              { i: TrendingUp, t: "Boost hồ sơ định kỳ" },
+            ].map((f,i)=>(
+              <li key={i} className="flex gap-2"><f.i className="h-4 w-4 mt-0.5 text-teal" /> {f.t}</li>
             ))}
           </ul>
         </Card>
@@ -97,23 +94,11 @@ export default function Premium() {
               </tr>
             </thead>
             <tbody>
-              {features.map((f, i) => (
-                <tr key={f.name} className={i % 2 ? "bg-muted/20" : ""}>
+              {features.map((f,i)=>(
+                <tr key={f.name} className={i%2 ? "bg-muted/20":""}>
                   <td className="p-4">{f.name}</td>
-                  <td className="p-4 text-center">
-                    {f.free ? (
-                      <Check className="h-4 w-4 text-mint mx-auto" />
-                    ) : (
-                      <X className="h-4 w-4 text-muted-foreground mx-auto" />
-                    )}
-                  </td>
-                  <td className="p-4 text-center">
-                    {f.pro ? (
-                      <Check className="h-4 w-4 text-teal mx-auto" />
-                    ) : (
-                      <X className="h-4 w-4 text-muted-foreground mx-auto" />
-                    )}
-                  </td>
+                  <td className="p-4 text-center">{f.free ? <Check className="h-4 w-4 text-mint mx-auto" /> : <X className="h-4 w-4 text-muted-foreground mx-auto" />}</td>
+                  <td className="p-4 text-center">{f.pro ? <Check className="h-4 w-4 text-teal mx-auto" /> : <X className="h-4 w-4 text-muted-foreground mx-auto" />}</td>
                 </tr>
               ))}
             </tbody>
@@ -121,15 +106,8 @@ export default function Premium() {
         </Card>
 
         <div className="mt-10 text-center">
-          <Button
-            size="lg"
-            className="rounded-full bg-navy hover:bg-navy/90 text-white px-10 h-14 text-base"
-          >
-            Nâng cấp Premium — 20.000₫/tháng
-          </Button>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Thanh toán an toàn · Huỷ bất cứ lúc nào · Hoàn tiền trong 7 ngày
-          </p>
+          <Button size="lg" className="rounded-full bg-navy hover:bg-navy/90 text-white px-10 h-14 text-base">Nâng cấp Premium — 20.000₫/tháng</Button>
+          <p className="mt-3 text-xs text-muted-foreground">Thanh toán an toàn · Huỷ bất cứ lúc nào · Hoàn tiền trong 7 ngày</p>
         </div>
       </div>
     </AppShell>

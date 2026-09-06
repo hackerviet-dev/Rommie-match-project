@@ -16,6 +16,9 @@ import Settings from "./routes/settings";
 import Admin from "./routes/admin";
 import Profile from "./routes/profile";
 import NotFound from "./routes/not-found";
+import CommunityGuidelines from "./routes/community-guidelines";
+import { AIChatbox } from "./components/ai-chatbox";
+import { Toaster } from "./components/ui/sonner";
 
 const queryClient = new QueryClient();
 
@@ -35,11 +38,14 @@ export default function App() {
             <Route path="/chat" element={<Chat />} />
             <Route path="/services" element={<Services />} />
             <Route path="/premium" element={<Premium />} />
+            <Route path="/community-guidelines" element={<CommunityGuidelines />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/profile/:id" element={<Profile />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <AIChatbox />
+          <Toaster />
         </QueryClientProvider>
       </LazyMotion>
     </MotionConfig>

@@ -42,6 +42,7 @@ function Nav() {
           <a href="#premium" className="hover:text-foreground">
             Premium
           </a>
+          <Link to="/community-guidelines" className="hover:text-foreground">Quy tắc cộng đồng</Link>
           <a href="#faq" className="hover:text-foreground">
             Hỏi đáp
           </a>
@@ -330,29 +331,21 @@ export default function Landing() {
 
       {/* PREMIUM */}
       <section id="premium" className="py-24">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6">
-          <Card className="rounded-[2.5rem] border-0 overflow-hidden shadow-2xl">
-            <div className="grid md:grid-cols-2">
-              <div className="p-10 gradient-brand text-white">
-                <Badge className="rounded-full bg-white/20 text-white border-0">Premium</Badge>
-                <h2 className="mt-4 text-4xl font-display font-bold">
-                  Ghép thông minh hơn, dọn vào nhanh hơn.
-                </h2>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="grid gap-5 lg:grid-cols-3">
+          <Card className="order-2 rounded-[2rem] border border-teal/25 overflow-hidden shadow-2xl bg-gradient-to-b from-card to-mint/20">
+            <div>
+              <div className="p-8">
+                <Badge className="rounded-full bg-teal/15 text-teal border-0">Premium</Badge>
+                {/* <h2 className="mt-4 text-4xl font-display font-bold">Ghép thông minh hơn, dọn vào nhanh hơn.</h2> */}
                 <div className="mt-6 flex items-baseline gap-2">
-                  <span className="text-5xl font-extrabold">20.000₫</span>
-                  <span className="opacity-80">/ tháng</span>
+                  <span className="text-4xl font-extrabold">20.000₫</span>
+                  <span className="text-muted-foreground">/ tháng</span>
                 </div>
-                <p className="mt-3 text-white/90 text-sm">Rẻ hơn ly cà phê. Đáng giá hơn nhiều.</p>
-                <Link to="/premium">
-                  <Button
-                    size="lg"
-                    className="mt-8 rounded-full bg-white text-navy hover:bg-white/90"
-                  >
-                    Nâng cấp Premium
-                  </Button>
-                </Link>
+                <p className="mt-3 text-sm text-muted-foreground">Rẻ hơn ly cà phê. Đáng giá hơn nhiều.</p>
+                <Link to="/premium"><Button size="lg" className="mt-7 w-full rounded-full bg-teal hover:bg-teal/90 text-white">Chọn gói tháng</Button></Link>
               </div>
-              <div className="p-10">
+              <div className="px-8 pb-8">
                 <ul className="space-y-3">
                   {[
                     "Phân tích hợp nhau nâng cao",
@@ -360,11 +353,9 @@ export default function Landing() {
                     "Bộ lọc nâng cao (ngân sách, khu vực, lối sống)",
                     "Hiển thị ưu tiên trong kết quả",
                     "Boost hồ sơ — xem nhiều hơn 5 lần",
-                  ].map((b) => (
+                  ].map(b => (
                     <li key={b} className="flex items-start gap-3">
-                      <div className="mt-0.5 h-5 w-5 rounded-full bg-mint grid place-items-center">
-                        <Check className="h-3 w-3 text-navy" />
-                      </div>
+                      <div className="mt-0.5 h-5 w-5 rounded-full bg-mint grid place-items-center"><Check className="h-3 w-3 text-navy" /></div>
                       <span className="text-sm">{b}</span>
                     </li>
                   ))}
@@ -372,6 +363,52 @@ export default function Landing() {
               </div>
             </div>
           </Card>
+            <Card className="order-1 rounded-[2rem] border border-mint/30 p-8 shadow-lg bg-gradient-to-b from-card to-mint/10">
+              <div className="text-sm font-semibold text-muted-foreground">Free</div>
+              <div className="mt-4 flex items-baseline gap-2">
+                <span className="text-4xl font-display font-extrabold">0đ</span>
+                <span className="text-muted-foreground">/ mãi mãi</span>
+              </div>
+              <p className="mt-3 text-sm text-muted-foreground">Bắt đầu ghép đôi và trò chuyện miễn phí.</p>
+              <Link to="/register">
+                <Button size="lg" variant="outline" className="mt-7 w-full rounded-full">Bắt đầu miễn phí</Button>
+              </Link>
+              <ul className="mt-7 space-y-3">
+                {["Ghép đôi cơ bản", "Trò chuyện trong ứng dụng", "5 lượt quét/tháng", "Bộ lọc tiêu chuẩn"].map((feature) => (
+                  <li key={feature} className="flex items-start gap-3">
+                    <div className="mt-0.5 h-5 w-5 rounded-full bg-mint grid place-items-center"><Check className="h-3 w-3 text-navy" /></div>
+                    <span className="text-sm">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+            <Card className="order-3 rounded-[2rem] border border-teal/15 p-8 shadow-lg bg-gradient-to-b from-card to-teal/10 relative overflow-hidden">
+              <Badge className="absolute right-6 top-6 rounded-full bg-mint/30 text-navy border-0">Tiết kiệm</Badge>
+              <div className="text-sm font-semibold text-muted-foreground">Premium năm</div>
+              <div className="mt-4 flex items-baseline gap-2">
+                <span className="text-4xl font-display font-extrabold">180.000đ</span>
+                <span className="text-muted-foreground">/ năm</span>
+              </div>
+              <p className="mt-3 text-sm text-muted-foreground">Tiết kiệm 60.000đ so với trả theo tháng.</p>
+              <Link to="/premium">
+                <Button size="lg" className="mt-7 w-full rounded-full bg-teal hover:bg-teal/90 text-white">Chọn gói năm</Button>
+              </Link>
+              <ul className="mt-7 space-y-3">
+                {[
+                  "Tất cả tính năng Premium tháng",
+                  "Quét hợp nhau không giới hạn",
+                  "Bộ lọc nâng cao theo khu vực và lối sống",
+                  "Ưu tiên hiển thị cả năm",
+                  "Boost hồ sơ định kỳ",
+                ].map((feature) => (
+                  <li key={feature} className="flex items-start gap-3">
+                    <div className="mt-0.5 h-5 w-5 rounded-full bg-mint grid place-items-center"><Check className="h-3 w-3 text-navy" /></div>
+                    <span className="text-sm">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          </div>
         </div>
       </section>
 
@@ -474,7 +511,7 @@ export default function Landing() {
             {[
               {
                 q: "RoomieMatch có miễn phí không?",
-                a: "Có — tính năng ghép đôi, trò chuyện và hồ sơ luôn miễn phí. Premium mở khoá bộ lọc nâng cao và hiển thị ưu tiên với giá 20.000₫/tháng.",
+                a: "Có — tính năng ghép đôi, trò chuyện và hồ sơ luôn miễn phí. Premium mở khoá bộ lọc nâng cao và hiển thị ưu tiên với giá 20.000₫/tháng hoặc 180.000₫/năm (tiết kiệm 25%).",
               },
               {
                 q: "AI ghép đôi hoạt động ra sao?",
@@ -531,6 +568,7 @@ export default function Landing() {
         </div>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 mt-10 pt-6 border-t border-border/60 flex justify-between text-xs text-muted-foreground">
           <span>© 2026 RoomieMatch. Made in Vietnam.</span>
+          <Link to="/community-guidelines" className="hover:text-foreground">Quy tắc cộng đồng</Link>
           <span>v2.0</span>
         </div>
       </footer>

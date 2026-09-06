@@ -1,4 +1,8 @@
-import { useNavigate } from "react-router-dom";
+import { roommates } from "@/lib/mock-data";
+import { getSaved, removeSaved } from "@/lib/saved-profiles";
+import { toast } from "sonner";
+import { Bookmark, MessageCircle, Search } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/app-shell";
 import { useAuthStore } from "@/stores/auth-store";
 import { Card } from "@/components/ui/card";
@@ -46,7 +50,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // Mock dữ liệu hồ sơ đã tạo từ Onboarding
 const initialProfileData = {
@@ -122,6 +126,77 @@ function Section({
         </div>
       </div>
     </Card>
+  );
+}
+
+function SavedProfiles() {
+  const [ids, setIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const sync = () => setIds(getSaved());
+    sync();
+    window.addEventListener("saved-profiles-changed", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener("saved-profiles-changed", sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  const items = ids
+    .map(id => roommates.find(r => r.id === id))
+    .filter((x): x is NonNullable<typeof x> => Boolean(x));
+
+  const handleRemove = (id: string, name: string) => {
+    try {
+    removeSaved(id);
+    toast.success(`Đã bỏ lưu ${name}`);
+    } catch { toast.error("Không thể cập nhật hồ sơ đã lưu trên trình duyệt này."); }
+  };
+
+  return (
+    <Section icon={Bookmark} title="Đã lưu" desc={`${items.length} hồ sơ bạn đã lưu để xem lại sau.`}>
+      {items.length === 0 ? (
+        <div className="text-center py-8 px-4 rounded-2xl bg-muted/30 border border-dashed">
+          <div className="mx-auto h-12 w-12 rounded-full bg-mint/30 grid place-items-center text-navy">
+            <Search className="h-6 w-6" />
+          </div>
+          <div className="mt-3 text-sm font-medium">Chưa có hồ sơ nào được lưu</div>
+          <p className="text-xs text-muted-foreground mt-1">Bấm nút <Bookmark className="h-3 w-3 inline" /> Lưu trên trang hồ sơ để xem lại tại đây.</p>
+          <Link to="/matches">
+            <Button variant="outline" size="sm" className="mt-4 rounded-xl">Khám phá hồ sơ</Button>
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {items.map(r => (
+            <div key={r.id} className="flex items-center gap-3 p-3 rounded-2xl border hover:bg-muted/30 transition">
+              <img src={r.avatar} alt={r.name} className="h-12 w-12 rounded-xl bg-mint/30 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <div className="font-medium truncate">{r.name}</div>
+                  <Badge className="rounded-full bg-mint/30 text-navy border-0 text-[10px] px-1.5 py-0">{r.score}%</Badge>
+                </div>
+                <div className="text-xs text-muted-foreground truncate flex items-center gap-1"><MapPin className="h-3 w-3" /> {r.city} · {r.occupation}</div>
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <Link to={`/profile/${r.id}`}>
+                  <Button variant="outline" size="sm" className="rounded-lg h-8">Xem</Button>
+                </Link>
+                <Link to="/chat">
+                  <Button size="sm" className="rounded-lg h-8 bg-navy hover:bg-navy/90 text-white px-2">
+                    <MessageCircle className="h-3.5 w-3.5" />
+                  </Button>
+                </Link>
+                <Button variant="ghost" size="sm" className="rounded-lg h-8 px-2 text-destructive hover:bg-destructive/5" onClick={() => handleRemove(r.id, r.name)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Section>
   );
 }
 
@@ -244,6 +319,7 @@ export default function Settings() {
 
   return (
     <AppShell>
+      <div className="mb-6"><SavedProfiles /></div>
       <h1 className="text-3xl font-display font-bold">Cài đặt</h1>
       <p className="text-muted-foreground mt-1">Quản lý tài khoản, bảo mật và tuỳ chỉnh.</p>
 
