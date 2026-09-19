@@ -6,6 +6,9 @@
   <Folder Name="/Modules/Matching/">
     <Project Path="Modules/Matching/RoomieMatch.Modules.Matching.csproj" />
   </Folder>
+  <Folder Name="/Modules/Rooms/">
+    <Project Path="Modules/Rooms/RoomieMatch.Modules.Rooms.csproj" />
+  </Folder>
   <Folder Name="/Modules/Users/">
     <Project Path="Modules/Users/RoomieMatch.Modules.Users.csproj" />
   </Folder>

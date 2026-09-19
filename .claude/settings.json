@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm -f src/server.ts src/start.ts src/router.tsx src/routeTree.gen.ts src/routes/__root.tsx src/routes/README.md 'src/routes/profile.$id.tsx' src/lib/error-capture.ts src/lib/error-page.ts src/lib/lovable-error-reporting.ts src/lib/config.server.ts src/lib/api/example.functions.ts src/integrations/supabase/client.server.ts src/integrations/supabase/auth-attacher.ts src/integrations/supabase/auth-middleware.ts)",
+      "Bash(rmdir src/lib/api)",
+      "Bash(rm -f bun.lock)",
+      "Bash(npm install *)",
+      "Bash(npx biome *)",
+      "Bash(npm ls *)",
+      "Bash(npm view *)",
+      "Bash(echo \"tailwindcss: $\\(npm view tailwindcss version\\)\")",
+      "Bash(echo \"@tailwindcss/vite: $\\(npm view @tailwindcss/vite version\\)\")",
+      "Bash(echo \"shadcn \\(CLI\\): $\\(npm view shadcn version\\)\")",
+      "Bash(npx --yes shadcn@latest --version)"
+    ]
+  }
+}

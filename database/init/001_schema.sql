@@ -3,6 +3,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE TABLE IF NOT EXISTS users (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     email varchar(320) NOT NULL UNIQUE,
+    password_hash text,
     role varchar(30) NOT NULL DEFAULT 'member' CHECK (role IN ('member', 'moderator', 'admin')),
     auth_provider varchar(30) NOT NULL DEFAULT 'local',
     is_active boolean NOT NULL DEFAULT true,
@@ -57,6 +58,7 @@ CREATE TABLE IF NOT EXISTS rooms (
     latitude numeric(9, 6),
     longitude numeric(9, 6),
     is_active boolean NOT NULL DEFAULT true,
+    deleted_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -108,6 +110,7 @@ CREATE TABLE IF NOT EXISTS local_services (
     review_count integer NOT NULL DEFAULT 0 CHECK (review_count >= 0),
     price_from integer NOT NULL DEFAULT 0 CHECK (price_from >= 0),
     is_verified boolean NOT NULL DEFAULT false,
+    deleted_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now()
 );
 

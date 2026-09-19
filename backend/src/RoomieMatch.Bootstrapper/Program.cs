@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using RoomieMatch.Bootstrapper.Infrastructure;
 using RoomieMatch.Modules.Hyperlocal;
 using RoomieMatch.Modules.Matching;
+using RoomieMatch.Modules.Rooms;
 using RoomieMatch.Modules.Users;
 using RoomieMatch.Shared.Data;
 
@@ -20,16 +21,20 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
 builder.Services.AddControllers()
     .AddApplicationPart(typeof(UsersModule).Assembly)
     .AddApplicationPart(typeof(MatchingModule).Assembly)
-    .AddApplicationPart(typeof(HyperlocalModule).Assembly);
+    .AddApplicationPart(typeof(HyperlocalModule).Assembly)
+    .AddApplicationPart(typeof(RoomsModule).Assembly);
 
 builder.Services
     .AddUsersModule(builder.Configuration)
     .AddMatchingModule(builder.Configuration)
-    .AddHyperlocalModule(builder.Configuration);
+    .AddHyperlocalModule(builder.Configuration)
+    .AddRoomsModule(builder.Configuration);
 
 var app = builder.Build();
 
 app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapGet("/", () => Results.Ok(new
 {
