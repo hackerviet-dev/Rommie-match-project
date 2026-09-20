@@ -169,11 +169,11 @@ docker compose up --build
 
 Services are available at:
 
-- Web: `http://localhost:3000`
+- Web: `http://localhost:3100`
 - .NET API: `http://localhost:5000`
 - Go chat health: `http://localhost:8081/health`
-- WebSocket: `ws://localhost:8081/ws` or `ws://localhost:3000/ws`
-- PostgreSQL: `localhost:5432`
+- WebSocket: `ws://localhost:8081/ws` or `ws://localhost:3100/ws`
+- PostgreSQL: `localhost:55432`
 
 The scripts in `database/init` create the schema and Vietnamese demo data the
 first time the PostgreSQL volume is created. To re-run initialization from a

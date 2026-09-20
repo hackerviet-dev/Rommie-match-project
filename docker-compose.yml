@@ -9,7 +9,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-roomiematch}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-roomiematch_dev}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      # Host port is 55432 to stay clear of a stock PostgreSQL already on 5432.
+      # The container-side port stays 5432, so api/chat keep using postgres:5432.
+      - "${POSTGRES_PORT:-55432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init:/docker-entrypoint-initdb.d:ro
@@ -57,7 +59,8 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "${WEB_PORT:-3000}:80"
+      # 3100 on the host: 3000 is commonly taken by another local stack.
+      - "${WEB_PORT:-3100}:80"
     depends_on:
       - api
       - chat

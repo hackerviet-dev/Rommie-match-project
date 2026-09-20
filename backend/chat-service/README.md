@@ -5,7 +5,7 @@ Go satellite service for realtime chat over WebSockets.
 ## Local run
 
 ```bash
-export CHAT_DATABASE_URL="postgres://roomiematch:roomiematch_dev@localhost:5432/roomiematch?sslmode=disable"
+export CHAT_DATABASE_URL="postgres://roomiematch:roomiematch_dev@localhost:55432/roomiematch?sslmode=disable"
 go mod tidy
 go run .
 ```
