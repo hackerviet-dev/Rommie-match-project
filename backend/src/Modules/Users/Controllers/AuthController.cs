@@ -34,6 +34,23 @@ public sealed class AuthController(IAuthService authService, IUserService userSe
         return result.Session is null ? Failure(result.Error) : Ok(result.Session);
     }
 
+    [HttpPost("refresh")]
+    public async Task<ActionResult<AuthSessionDto>> Refresh(
+        RefreshRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await authService.RefreshAsync(request, cancellationToken);
+        return result.Session is null ? Failure(result.Error) : Ok(result.Session);
+    }
+
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout(RefreshRequest request, CancellationToken cancellationToken)
+    {
+        // Always 204: whether the token existed is not something an unauthenticated caller should learn.
+        await authService.LogoutAsync(request, cancellationToken);
+        return NoContent();
+    }
+
     [Authorize]
     [HttpGet("me")]
     public async Task<ActionResult<AuthenticatedUserDto>> Me(CancellationToken cancellationToken)
@@ -57,6 +74,9 @@ public sealed class AuthController(IAuthService authService, IUserService userSe
             AuthError.AccountDisabled => Problem(
                 "Tài khoản đã bị vô hiệu hoá.",
                 statusCode: StatusCodes.Status403Forbidden),
+            AuthError.InvalidRefreshToken => Problem(
+                "Refresh token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.",
+                statusCode: StatusCodes.Status401Unauthorized),
             _ => Problem(
                 "Email hoặc mật khẩu không đúng.",
                 statusCode: StatusCodes.Status401Unauthorized)

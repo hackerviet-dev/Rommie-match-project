@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -31,5 +32,21 @@ public sealed class TokenService(IOptions<JwtOptions> options) : ITokenService
         };
 
         return new AccessToken(new JsonWebTokenHandler().CreateToken(descriptor), expiresAt);
+    }
+
+    public RefreshToken CreateRefreshToken()
+    {
+        var value = Base64UrlEncoder.Encode(RandomNumberGenerator.GetBytes(32));
+        return new RefreshToken(
+            value,
+            HashRefreshToken(value),
+            DateTimeOffset.UtcNow.AddDays(options.RefreshTokenLifetimeDays));
+    }
+
+    // SHA-256 without a work factor is deliberate: the token is 256 bits of CSPRNG output,
+    // so there is nothing to brute-force, and lookup happens on every refresh call.
+    public string HashRefreshToken(string value)
+    {
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
     }
 }

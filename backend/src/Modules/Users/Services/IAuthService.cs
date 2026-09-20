@@ -6,6 +6,8 @@ public interface IAuthService
 {
     Task<AuthResult> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken);
     Task<AuthResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken);
+    Task<AuthResult> RefreshAsync(RefreshRequest request, CancellationToken cancellationToken);
+    Task LogoutAsync(RefreshRequest request, CancellationToken cancellationToken);
     Task<AuthenticatedUserDto?> GetAuthenticatedUserAsync(Guid userId, CancellationToken cancellationToken);
 }
 
@@ -14,7 +16,8 @@ public enum AuthError
     None,
     EmailAlreadyRegistered,
     InvalidCredentials,
-    AccountDisabled
+    AccountDisabled,
+    InvalidRefreshToken
 }
 
 public sealed record AuthResult(AuthError Error, AuthSessionDto? Session)
@@ -38,10 +41,15 @@ public sealed record LoginRequest(
     [Required, EmailAddress, StringLength(320)] string Email,
     [Required] string Password);
 
+public sealed record RefreshRequest(
+    [Required, StringLength(500)] string RefreshToken);
+
 public sealed record AuthSessionDto(
     string AccessToken,
     string TokenType,
     DateTimeOffset ExpiresAt,
+    string RefreshToken,
+    DateTimeOffset RefreshTokenExpiresAt,
     AuthenticatedUserDto User);
 
 public sealed record AuthenticatedUserDto(
