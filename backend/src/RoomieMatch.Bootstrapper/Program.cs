@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.OpenApi;
 using RoomieMatch.Bootstrapper.Infrastructure;
 using RoomieMatch.Modules.Hyperlocal;
 using RoomieMatch.Modules.Matching;
@@ -30,11 +31,36 @@ builder.Services
     .AddHyperlocalModule(builder.Configuration)
     .AddRoomsModule(builder.Configuration);
 
+builder.Services.AddOpenApi(options =>
+{
+    // 3.0 thay vi 3.1 mac dinh: tooling mock/codegen cua frontend tuong thich rong hon.
+    options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_0;
+    options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
+    options.AddDocumentTransformer((document, _, _) =>
+    {
+        document.Info.Title = "RoomieMatch API";
+        document.Info.Version = "v1";
+        document.Info.Description =
+            "API cho ung dung tim ban cung phong RoomieMatch. "
+            + "Chat realtime nam o service Go rieng (WebSocket /ws), khong nam trong tai lieu nay.";
+        return Task.CompletedTask;
+    });
+    options.AddOperationTransformer<AuthorizeRequirementTransformer>();
+});
+
 var app = builder.Build();
 
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapOpenApi("/openapi/v1.json");
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/openapi/v1.json", "RoomieMatch API v1");
+    options.RoutePrefix = "swagger";
+    options.DocumentTitle = "RoomieMatch API";
+});
 
 app.MapGet("/", () => Results.Ok(new
 {
