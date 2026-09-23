@@ -7,6 +7,7 @@ COPY backend/src/Modules/Users/RoomieMatch.Modules.Users.csproj backend/src/Modu
 COPY backend/src/Modules/Matching/RoomieMatch.Modules.Matching.csproj backend/src/Modules/Matching/
 COPY backend/src/Modules/Hyperlocal/RoomieMatch.Modules.Hyperlocal.csproj backend/src/Modules/Hyperlocal/
 COPY backend/src/Modules/Rooms/RoomieMatch.Modules.Rooms.csproj backend/src/Modules/Rooms/
+COPY backend/src/Modules/Billing/RoomieMatch.Modules.Billing.csproj backend/src/Modules/Billing/
 COPY backend/src/Shared/RoomieMatch.Shared/RoomieMatch.Shared.csproj backend/src/Shared/RoomieMatch.Shared/
 RUN dotnet restore backend/src/RoomieMatch.Bootstrapper/RoomieMatch.Bootstrapper.csproj
 

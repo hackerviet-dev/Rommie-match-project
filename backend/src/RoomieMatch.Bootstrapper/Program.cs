@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.OpenApi;
 using RoomieMatch.Bootstrapper.Infrastructure;
+using RoomieMatch.Modules.Billing;
 using RoomieMatch.Modules.Hyperlocal;
 using RoomieMatch.Modules.Matching;
 using RoomieMatch.Modules.Rooms;
@@ -23,13 +24,15 @@ builder.Services.AddControllers()
     .AddApplicationPart(typeof(UsersModule).Assembly)
     .AddApplicationPart(typeof(MatchingModule).Assembly)
     .AddApplicationPart(typeof(HyperlocalModule).Assembly)
-    .AddApplicationPart(typeof(RoomsModule).Assembly);
+    .AddApplicationPart(typeof(RoomsModule).Assembly)
+    .AddApplicationPart(typeof(BillingModule).Assembly);
 
 builder.Services
     .AddUsersModule(builder.Configuration)
     .AddMatchingModule(builder.Configuration)
     .AddHyperlocalModule(builder.Configuration)
-    .AddRoomsModule(builder.Configuration);
+    .AddRoomsModule(builder.Configuration)
+    .AddBillingModule(builder.Configuration);
 
 builder.Services.AddOpenApi(options =>
 {

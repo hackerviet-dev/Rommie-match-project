@@ -1,5 +1,8 @@
 <Solution>
   <Folder Name="/Modules/" />
+  <Folder Name="/Modules/Billing/">
+    <Project Path="Modules/Billing/RoomieMatch.Modules.Billing.csproj" />
+  </Folder>
   <Folder Name="/Modules/Hyperlocal/">
     <Project Path="Modules/Hyperlocal/RoomieMatch.Modules.Hyperlocal.csproj" />
   </Folder>

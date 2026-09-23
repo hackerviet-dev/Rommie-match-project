@@ -1,12 +1,12 @@
 # Tổng hợp Backend RoomieMatch (cho Frontend)
 
-Cập nhật: 2026-09-20
+Cập nhật: 2026-09-23
 
 ## 1. Cách xem API
 
 - **Swagger UI:** `http://localhost:5000/swagger` (khi chạy qua Docker) — có nút **Authorize** để nhập Bearer token test trực tiếp.
 - **OpenAPI spec:** `http://localhost:5000/openapi/v1.json` (OpenAPI 3.0 — tương thích tốt với các tool mock/codegen như orval, Prism, openapi-generator, msw).
-- Chat service (Go) **không** nằm trong Swagger vì không phải REST — xem mục 6.
+- Chat service (Go) **không** nằm trong Swagger vì không phải REST — xem mục 7.
 
 ## 2. Auth — `api/auth`
 
@@ -57,6 +57,27 @@ Cập nhật: 2026-09-20
 - `GET /api/hyperlocal/services/{serviceId}`
 - `POST/PUT/DELETE /api/hyperlocal/services/{serviceId}` — chỉ role `admin`/`moderator`
 
+## 6b. Thanh toán theo gói — `api/billing`
+
+Hiện dùng **cổng thanh toán giả lập (mock)** — không trừ tiền thật. Luồng giống hệt cổng thật (VNPay/MoMo) nên khi gắn cổng thật, frontend không phải sửa.
+
+- `GET /api/billing/plans` — bảng giá (server giữ giá, client không gửi số tiền):
+  `free` 0₫ · `premium_monthly` 20.000₫/1 tháng · `premium_yearly` 180.000₫/12 tháng
+- `GET /api/billing/me/subscription` [Auth] → `{tier: "free"|"premium", isPremium, subscriptionId, startsAt, endsAt}`
+- `POST /api/billing/checkout` [Auth] — `{planCode}` → `{paymentId, planCode, amount, currency, paymentUrl, expiresAt}` (đơn hết hạn sau 15 phút)
+- `GET /api/billing/payments/{paymentId}` [Auth] → trạng thái đơn: `pending | paid | failed | expired`
+- `GET /api/billing/payments` [Auth] — lịch sử thanh toán (50 đơn gần nhất)
+
+**Luồng frontend cần làm:**
+
+1. User chọn gói → gọi `POST /api/billing/checkout`.
+2. Redirect trình duyệt tới `paymentUrl` (trang thanh toán giả lập có 2 nút: thành công / thất bại).
+3. Cổng redirect về **`/premium/result?paymentId=...&status=...`** — frontend cần tạo route này.
+4. Ở trang result, **gọi lại `GET /api/billing/payments/{paymentId}`** để lấy trạng thái thật — không tin `status` trên URL (user sửa URL được).
+5. Nếu `paid` → gọi `GET /api/billing/me/subscription` để cập nhật UI Premium.
+
+Mua thêm khi đang Premium sẽ **cộng dồn** vào ngày hết hạn hiện tại, không mất ngày đã trả.
+
 ## 7. Chat (Go, ngoài `/api`, không có trong Swagger)
 
 - `GET /health`
@@ -82,8 +103,6 @@ Cổng đã được đổi khỏi mặc định (3000/5432) để chạy song s
 ## 9. Những phần chưa có (đừng mock nhầm)
 
 - Chưa có REST API cho conversations/messages — chỉ có WebSocket.
-- Bảng `subscriptions` (free/premium) đã tồn tại trong DB nhưng **chưa có endpoint nào** dùng tới.
-
-## 10. Trạng thái git
-
-Đã push lên cả `Bao-Branch` và `dev-test` (4 commit: thêm Swagger, thêm refresh token flow, đổi cổng Docker, fix Dockerfile thiếu module Rooms).
+- Chưa gắn cổng thanh toán thật (VNPay/MoMo) — đang dùng mock.
+- Chưa có hoàn tiền, chưa tự gia hạn (cổng VN thanh toán một lần; hết hạn thì mua lại).
+- Các tính năng Premium (bộ lọc nâng cao, quét không giới hạn...) **chưa được chặn theo gói** ở backend — mới có API cho biết user có phải Premium hay không.

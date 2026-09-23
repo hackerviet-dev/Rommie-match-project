@@ -5,6 +5,7 @@
     <ProjectReference Include="..\Modules\Matching\RoomieMatch.Modules.Matching.csproj" />
     <ProjectReference Include="..\Modules\Hyperlocal\RoomieMatch.Modules.Hyperlocal.csproj" />
     <ProjectReference Include="..\Modules\Rooms\RoomieMatch.Modules.Rooms.csproj" />
+    <ProjectReference Include="..\Modules\Billing\RoomieMatch.Modules.Billing.csproj" />
     <ProjectReference Include="..\Shared\RoomieMatch.Shared\RoomieMatch.Shared.csproj" />
   </ItemGroup>
 
