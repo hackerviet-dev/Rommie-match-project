@@ -5,6 +5,7 @@ dist/
 build/
 .expo/
 .gradle/
+.cxx/
 .idea/
 .vs/
 .vscode/
