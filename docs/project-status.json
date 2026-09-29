@@ -1,0 +1,55 @@
+{
+  "documentVersion": "1.2",
+  "lastUpdated": "2026-09-29",
+  "currentPhase": "MVP - nối frontend với backend và hoàn thiện các luồng cốt lõi",
+  "baseline": {
+    "branch": "Duy-feature/landing-page-fe",
+    "commit": "b1e569c"
+  },
+  "statusLabels": {
+    "done": "Hoàn thành",
+    "partial": "Một phần",
+    "planned": "Dự kiến",
+    "blocked": "Đang bị chặn",
+    "na": "Không áp dụng"
+  },
+  "actors": [
+    {"code": "G", "name": "Khách", "target": "Xem nội dung công khai và tạo phiên đăng nhập", "current": "Các API công khai và Auth backend đã có; form frontend chưa gọi Auth API", "status": "partial"},
+    {"code": "M", "name": "Thành viên", "target": "Quản lý hồ sơ, phòng, ghép đôi, chat và an toàn", "current": "Backend có hồ sơ, lối sống, phòng và matching; frontend phần lớn dùng mock/local state", "status": "partial"},
+    {"code": "P", "name": "Premium", "target": "Thanh toán và nhận quyền lợi Premium được backend thực thi", "current": "Có checkout mock và subscription; chưa áp dụng đầy đủ quyền gói", "status": "partial"},
+    {"code": "MOD", "name": "Kiểm duyệt viên", "target": "Duyệt xác minh, báo cáo và nội dung", "current": "Chỉ có quyền CRUD dịch vụ gần nhà", "status": "partial"},
+    {"code": "A", "name": "Quản trị viên", "target": "Quản lý tài khoản, dịch vụ, báo cáo và dashboard", "current": "Có role và CRUD dịch vụ; chưa có API quản trị tài khoản/dashboard", "status": "partial"},
+    {"code": "SYS", "name": "Hệ thống", "target": "Điều phối API, dữ liệu, matching, chat và phân quyền", "current": ".NET, Go, PostgreSQL và Docker đã chạy; nhiều luồng frontend chưa nối", "status": "partial"},
+    {"code": "PAY", "name": "Cổng thanh toán", "target": "Xử lý và đối soát thanh toán thật", "current": "Đang dùng mock gateway, chưa có VNPay/MoMo", "status": "blocked"}
+  ],
+  "capabilities": [
+    {"id": "CAP-01", "name": "Hạ tầng Docker", "target": "Chạy web, API, chat và PostgreSQL bằng một Compose stack", "backend": "done", "database": "done", "frontend": "done", "verification": "done", "status": "done", "evidence": "docker-compose.yml; health endpoints; production web build", "nextAction": "Theo dõi CI và cấu hình production"},
+    {"id": "CAP-02", "name": "Đăng ký và đăng nhập", "target": "Đăng ký, login, refresh, logout và lấy user hiện tại", "backend": "done", "database": "done", "frontend": "partial", "verification": "planned", "status": "partial", "evidence": "/api/auth/* đã có; login/register page vẫn dùng makeMockUser", "nextAction": "Nối authApi, token storage và refresh flow vào form"},
+    {"id": "CAP-03", "name": "Hồ sơ cá nhân", "target": "Đọc và cập nhật hồ sơ theo tài khoản", "backend": "done", "database": "done", "frontend": "partial", "verification": "planned", "status": "partial", "evidence": "GET/PUT /api/users/me/profile; UI settings còn state mẫu", "nextAction": "Nối Profile page và Settings với profileApi"},
+    {"id": "CAP-04", "name": "Sở thích lối sống", "target": "Lưu dữ liệu đầu vào cho ghép đôi", "backend": "done", "database": "done", "frontend": "partial", "verification": "planned", "status": "partial", "evidence": "GET/PUT /api/users/me/lifestyle; onboarding chưa lưu server", "nextAction": "Nối onboarding với lifestyleApi và xử lý lỗi"},
+    {"id": "CAP-05", "name": "Phòng", "target": "Tìm, đăng, sửa, ẩn và xóa phòng", "backend": "done", "database": "done", "frontend": "partial", "verification": "planned", "status": "partial", "evidence": "Rooms CRUD API và soft delete đã có; page chưa lấy dữ liệu thật", "nextAction": "Nối danh sách, chi tiết và form phòng với roomsApi"},
+    {"id": "CAP-06", "name": "Trắc nghiệm", "target": "Bộ câu hỏi, câu trả lời, phiên bản và lịch sử bài làm", "backend": "planned", "database": "planned", "frontend": "done", "verification": "planned", "status": "partial", "evidence": "Có quiz UI; chưa có API hoặc bảng lưu câu trả lời", "nextAction": "Chốt schema câu hỏi và tạo API questionnaire"},
+    {"id": "CAP-07", "name": "Ghép đôi", "target": "Tính và giải thích điểm phù hợp từ dữ liệu thật", "backend": "done", "database": "done", "frontend": "partial", "verification": "planned", "status": "partial", "evidence": "CompatibilityScorer và matching_scores đã có; matches page còn dữ liệu mẫu", "nextAction": "Nối matchingApi và thêm kiểm thử công thức"},
+    {"id": "CAP-08", "name": "Lưu hồ sơ", "target": "Bookmark theo tài khoản và đồng bộ nhiều thiết bị", "backend": "planned", "database": "planned", "frontend": "partial", "verification": "planned", "status": "partial", "evidence": "Frontend dùng localStorage", "nextAction": "Tạo bảng saved_profiles và REST API"},
+    {"id": "CAP-09", "name": "Chat realtime", "target": "Chat theo hội thoại có xác thực, lịch sử và trạng thái đã đọc", "backend": "partial", "database": "done", "frontend": "partial", "verification": "planned", "status": "partial", "evidence": "Go /ws lưu messages nhưng broadcast toàn cục, chưa JWT và chưa REST history", "nextAction": "Xác thực socket, phân phòng và thêm conversation/history API"},
+    {"id": "CAP-10", "name": "An toàn cộng đồng", "target": "Chặn, báo cáo, kiểm duyệt và audit log", "backend": "planned", "database": "planned", "frontend": "partial", "verification": "planned", "status": "planned", "evidence": "Có report form nhưng chưa gửi dữ liệu", "nextAction": "Thiết kế reports, blocks và moderation queue"},
+    {"id": "CAP-11", "name": "Thanh toán", "target": "Checkout, xác minh kết quả và lịch sử giao dịch", "backend": "partial", "database": "done", "frontend": "partial", "verification": "planned", "status": "partial", "evidence": "Billing API và mock gateway đã có; frontend chưa hoàn thiện result flow", "nextAction": "Nối Premium page; sau đó chọn VNPay/MoMo"},
+    {"id": "CAP-12", "name": "Quyền Premium", "target": "Backend thực thi hạn mức, bộ lọc nâng cao và Boost", "backend": "planned", "database": "done", "frontend": "partial", "verification": "planned", "status": "planned", "evidence": "Có subscription và nội dung quyền lợi; chưa enforce", "nextAction": "Chốt policy và thêm entitlement checks"},
+    {"id": "CAP-13", "name": "Dịch vụ gần nhà", "target": "Danh mục dịch vụ thật và quản trị theo role", "backend": "done", "database": "done", "frontend": "partial", "verification": "planned", "status": "partial", "evidence": "Hyperlocal API có list/detail/CRUD; frontend còn dữ liệu thiết kế", "nextAction": "Nối trang dịch vụ với hyperlocalApi"},
+    {"id": "CAP-14", "name": "eKYC", "target": "Xác minh trước hành động rủi ro cao và quản lý dữ liệu an toàn", "backend": "planned", "database": "planned", "frontend": "planned", "verification": "planned", "status": "blocked", "evidence": "Mới có cờ profiles.is_verified", "nextAction": "Chọn nhà cung cấp, chính sách dữ liệu và luồng duyệt"},
+    {"id": "CAP-15", "name": "Quản trị", "target": "Tài khoản, báo cáo, xác minh, dịch vụ và dashboard", "backend": "partial", "database": "done", "frontend": "partial", "verification": "planned", "status": "partial", "evidence": "Có role và CRUD dịch vụ; dashboard là mock", "nextAction": "Xây admin APIs theo từng module"},
+    {"id": "CAP-16", "name": "Thông báo và cài đặt", "target": "Thông báo và tùy chọn được lưu theo tài khoản", "backend": "planned", "database": "planned", "frontend": "partial", "verification": "planned", "status": "planned", "evidence": "Notification và settings UI dùng fixtures/local state", "nextAction": "Thiết kế notification/preferences API"},
+    {"id": "CAP-17", "name": "Trợ lý AI", "target": "Trợ lý có nguồn tri thức, giới hạn và giám sát chi phí", "backend": "planned", "database": "planned", "frontend": "partial", "verification": "planned", "status": "planned", "evidence": "Mascot hoạt động nhưng reply theo từ khóa tại frontend", "nextAction": "Chốt use case, model, dữ liệu và ngân sách"}
+  ],
+  "roadmap": [
+    {"phase": "P0", "name": "Nền tảng", "goal": "Docker, PostgreSQL, API modules và cấu trúc frontend", "status": "done"},
+    {"phase": "P1", "name": "MVP tích hợp", "goal": "Nối Auth, Profile, Lifestyle, Rooms, Matching và Hyperlocal vào frontend", "status": "partial"},
+    {"phase": "P2", "name": "Tin cậy và giao tiếp", "goal": "Chat an toàn, lịch sử, lưu hồ sơ, chặn và báo cáo", "status": "planned"},
+    {"phase": "P3", "name": "Doanh thu và xác minh", "goal": "Cổng thanh toán thật, Premium enforcement và eKYC", "status": "blocked"},
+    {"phase": "P4", "name": "Mở rộng", "goal": "Admin hoàn chỉnh, B2B chủ trọ, Hyperlocal giao dịch và AI", "status": "planned"}
+  ],
+  "changelog": [
+    {"date": "2026-09-29", "version": "1.2", "summary": "Tạo dashboard tiến độ, ma trận 17 năng lực, roadmap và quy tắc cập nhật tài liệu sống."},
+    {"date": "2026-09-29", "version": "1.1", "summary": "Bổ sung định vị, roadmap, Premium, eKYC, AI, GTM và danh sách quyết định mở."}
+  ]
+}
