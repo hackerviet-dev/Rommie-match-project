@@ -67,9 +67,13 @@ function AnimatedMascot({ className = "" }: { className?: string }) {
   const frame = MASCOT_GREETING_SEQUENCE[step];
 
   return (
-    <span className={`relative block ${className}`} data-mascot-frame={frame}>
-      <span className="mascot-halo absolute inset-[12%] rounded-full bg-teal/20" aria-hidden="true" />
-      <img src={MASCOT_FRAMES[frame]} alt="" className="absolute inset-0 h-full w-full object-contain" />
+    <span className={`relative block overflow-hidden rounded-full ${className}`} data-mascot-frame={frame}>
+      <span className="mascot-halo absolute inset-0 rounded-full bg-teal/20" aria-hidden="true" />
+      <img
+        src={MASCOT_FRAMES[frame]}
+        alt=""
+        className="mascot-bob absolute inset-[4%] h-[92%] w-[92%] object-contain"
+      />
     </span>
   );
 }
@@ -116,16 +120,16 @@ export function AIChatbox() {
     <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-3 lg:bottom-5 lg:right-5 z-40">
       <style>{`
         @keyframes mascot-bob {
-          0%, 100% { transform: translateY(0) rotate(-3deg) scale(1); }
-          50% { transform: translateY(-7px) rotate(3deg) scale(1.035); }
+          0%, 100% { transform: translateY(1px) scale(.96); }
+          50% { transform: translateY(-3px) scale(1); }
         }
         @keyframes mascot-halo {
-          0%, 100% { opacity: .2; transform: scale(.82); }
-          50% { opacity: .65; transform: scale(1.12); }
+          0%, 100% { opacity: .2; transform: scale(.72); }
+          50% { opacity: .65; transform: scale(1); }
         }
         .mascot-bob {
           animation: mascot-bob 1.8s ease-in-out infinite;
-          transform-origin: 50% 90%;
+          transform-origin: center;
         }
         .mascot-halo {
           animation: mascot-halo 1.8s ease-in-out infinite;
@@ -185,7 +189,7 @@ export function AIChatbox() {
         aria-controls="roomiematch-assistant"
         className="relative h-20 w-20 rounded-full bg-white/85 shadow-xl shadow-teal/25 grid place-items-center hover:scale-105 transition-transform border border-mint/40"
       >
-        <AnimatedMascot className="h-[5.4rem] w-[5.4rem] mascot-bob" />
+        <AnimatedMascot className="h-full w-full" />
         {open && (
           <span className="absolute -right-1 -top-1 h-7 w-7 rounded-full bg-navy text-white grid place-items-center shadow-md">
             <X className="h-4 w-4" />
