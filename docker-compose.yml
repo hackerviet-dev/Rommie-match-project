@@ -22,6 +22,22 @@ services:
       retries: 10
       start_period: 5s
 
+  migrate:
+    image: postgres:17-alpine
+    restart: "no"
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-roomiematch}
+      PGUSER: ${POSTGRES_USER:-roomiematch}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-roomiematch_dev}
+    volumes:
+      - ./database/migrations:/migrations:ro
+    entrypoint: ["sh", "/migrations/migrate.sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   api:
     build:
       context: .
@@ -44,8 +60,8 @@ services:
     ports:
       - "${API_PORT:-5000}:8080"
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   web:
     build:

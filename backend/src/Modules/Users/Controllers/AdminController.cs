@@ -9,6 +9,7 @@ namespace RoomieMatch.Modules.Users.Controllers;
 [ApiController, Authorize(Roles = "admin,moderator"), Route("api/admin")]
 public sealed class AdminController(AdminService service) : ControllerBase
 {
+    [Authorize(Roles = "admin")]
     [HttpGet("stats")]
     public Task<AdminStatsDto> Stats(CancellationToken ct) => service.GetStatsAsync(ct);
 
