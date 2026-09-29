@@ -44,8 +44,10 @@ public static class HttpHardeningExtensions
         IConfiguration configuration)
     {
         var cors = configuration.GetSection(CorsSettings.SectionName).Get<CorsSettings>() ?? new CorsSettings();
+        // AllowCredentials because the SignalR browser client negotiates with credentials
+        // on by default. Safe here: nothing authenticates by cookie, only by bearer token.
         services.AddCors(options => options.AddDefaultPolicy(policy =>
-            policy.WithOrigins(cors.AllowedOrigins).AllowAnyHeader().AllowAnyMethod()));
+            policy.WithOrigins(cors.AllowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
 
         var proxy = configuration.GetSection(ReverseProxySettings.SectionName).Get<ReverseProxySettings>()
             ?? new ReverseProxySettings();

@@ -61,40 +61,9 @@ jobs:
           path: artifacts/roomiematch-api-linux-x64.tar.gz
           archive: false
 
-  chat:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend/chat-service
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Setup Go
-        uses: actions/setup-go@v7
-        with:
-          go-version-file: backend/chat-service/go.mod
-          cache-dependency-path: backend/chat-service/go.mod
-      - name: Validate chat service
-        shell: bash
-        run: test -z "$(gofmt -l .)" && go vet ./... && go test -race ./...
-      - name: Build chat service
-        env:
-          CGO_ENABLED: "0"
-          GOOS: linux
-          GOARCH: amd64
-        run: go build -trimpath -ldflags="-s -w" -o roomiematch-chat-linux-amd64 .
-      - name: Package chat service
-        run: tar -czf roomiematch-chat-linux-amd64.tar.gz roomiematch-chat-linux-amd64
-      - name: Upload chat artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: roomiematch-chat-linux-amd64
-          path: backend/chat-service/roomiematch-chat-linux-amd64.tar.gz
-          archive: false
-
   publish:
     if: github.event_name == 'push'
-    needs: [web, api, chat]
+    needs: [web, api]
     runs-on: ubuntu-latest
     permissions:
       contents: write

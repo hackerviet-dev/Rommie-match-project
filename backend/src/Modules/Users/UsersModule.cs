@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 using RoomieMatch.Modules.Users.Authentication;
 using RoomieMatch.Modules.Users.Services;
 using RoomieMatch.Shared.Contracts;
+using RoomieMatch.Shared.Http;
 
 namespace RoomieMatch.Modules.Users;
 
@@ -53,6 +54,18 @@ public static class UsersModuleExtensions
                 };
                 options.Events = new JwtBearerEvents
                 {
+                    // Only hub requests may carry the token in the URL, where it can end up in
+                    // proxy logs; every other endpoint still requires the header.
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"].ToString();
+                        if (accessToken.Length > 0 && context.HttpContext.Request.Path.StartsWithSegments(HubPaths.Prefix))
+                        {
+                            context.Token = accessToken;
+                        }
+
+                        return Task.CompletedTask;
+                    },
                     OnTokenValidated = TokenVersionValidator.ValidateAsync
                 };
             });

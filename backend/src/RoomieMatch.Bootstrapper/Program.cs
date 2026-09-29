@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.OpenApi;
 using RoomieMatch.Bootstrapper.Infrastructure;
 using RoomieMatch.Modules.Billing;
+using RoomieMatch.Modules.Chat;
 using RoomieMatch.Modules.Hyperlocal;
 using RoomieMatch.Modules.Matching;
 using RoomieMatch.Modules.Rooms;
@@ -24,14 +25,16 @@ builder.Services.AddControllers()
     .AddApplicationPart(typeof(MatchingModule).Assembly)
     .AddApplicationPart(typeof(HyperlocalModule).Assembly)
     .AddApplicationPart(typeof(RoomsModule).Assembly)
-    .AddApplicationPart(typeof(BillingModule).Assembly);
+    .AddApplicationPart(typeof(BillingModule).Assembly)
+    .AddApplicationPart(typeof(ChatModule).Assembly);
 
 builder.Services
     .AddUsersModule(builder.Configuration)
     .AddMatchingModule(builder.Configuration)
     .AddHyperlocalModule(builder.Configuration)
     .AddRoomsModule(builder.Configuration)
-    .AddBillingModule(builder.Configuration);
+    .AddBillingModule(builder.Configuration)
+    .AddChatModule(builder.Configuration);
 
 builder.Services.AddOpenApi(options =>
 {
@@ -44,7 +47,8 @@ builder.Services.AddOpenApi(options =>
         document.Info.Version = "v1";
         document.Info.Description =
             "API cho ung dung tim ban cung phong RoomieMatch. "
-            + "Chat realtime nam o service Go rieng (WebSocket /ws), khong nam trong tai lieu nay.";
+            + "Chat realtime dung SignalR tai /hubs/chat (khong nam trong tai lieu nay); "
+            + "lich su va gui tin qua REST o /api/chat.";
         return Task.CompletedTask;
     });
     options.AddOperationTransformer<AuthorizeRequirementTransformer>();
@@ -74,6 +78,7 @@ app.MapGet("/", () => Results.Ok(new
 }));
 
 app.MapControllers();
+app.MapChatModule();
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
     Predicate = _ => true
