@@ -173,8 +173,17 @@ Services are available at:
 - PostgreSQL: `localhost:55432`
 
 The scripts in `database/init` create the schema and Vietnamese demo data the
-first time the PostgreSQL volume is created. To re-run initialization from a
-clean database, remove the Compose volume and start again:
+first time the PostgreSQL volume is created. Later schema changes in
+`database/migrations` run automatically before the API starts, including when
+an existing Docker volume is reused. Use the normal startup command to apply
+them without deleting data:
+
+```bash
+docker compose up -d --build
+```
+
+To re-run initialization from a clean database, remove the Compose volume and
+start again:
 
 ```bash
 docker compose down --volumes
