@@ -13,7 +13,8 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
 
     private const string LifestyleColumns = """
         user_id, sleep_schedule, cleanliness, social_style, smoking, pet_friendly,
-        cooking_frequency, budget_min, budget_max, move_in_date, interests, updated_at
+        cooking_frequency, room_environment, budget_min, budget_max, move_in_date, interests,
+        updated_at
         """;
 
     public object GetModuleStatus()
@@ -166,10 +167,12 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
         var sql = $"""
             INSERT INTO lifestyle_preferences
                 (user_id, sleep_schedule, cleanliness, social_style, smoking, pet_friendly,
-                 cooking_frequency, budget_min, budget_max, move_in_date, interests, updated_at)
+                 cooking_frequency, room_environment, budget_min, budget_max, move_in_date,
+                 interests, updated_at)
             VALUES
                 (@user_id, @sleep_schedule, @cleanliness, @social_style, @smoking, @pet_friendly,
-                 @cooking_frequency, @budget_min, @budget_max, @move_in_date, @interests, now())
+                 @cooking_frequency, @room_environment, @budget_min, @budget_max, @move_in_date,
+                 @interests, now())
             ON CONFLICT (user_id) DO UPDATE SET
                 sleep_schedule = EXCLUDED.sleep_schedule,
                 cleanliness = EXCLUDED.cleanliness,
@@ -177,6 +180,7 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
                 smoking = EXCLUDED.smoking,
                 pet_friendly = EXCLUDED.pet_friendly,
                 cooking_frequency = EXCLUDED.cooking_frequency,
+                room_environment = EXCLUDED.room_environment,
                 budget_min = EXCLUDED.budget_min,
                 budget_max = EXCLUDED.budget_max,
                 move_in_date = EXCLUDED.move_in_date,
@@ -196,6 +200,7 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
             .AddParameter("smoking", request.Smoking)
             .AddParameter("pet_friendly", request.PetFriendly)
             .AddParameter("cooking_frequency", Normalize(request.CookingFrequency))
+            .AddParameter("room_environment", request.RoomEnvironment)
             .AddParameter("budget_min", request.BudgetMin)
             .AddParameter("budget_max", request.BudgetMax)
             .AddParameter("move_in_date", request.MoveInDate)
@@ -255,11 +260,12 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
             reader.GetBoolean(4),
             reader.GetBoolean(5),
             reader.IsDBNull(6) ? null : reader.GetString(6),
-            reader.GetInt32(7),
+            reader.IsDBNull(7) ? null : reader.GetString(7),
             reader.GetInt32(8),
-            reader.IsDBNull(9) ? null : reader.GetFieldValue<DateOnly>(9),
-            reader.GetFieldValue<string[]>(10),
-            reader.GetFieldValue<DateTimeOffset>(11));
+            reader.GetInt32(9),
+            reader.IsDBNull(10) ? null : reader.GetFieldValue<DateOnly>(10),
+            reader.GetFieldValue<string[]>(11),
+            reader.GetFieldValue<DateTimeOffset>(12));
     }
 
     private static string[] NormalizeInterests(string[]? interests)

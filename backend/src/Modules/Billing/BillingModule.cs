@@ -18,6 +18,7 @@ public static class BillingModuleExtensions
         services.Configure<BillingOptions>(configuration.GetSection(BillingOptions.SectionName));
         services.AddSingleton<IPaymentGateway, MockPaymentGateway>();
         services.AddScoped<IBillingService, BillingService>();
+        services.AddScoped<IPremiumStatus, PremiumStatus>();
         return services;
     }
 }
