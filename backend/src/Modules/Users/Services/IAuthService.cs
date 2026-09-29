@@ -34,7 +34,7 @@ public sealed record RegisterRequest(
     [Required, StringLength(100)] string City,
     [StringLength(100)] string? District,
     DateOnly? BirthDate,
-    [StringLength(30)] string? Gender,
+    [StringLength(30), Gender] string? Gender,
     [StringLength(120)] string? Occupation);
 
 public sealed record LoginRequest(

@@ -55,7 +55,7 @@ public sealed record ProfileDetailDto(
 public sealed record UpdateProfileRequest(
     [Required, StringLength(120, MinimumLength = 2)] string DisplayName,
     DateOnly? BirthDate,
-    [StringLength(30)] string? Gender,
+    [StringLength(30), Gender] string? Gender,
     [StringLength(120)] string? Occupation,
     [StringLength(2000)] string? Bio,
     [Required, StringLength(100)] string City,

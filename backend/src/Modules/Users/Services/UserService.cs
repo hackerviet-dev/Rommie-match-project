@@ -82,7 +82,7 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
             WHERE user_id = @user_id
             """;
 
-        var gender = Normalize(request.Gender);
+        var gender = Gender.ToCode(request.Gender);
         var occupation = Normalize(request.Occupation);
         var bio = Normalize(request.Bio);
         var district = Normalize(request.District);

@@ -36,9 +36,10 @@ public sealed class AuthService(
         }
 
         var avatarUrl = BuildAvatarUrl(displayName);
+        var gender = Gender.ToCode(request.Gender);
         var profileCompletion = ProfileCompletion.Calculate(
             request.BirthDate,
-            request.Gender,
+            gender,
             request.Occupation,
             request.District,
             bio: null);
@@ -56,7 +57,7 @@ public sealed class AuthService(
         insertProfile.AddParameter("user_id", userId);
         insertProfile.AddParameter("display_name", displayName);
         insertProfile.AddParameter("birth_date", request.BirthDate);
-        insertProfile.AddParameter("gender", Normalize(request.Gender));
+        insertProfile.AddParameter("gender", gender);
         insertProfile.AddParameter("occupation", Normalize(request.Occupation));
         insertProfile.AddParameter("city", request.City.Trim());
         insertProfile.AddParameter("district", Normalize(request.District));
