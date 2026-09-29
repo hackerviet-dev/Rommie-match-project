@@ -11,7 +11,7 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
         r.id, r.owner_user_id, p.display_name, p.avatar_url, r.title, r.description,
         r.address, r.district, r.city, r.monthly_rent, r.deposit, r.available_from,
         r.max_occupants, r.amenities, r.latitude, r.longitude, r.is_active,
-        r.created_at, r.updated_at
+        r.created_at, r.updated_at, r.property_type, r.bedrooms, r.area_m2, r.roommates_needed
         """;
 
     public object GetModuleStatus()
@@ -131,10 +131,12 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
         const string sql = """
             INSERT INTO rooms
                 (owner_user_id, title, description, address, district, city, monthly_rent,
-                 deposit, available_from, max_occupants, amenities, latitude, longitude, is_active)
+                 deposit, available_from, max_occupants, property_type, bedrooms, area_m2,
+                 roommates_needed, amenities, latitude, longitude, is_active)
             VALUES
                 (@owner_user_id, @title, @description, @address, @district, @city, @monthly_rent,
-                 @deposit, @available_from, @max_occupants, @amenities, @latitude, @longitude, @is_active)
+                 @deposit, @available_from, @max_occupants, @property_type, @bedrooms, @area_m2,
+                 @roommates_needed, @amenities, @latitude, @longitude, @is_active)
             RETURNING id
             """;
 
@@ -165,6 +167,10 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
                 deposit = @deposit,
                 available_from = @available_from,
                 max_occupants = @max_occupants,
+                property_type = @property_type,
+                bedrooms = @bedrooms,
+                area_m2 = @area_m2,
+                roommates_needed = @roommates_needed,
                 amenities = @amenities,
                 latitude = @latitude,
                 longitude = @longitude,
@@ -236,6 +242,10 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
             .AddParameter("deposit", request.Deposit)
             .AddParameter("available_from", request.AvailableFrom!.Value)
             .AddParameter("max_occupants", (short)request.MaxOccupants)
+            .AddParameter("property_type", request.PropertyType)
+            .AddParameter("bedrooms", (short?)request.Bedrooms)
+            .AddParameter("area_m2", request.AreaM2)
+            .AddParameter("roommates_needed", (short?)request.RoommatesNeeded)
             .AddParameter("amenities", NormalizeAmenities(request.Amenities))
             .AddParameter("latitude", request.Latitude)
             .AddParameter("longitude", request.Longitude)
@@ -284,6 +294,10 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
                 reader.GetInt32(10),
                 reader.GetFieldValue<DateOnly>(11),
                 reader.GetInt16(12),
+                reader.IsDBNull(19) ? null : reader.GetString(19),
+                reader.IsDBNull(20) ? null : reader.GetInt16(20),
+                reader.IsDBNull(21) ? null : reader.GetDecimal(21),
+                reader.IsDBNull(22) ? null : reader.GetInt16(22),
                 reader.GetFieldValue<string[]>(13),
                 reader.IsDBNull(14) ? null : reader.GetDecimal(14),
                 reader.IsDBNull(15) ? null : reader.GetDecimal(15),

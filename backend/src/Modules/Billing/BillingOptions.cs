@@ -15,4 +15,7 @@ public sealed class BillingOptions
     public string PublicApiBaseUrl { get; set; } = "http://localhost:5000";
 
     public int PaymentTimeoutMinutes { get; set; } = 15;
+
+    // A paid order can be refunded for this many days after paid_at.
+    public int RefundWindowDays { get; set; } = 7;
 }

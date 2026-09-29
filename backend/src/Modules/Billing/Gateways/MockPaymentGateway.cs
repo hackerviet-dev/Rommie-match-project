@@ -12,4 +12,13 @@ public sealed class MockPaymentGateway(IOptions<BillingOptions> options) : IPaym
     {
         return $"{options.Value.PublicApiBaseUrl.TrimEnd('/')}/api/billing/mock-gateway/{paymentId}";
     }
+
+    public Task<string> RefundAsync(
+        Guid paymentId,
+        string? providerTransactionId,
+        int amount,
+        CancellationToken cancellationToken)
+    {
+        return Task.FromResult($"MOCK-REFUND-{Guid.NewGuid():N}");
+    }
 }
