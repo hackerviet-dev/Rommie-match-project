@@ -12,12 +12,19 @@ internal sealed record LifestyleSnapshot(
     int BudgetMin,
     int BudgetMax,
     DateOnly? MoveInDate,
-    string[] Interests);
+    string[] Interests,
+    // 0 = needs silence, 100 = fine with a lively home. Null when neither the room
+    // environment nor the quiz has been answered.
+    int? NoiseLevel);
 
 internal sealed record CompatibilityScore(
     short Overall,
     IReadOnlyDictionary<string, int> Breakdown,
     string Explanation);
+
+// One scored criterion. Label is what the app shows next to the bar; Phrase is how the
+// criterion reads inside the generated explanation sentence.
+internal sealed record ScoreDimension(string Key, int Weight, string Label, string Phrase);
 
 internal static class CompatibilityScorer
 {
@@ -29,38 +36,61 @@ internal static class CompatibilityScorer
     // Move-in dates this many days apart score zero.
     private const double TimingToleranceDays = 90;
 
-    private static readonly Dictionary<string, string> Labels = new()
-    {
-        ["sleep"] = "giờ giấc sinh hoạt",
-        ["cleanliness"] = "mức độ gọn gàng",
-        ["budget"] = "ngân sách",
-        ["location"] = "khu vực",
-        ["social"] = "phong cách giao tiếp",
-        ["lifestyle"] = "thói quen sinh hoạt",
-        ["interests"] = "sở thích",
-        ["timing"] = "thời điểm chuyển vào"
-    };
+    // A quiet person and a lively one (about 70 points apart) score close to zero.
+    private const double NoisePenaltyPerPoint = 1.4;
+
+    // Display order; weights add up to 100.
+    public static readonly IReadOnlyList<ScoreDimension> Dimensions =
+    [
+        new("sleep", 15, "Giờ giấc ngủ", "giờ giấc sinh hoạt"),
+        new("cleanliness", 15, "Sạch sẽ", "mức độ gọn gàng"),
+        new("social", 10, "Lối sống xã hội", "phong cách giao tiếp"),
+        new("budget", 15, "Ngân sách", "ngân sách"),
+        new("noise", 10, "Chịu ồn", "mức chịu ồn"),
+        new("location", 20, "Khu vực", "khu vực"),
+        new("lifestyle", 7, "Thói quen", "thói quen sinh hoạt"),
+        new("interests", 4, "Sở thích", "sở thích"),
+        new("timing", 4, "Thời điểm dọn vào", "thời điểm chuyển vào")
+    ];
+
+    private static readonly Dictionary<string, ScoreDimension> DimensionsByKey =
+        Dimensions.ToDictionary(d => d.Key);
 
     public static CompatibilityScore Score(LifestyleSnapshot a, LifestyleSnapshot b)
     {
-        (string Key, int Weight, int Value)[] components =
-        [
-            ("sleep", 16, ScoreSleep(a.SleepSchedule, b.SleepSchedule)),
-            ("cleanliness", 16, ScoreCleanliness(a.Cleanliness, b.Cleanliness)),
-            ("budget", 16, ScoreBudget(a, b)),
-            ("location", 20, ScoreLocation(a, b)),
-            ("social", 12, ScoreSocial(a.SocialStyle, b.SocialStyle)),
-            ("lifestyle", 8, ScoreHabits(a, b)),
-            ("interests", 6, ScoreInterests(a.Interests, b.Interests)),
-            ("timing", 6, ScoreTiming(a.MoveInDate, b.MoveInDate))
-        ];
+        var values = new Dictionary<string, int>
+        {
+            ["sleep"] = ScoreSleep(a.SleepSchedule, b.SleepSchedule),
+            ["cleanliness"] = ScoreCleanliness(a.Cleanliness, b.Cleanliness),
+            ["social"] = ScoreSocial(a.SocialStyle, b.SocialStyle),
+            ["budget"] = ScoreBudget(a, b),
+            ["noise"] = ScoreNoise(a.NoiseLevel, b.NoiseLevel),
+            ["location"] = ScoreLocation(a, b),
+            ["lifestyle"] = ScoreHabits(a, b),
+            ["interests"] = ScoreInterests(a.Interests, b.Interests),
+            ["timing"] = ScoreTiming(a.MoveInDate, b.MoveInDate)
+        };
 
-        var overall = Clamp((int)Math.Round(components.Sum(c => (double)c.Value * c.Weight) / 100.0));
+        var components = Dimensions.Select(d => (d.Key, d.Weight, Value: values[d.Key])).ToArray();
+        var totalWeight = components.Sum(c => c.Weight);
+        var overall = Clamp((int)Math.Round(components.Sum(c => (double)c.Value * c.Weight) / totalWeight));
 
         return new CompatibilityScore(
             (short)overall,
-            components.ToDictionary(c => c.Key, c => c.Value),
+            values,
             BuildExplanation(components));
+    }
+
+    // Stored breakdowns are key -> value; labels are attached when reading so renaming a
+    // label never needs a recalculation. Keys the scorer no longer knows are dropped, and
+    // rows scored before a criterion existed simply lack it.
+    public static IReadOnlyList<(ScoreDimension Dimension, int Value)> Describe(
+        IReadOnlyDictionary<string, int> breakdown)
+    {
+        return Dimensions
+            .Where(d => breakdown.ContainsKey(d.Key))
+            .Select(d => (d, breakdown[d.Key]))
+            .ToArray();
     }
 
     private static int ScoreSleep(string a, string b)
@@ -130,6 +160,16 @@ internal static class CompatibilityScorer
             : 80;
     }
 
+    private static int ScoreNoise(int? a, int? b)
+    {
+        if (a is null || b is null)
+        {
+            return 50;
+        }
+
+        return Clamp(100 - (int)Math.Round(Math.Abs(a.Value - b.Value) * NoisePenaltyPerPoint));
+    }
+
     private static int ScoreHabits(LifestyleSnapshot a, LifestyleSnapshot b)
     {
         var smoking = a.Smoking == b.Smoking ? 100 : 20;
@@ -166,7 +206,7 @@ internal static class CompatibilityScorer
             .ThenByDescending(c => c.Weight)
             .ToArray();
 
-        var strengths = ranked.Take(2).Where(c => c.Value >= 70).Select(c => Labels[c.Key]).ToArray();
+        var strengths = ranked.Take(2).Where(c => c.Value >= 70).Select(c => DimensionsByKey[c.Key].Phrase).ToArray();
         var sentence = strengths.Length switch
         {
             2 => $"Hợp nhau về {strengths[0]} và {strengths[1]}.",
@@ -184,7 +224,7 @@ internal static class CompatibilityScorer
 
         return weakest.Key is null
             ? sentence
-            : $"{sentence} Cần trao đổi thêm về {Labels[weakest.Key]}.";
+            : $"{sentence} Cần trao đổi thêm về {DimensionsByKey[weakest.Key].Phrase}.";
     }
 
     private static bool TryParseSchedule(string schedule, out int startMinutes, out int endMinutes)

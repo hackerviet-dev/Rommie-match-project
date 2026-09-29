@@ -7,6 +7,7 @@
     <ProjectReference Include="..\Modules\Rooms\RoomieMatch.Modules.Rooms.csproj" />
     <ProjectReference Include="..\Modules\Billing\RoomieMatch.Modules.Billing.csproj" />
     <ProjectReference Include="..\Shared\RoomieMatch.Shared\RoomieMatch.Shared.csproj" />
+    <ProjectReference Include="..\Modules\Chat\RoomieMatch.Modules.Chat.csproj" />
   </ItemGroup>
 
   <ItemGroup>

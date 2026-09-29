@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using RoomieMatch.Shared.Paging;
 
 namespace RoomieMatch.Modules.Users.Services;
 
@@ -6,9 +7,18 @@ public interface IUserService
 {
     object GetModuleStatus();
 
-    Task<IReadOnlyList<UserProfileDto>> GetProfilesAsync(CancellationToken cancellationToken);
+    Task<PagedResult<UserProfileDto>> GetProfilesAsync(
+        Guid viewerId,
+        PageQuery paging,
+        CancellationToken cancellationToken);
 
     Task<ProfileDetailDto?> GetProfileAsync(Guid userId, CancellationToken cancellationToken);
+
+    /// Returns null when the profile is missing, disabled, or private to this viewer.
+    Task<ProfileDetailDto?> GetVisibleProfileAsync(
+        Guid viewerId,
+        Guid userId,
+        CancellationToken cancellationToken);
 
     Task<ProfileDetailDto?> UpdateProfileAsync(
         Guid userId,
@@ -55,7 +65,7 @@ public sealed record ProfileDetailDto(
 public sealed record UpdateProfileRequest(
     [Required, StringLength(120, MinimumLength = 2)] string DisplayName,
     DateOnly? BirthDate,
-    [StringLength(30)] string? Gender,
+    [StringLength(30), Gender] string? Gender,
     [StringLength(120)] string? Occupation,
     [StringLength(2000)] string? Bio,
     [Required, StringLength(100)] string City,
@@ -70,6 +80,7 @@ public sealed record LifestylePreferencesDto(
     bool Smoking,
     bool PetFriendly,
     string? CookingFrequency,
+    string? RoomEnvironment,
     int BudgetMin,
     int BudgetMax,
     DateOnly? MoveInDate,
@@ -83,6 +94,8 @@ public sealed record SaveLifestylePreferencesRequest(
     bool Smoking,
     bool PetFriendly,
     [StringLength(40)] string? CookingFrequency,
+    // "Chịu ồn": quiet, moderate or lively. Null leaves the score to the quiz answers.
+    [AllowedValues("quiet", "moderate", "lively", null)] string? RoomEnvironment,
     [Range(0, 1_000_000_000)] int BudgetMin,
     [Range(0, 1_000_000_000)] int BudgetMax,
     DateOnly? MoveInDate,

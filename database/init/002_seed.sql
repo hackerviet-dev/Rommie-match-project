@@ -11,12 +11,12 @@ ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email, role = EXCLUDED.role;
 INSERT INTO profiles
     (user_id, display_name, birth_date, gender, occupation, bio, city, district, avatar_url, is_verified, profile_completion)
 VALUES
-    ('00000000-0000-0000-0000-000000000001', 'Mai Anh', '2003-04-18', 'Nữ', 'Sinh viên Marketing', 'Tìm bạn ở ghép gọn gàng và tôn trọng không gian riêng.', 'TP.HCM', 'Quận 1', 'https://api.dicebear.com/9.x/avataaars/svg?seed=MaiAnh', true, 85),
-    ('00000000-0000-0000-0000-000000000002', 'Nguyễn Linh', '2002-08-12', 'Nữ', 'Nhà thiết kế UX', 'Yêu không gian sáng, cây xanh và những buổi tối yên tĩnh.', 'TP.HCM', 'Quận 1', 'https://api.dicebear.com/9.x/avataaars/svg?seed=Linh&backgroundColor=8FD3C1', true, 96),
-    ('00000000-0000-0000-0000-000000000003', 'Trần Minh', '2000-02-20', 'Nam', 'Kỹ sư phần mềm', 'Làm việc linh hoạt, nấu ăn cuối tuần và luôn giữ khu vực chung ngăn nắp.', 'TP.HCM', 'Bình Thạnh', 'https://api.dicebear.com/9.x/avataaars/svg?seed=Minh&backgroundColor=15A9B8', true, 92),
-    ('00000000-0000-0000-0000-000000000004', 'Hà My', '2003-11-03', 'Nữ', 'Sinh viên năm cuối', 'Cởi mở, ưu tiên giao tiếp rõ ràng và cần một góc học tập yên tĩnh.', 'TP.HCM', 'Thủ Đức', 'https://api.dicebear.com/9.x/avataaars/svg?seed=HaMy&backgroundColor=8FD3C1', true, 89),
-    ('00000000-0000-0000-0000-000000000005', 'Lê Phúc', '2001-06-22', 'Nam', 'Kỹ sư dữ liệu', 'Thích chạy bộ, cà phê và căn nhà không khói thuốc.', 'TP.HCM', 'Quận 3', 'https://api.dicebear.com/9.x/avataaars/svg?seed=Phuc&backgroundColor=15A9B8', false, 82),
-    ('00000000-0000-0000-0000-000000000006', 'Võ Thảo', '2002-01-15', 'Nữ', 'Biên tập viên', 'Thích thú cưng, đọc sách và chia sẻ việc nhà công bằng.', 'TP.HCM', 'Phú Nhuận', 'https://api.dicebear.com/9.x/avataaars/svg?seed=Thao&backgroundColor=8FD3C1', true, 90),
+    ('00000000-0000-0000-0000-000000000001', 'Mai Anh', '2003-04-18', 'female', 'Sinh viên Marketing', 'Tìm bạn ở ghép gọn gàng và tôn trọng không gian riêng.', 'TP.HCM', 'Quận 1', 'https://api.dicebear.com/9.x/avataaars/svg?seed=MaiAnh', true, 85),
+    ('00000000-0000-0000-0000-000000000002', 'Nguyễn Linh', '2002-08-12', 'female', 'Nhà thiết kế UX', 'Yêu không gian sáng, cây xanh và những buổi tối yên tĩnh.', 'TP.HCM', 'Quận 1', 'https://api.dicebear.com/9.x/avataaars/svg?seed=Linh&backgroundColor=8FD3C1', true, 96),
+    ('00000000-0000-0000-0000-000000000003', 'Trần Minh', '2000-02-20', 'male', 'Kỹ sư phần mềm', 'Làm việc linh hoạt, nấu ăn cuối tuần và luôn giữ khu vực chung ngăn nắp.', 'TP.HCM', 'Bình Thạnh', 'https://api.dicebear.com/9.x/avataaars/svg?seed=Minh&backgroundColor=15A9B8', true, 92),
+    ('00000000-0000-0000-0000-000000000004', 'Hà My', '2003-11-03', 'female', 'Sinh viên năm cuối', 'Cởi mở, ưu tiên giao tiếp rõ ràng và cần một góc học tập yên tĩnh.', 'TP.HCM', 'Thủ Đức', 'https://api.dicebear.com/9.x/avataaars/svg?seed=HaMy&backgroundColor=8FD3C1', true, 89),
+    ('00000000-0000-0000-0000-000000000005', 'Lê Phúc', '2001-06-22', 'male', 'Kỹ sư dữ liệu', 'Thích chạy bộ, cà phê và căn nhà không khói thuốc.', 'TP.HCM', 'Quận 3', 'https://api.dicebear.com/9.x/avataaars/svg?seed=Phuc&backgroundColor=15A9B8', false, 82),
+    ('00000000-0000-0000-0000-000000000006', 'Võ Thảo', '2002-01-15', 'female', 'Biên tập viên', 'Thích thú cưng, đọc sách và chia sẻ việc nhà công bằng.', 'TP.HCM', 'Phú Nhuận', 'https://api.dicebear.com/9.x/avataaars/svg?seed=Thao&backgroundColor=8FD3C1', true, 90),
     ('00000000-0000-0000-0000-000000000099', 'RoomieMatch Admin', '1995-01-01', NULL, 'Quản trị viên', NULL, 'TP.HCM', 'Quận 1', NULL, true, 100)
 ON CONFLICT (user_id) DO UPDATE SET
     display_name = EXCLUDED.display_name,
@@ -29,28 +29,36 @@ ON CONFLICT (user_id) DO UPDATE SET
     profile_completion = EXCLUDED.profile_completion;
 
 INSERT INTO lifestyle_preferences
-    (user_id, sleep_schedule, cleanliness, social_style, smoking, pet_friendly, cooking_frequency, budget_min, budget_max, move_in_date, interests)
+    (user_id, sleep_schedule, cleanliness, social_style, smoking, pet_friendly, cooking_frequency, budget_min, budget_max, move_in_date, interests, room_environment)
 VALUES
-    ('00000000-0000-0000-0000-000000000001', '23:00–07:00', 4, 'Cân bằng', false, true, '3–4 lần/tuần', 3500000, 6000000, '2026-10-01', ARRAY['cà phê', 'phim', 'chạy bộ']),
-    ('00000000-0000-0000-0000-000000000002', '22:30–06:30', 5, 'Hướng nội', false, false, '2–3 lần/tuần', 4000000, 6000000, '2026-10-01', ARRAY['thiết kế', 'cây xanh', 'đọc sách']),
-    ('00000000-0000-0000-0000-000000000003', '00:00–08:00', 4, 'Cân bằng', false, true, 'Cuối tuần', 3000000, 5000000, '2026-10-15', ARRAY['công nghệ', 'gym', 'nấu ăn']),
-    ('00000000-0000-0000-0000-000000000004', '00:30–07:30', 4, 'Hướng ngoại', false, true, 'Ít khi', 3000000, 4500000, '2026-11-01', ARRAY['âm nhạc', 'metro', 'nhiếp ảnh']),
-    ('00000000-0000-0000-0000-000000000005', '23:30–06:30', 5, 'Hướng nội', false, false, '3–4 lần/tuần', 4000000, 6500000, '2026-10-01', ARRAY['dữ liệu', 'chạy bộ', 'cà phê']),
-    ('00000000-0000-0000-0000-000000000006', '23:00–07:00', 4, 'Cân bằng', false, true, 'Hàng ngày', 3500000, 5500000, '2026-10-20', ARRAY['sách', 'mèo', 'nấu ăn'])
+    ('00000000-0000-0000-0000-000000000001', '23:00–07:00', 4, 'Cân bằng', false, true, '3–4 lần/tuần', 3500000, 6000000, '2026-10-01', ARRAY['cà phê', 'phim', 'chạy bộ'], 'moderate'),
+    ('00000000-0000-0000-0000-000000000002', '22:30–06:30', 5, 'Hướng nội', false, false, '2–3 lần/tuần', 4000000, 6000000, '2026-10-01', ARRAY['thiết kế', 'cây xanh', 'đọc sách'], 'quiet'),
+    ('00000000-0000-0000-0000-000000000003', '00:00–08:00', 4, 'Cân bằng', false, true, 'Cuối tuần', 3000000, 5000000, '2026-10-15', ARRAY['công nghệ', 'gym', 'nấu ăn'], 'moderate'),
+    ('00000000-0000-0000-0000-000000000004', '00:30–07:30', 4, 'Hướng ngoại', false, true, 'Ít khi', 3000000, 4500000, '2026-11-01', ARRAY['âm nhạc', 'metro', 'nhiếp ảnh'], 'lively'),
+    ('00000000-0000-0000-0000-000000000005', '23:30–06:30', 5, 'Hướng nội', false, false, '3–4 lần/tuần', 4000000, 6500000, '2026-10-01', ARRAY['dữ liệu', 'chạy bộ', 'cà phê'], 'quiet'),
+    ('00000000-0000-0000-0000-000000000006', '23:00–07:00', 4, 'Cân bằng', false, true, 'Hàng ngày', 3500000, 5500000, '2026-10-20', ARRAY['sách', 'mèo', 'nấu ăn'], 'moderate')
 ON CONFLICT (user_id) DO UPDATE SET
     sleep_schedule = EXCLUDED.sleep_schedule,
     cleanliness = EXCLUDED.cleanliness,
     budget_min = EXCLUDED.budget_min,
     budget_max = EXCLUDED.budget_max,
-    interests = EXCLUDED.interests;
+    interests = EXCLUDED.interests,
+    room_environment = EXCLUDED.room_environment;
 
 INSERT INTO rooms
-    (id, owner_user_id, title, description, address, district, city, monthly_rent, deposit, available_from, max_occupants, amenities, latitude, longitude)
+    (id, owner_user_id, title, description, address, district, city, monthly_rent, deposit, available_from, max_occupants, amenities, latitude, longitude, property_type, bedrooms, area_m2, roommates_needed)
 VALUES
-    ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', 'Phòng sáng gần phố đi bộ', 'Phòng có cửa sổ lớn, khu bếp chung và giờ giấc tự do.', '42 Nguyễn Huệ', 'Quận 1', 'TP.HCM', 5200000, 5200000, '2026-10-01', 2, ARRAY['máy lạnh', 'máy giặt', 'ban công', 'wifi'], 10.774200, 106.703800),
-    ('10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000003', 'Căn hộ yên tĩnh gần Landmark 81', 'Còn một phòng ngủ trong căn hộ hai phòng.', '18 Nguyễn Hữu Cảnh', 'Bình Thạnh', 'TP.HCM', 4800000, 4800000, '2026-10-15', 2, ARRAY['bếp', 'máy giặt', 'bảo vệ', 'hồ bơi'], 10.795000, 106.721800),
-    ('10000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000004', 'Studio gần tuyến Metro', 'Đi bộ 7 phút đến ga, phù hợp sinh viên.', '12 Võ Văn Ngân', 'Thủ Đức', 'TP.HCM', 3800000, 3800000, '2026-11-01', 2, ARRAY['gác lửng', 'wifi', 'bãi xe'], 10.850600, 106.771900)
-ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, monthly_rent = EXCLUDED.monthly_rent, is_active = true;
+    ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', 'Phòng sáng gần phố đi bộ', 'Phòng có cửa sổ lớn, khu bếp chung và giờ giấc tự do.', '42 Nguyễn Huệ', 'Quận 1', 'TP.HCM', 5200000, 5200000, '2026-10-01', 2, ARRAY['máy lạnh', 'máy giặt', 'ban công', 'wifi'], 10.774200, 106.703800, 'apartment', 2, 55.0, 1),
+    ('10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000003', 'Căn hộ yên tĩnh gần Landmark 81', 'Còn một phòng ngủ trong căn hộ hai phòng.', '18 Nguyễn Hữu Cảnh', 'Bình Thạnh', 'TP.HCM', 4800000, 4800000, '2026-10-15', 2, ARRAY['bếp', 'máy giặt', 'bảo vệ', 'hồ bơi'], 10.795000, 106.721800, 'apartment', 2, 68.0, 1),
+    ('10000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000004', 'Studio gần tuyến Metro', 'Đi bộ 7 phút đến ga, phù hợp sinh viên.', '12 Võ Văn Ngân', 'Thủ Đức', 'TP.HCM', 3800000, 3800000, '2026-11-01', 2, ARRAY['gác lửng', 'wifi', 'bãi xe'], 10.850600, 106.771900, 'studio', 1, 28.0, 1)
+ON CONFLICT (id) DO UPDATE SET
+    title = EXCLUDED.title,
+    monthly_rent = EXCLUDED.monthly_rent,
+    property_type = EXCLUDED.property_type,
+    bedrooms = EXCLUDED.bedrooms,
+    area_m2 = EXCLUDED.area_m2,
+    roommates_needed = EXCLUDED.roommates_needed,
+    is_active = true;
 
 INSERT INTO matching_scores (user_id, candidate_user_id, overall_score, breakdown, explanation) VALUES
     ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', 96, '{"sleep":95,"cleanliness":98,"social":88,"budget":92}', 'Cùng ưu tiên không gian sạch, giờ ngủ tương đồng và ngân sách phù hợp.'),

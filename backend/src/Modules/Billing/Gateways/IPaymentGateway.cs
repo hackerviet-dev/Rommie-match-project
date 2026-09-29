@@ -8,4 +8,11 @@ public interface IPaymentGateway
     string Name { get; }
 
     string CreatePaymentUrl(Guid paymentId, PlanDto plan);
+
+    // Returns the provider's refund id. Throws when the provider refuses the refund.
+    Task<string> RefundAsync(
+        Guid paymentId,
+        string? providerTransactionId,
+        int amount,
+        CancellationToken cancellationToken);
 }

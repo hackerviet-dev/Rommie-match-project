@@ -1,5 +1,6 @@
 using System.Data.Common;
 using RoomieMatch.Shared.Data;
+using RoomieMatch.Shared.Paging;
 
 namespace RoomieMatch.Modules.Users.Services;
 
@@ -12,7 +13,8 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
 
     private const string LifestyleColumns = """
         user_id, sleep_schedule, cleanliness, social_style, smoking, pet_friendly,
-        cooking_frequency, budget_min, budget_max, move_in_date, interests, updated_at
+        cooking_frequency, room_environment, budget_min, budget_max, move_in_date, interests,
+        updated_at
         """;
 
     public object GetModuleStatus()
@@ -24,20 +26,39 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
         };
     }
 
-    public async Task<IReadOnlyList<UserProfileDto>> GetProfilesAsync(CancellationToken cancellationToken)
+    public async Task<PagedResult<UserProfileDto>> GetProfilesAsync(
+        Guid viewerId,
+        PageQuery paging,
+        CancellationToken cancellationToken)
     {
-        const string sql = """
-            SELECT u.id, p.display_name, p.occupation, p.city, p.district,
-                   p.avatar_url, p.is_verified, p.profile_completion
+        const string fromWhere = """
             FROM users u
             INNER JOIN profiles p ON p.user_id = u.id
-            WHERE u.is_active = true AND u.role = 'member'
-            ORDER BY p.is_verified DESC, p.display_name
+            WHERE u.is_active = true
+              AND u.role = 'member'
+              AND p.is_public = true
+              AND u.id <> @viewer_id
             """;
 
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+
+        await using var countCommand = connection.CreateCommand();
+        countCommand.CommandText = $"SELECT count(*) {fromWhere}";
+        countCommand.AddParameter("viewer_id", viewerId);
+        var totalCount = (int)(long)(await countCommand.ExecuteScalarAsync(cancellationToken))!;
+
         await using var command = connection.CreateCommand();
-        command.CommandText = sql;
+        command.CommandText = $"""
+            SELECT u.id, p.display_name, p.occupation, p.city, p.district,
+                   p.avatar_url, p.is_verified, p.profile_completion
+            {fromWhere}
+            ORDER BY p.is_verified DESC, p.display_name, u.id
+            LIMIT @limit OFFSET @offset
+            """;
+        command
+            .AddParameter("viewer_id", viewerId)
+            .AddParameter("limit", paging.PageSize)
+            .AddParameter("offset", paging.Offset);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var profiles = new List<UserProfileDto>();
 
@@ -54,13 +75,24 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
                 reader.GetInt16(7)));
         }
 
-        return profiles;
+        return new PagedResult<UserProfileDto>(profiles, paging.Page, paging.PageSize, totalCount);
     }
 
     public async Task<ProfileDetailDto?> GetProfileAsync(Guid userId, CancellationToken cancellationToken)
     {
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
         return await ReadProfileAsync(connection, userId, cancellationToken);
+    }
+
+    public async Task<ProfileDetailDto?> GetVisibleProfileAsync(
+        Guid viewerId,
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        // A private profile answers 404 to others, the same as a missing one, so its
+        // existence is not revealed. Its owner still sees it.
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        return await ReadProfileAsync(connection, userId, cancellationToken, publicOnly: viewerId != userId);
     }
 
     public async Task<ProfileDetailDto?> UpdateProfileAsync(
@@ -82,7 +114,7 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
             WHERE user_id = @user_id
             """;
 
-        var gender = Normalize(request.Gender);
+        var gender = Gender.ToCode(request.Gender);
         var occupation = Normalize(request.Occupation);
         var bio = Normalize(request.Bio);
         var district = Normalize(request.District);
@@ -135,10 +167,12 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
         var sql = $"""
             INSERT INTO lifestyle_preferences
                 (user_id, sleep_schedule, cleanliness, social_style, smoking, pet_friendly,
-                 cooking_frequency, budget_min, budget_max, move_in_date, interests, updated_at)
+                 cooking_frequency, room_environment, budget_min, budget_max, move_in_date,
+                 interests, updated_at)
             VALUES
                 (@user_id, @sleep_schedule, @cleanliness, @social_style, @smoking, @pet_friendly,
-                 @cooking_frequency, @budget_min, @budget_max, @move_in_date, @interests, now())
+                 @cooking_frequency, @room_environment, @budget_min, @budget_max, @move_in_date,
+                 @interests, now())
             ON CONFLICT (user_id) DO UPDATE SET
                 sleep_schedule = EXCLUDED.sleep_schedule,
                 cleanliness = EXCLUDED.cleanliness,
@@ -146,6 +180,7 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
                 smoking = EXCLUDED.smoking,
                 pet_friendly = EXCLUDED.pet_friendly,
                 cooking_frequency = EXCLUDED.cooking_frequency,
+                room_environment = EXCLUDED.room_environment,
                 budget_min = EXCLUDED.budget_min,
                 budget_max = EXCLUDED.budget_max,
                 move_in_date = EXCLUDED.move_in_date,
@@ -165,6 +200,7 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
             .AddParameter("smoking", request.Smoking)
             .AddParameter("pet_friendly", request.PetFriendly)
             .AddParameter("cooking_frequency", Normalize(request.CookingFrequency))
+            .AddParameter("room_environment", request.RoomEnvironment)
             .AddParameter("budget_min", request.BudgetMin)
             .AddParameter("budget_max", request.BudgetMax)
             .AddParameter("move_in_date", request.MoveInDate)
@@ -178,13 +214,15 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
     private static async Task<ProfileDetailDto?> ReadProfileAsync(
         DbConnection connection,
         Guid userId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool publicOnly = false)
     {
         var sql = $"""
             SELECT {ProfileDetailColumns}
             FROM profiles p
             INNER JOIN users u ON u.id = p.user_id
             WHERE p.user_id = @user_id AND u.is_active = true
+            {(publicOnly ? "AND p.is_public = true" : "")}
             """;
 
         await using var command = connection.CreateCommand();
@@ -222,11 +260,12 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
             reader.GetBoolean(4),
             reader.GetBoolean(5),
             reader.IsDBNull(6) ? null : reader.GetString(6),
-            reader.GetInt32(7),
+            reader.IsDBNull(7) ? null : reader.GetString(7),
             reader.GetInt32(8),
-            reader.IsDBNull(9) ? null : reader.GetFieldValue<DateOnly>(9),
-            reader.GetFieldValue<string[]>(10),
-            reader.GetFieldValue<DateTimeOffset>(11));
+            reader.GetInt32(9),
+            reader.IsDBNull(10) ? null : reader.GetFieldValue<DateOnly>(10),
+            reader.GetFieldValue<string[]>(11),
+            reader.GetFieldValue<DateTimeOffset>(12));
     }
 
     private static string[] NormalizeInterests(string[]? interests)

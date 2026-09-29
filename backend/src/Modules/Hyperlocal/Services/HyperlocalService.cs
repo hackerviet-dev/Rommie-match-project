@@ -1,5 +1,6 @@
 using System.Data.Common;
 using RoomieMatch.Shared.Data;
+using RoomieMatch.Shared.Paging;
 
 namespace RoomieMatch.Modules.Hyperlocal.Services;
 
@@ -20,32 +21,49 @@ public sealed class HyperlocalService(IDbConnectionFactory connectionFactory) : 
         };
     }
 
-    public async Task<IReadOnlyList<LocalServiceDto>> GetNearbyServicesAsync(
+    public async Task<PagedResult<LocalServiceDto>> GetNearbyServicesAsync(
         string city,
         string? district,
+        string? category,
+        PageQuery paging,
         CancellationToken cancellationToken)
     {
-        var sql = $"""
-            SELECT {ServiceColumns}
+        const string fromWhere = """
             FROM local_services
             WHERE city = @city
               AND (@district IS NULL OR district = @district)
+              AND (@category IS NULL OR category = @category)
               AND deleted_at IS NULL
-            ORDER BY is_verified DESC, distance_km, rating DESC
             """;
 
+        void AddFilterParameters(DbCommand command)
+        {
+            command.AddParameter("city", city);
+            AddOptionalText(command, "district", district);
+            AddOptionalText(command, "category", category);
+        }
+
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+
+        await using var countCommand = connection.CreateCommand();
+        countCommand.CommandText = $"SELECT count(*) {fromWhere}";
+        AddFilterParameters(countCommand);
+        var totalCount = (int)(long)(await countCommand.ExecuteScalarAsync(cancellationToken))!;
+
         await using var command = connection.CreateCommand();
-        command.CommandText = sql;
-        command.AddParameter("city", city);
+        command.CommandText = $"""
+            SELECT {ServiceColumns}
+            {fromWhere}
+            ORDER BY is_verified DESC, distance_km, rating DESC, id
+            LIMIT @limit OFFSET @offset
+            """;
+        AddFilterParameters(command);
+        command
+            .AddParameter("limit", paging.PageSize)
+            .AddParameter("offset", paging.Offset);
 
-        var districtParameter = command.CreateParameter();
-        districtParameter.ParameterName = "district";
-        districtParameter.DbType = System.Data.DbType.String;
-        districtParameter.Value = string.IsNullOrWhiteSpace(district) ? DBNull.Value : district;
-        command.Parameters.Add(districtParameter);
-
-        return await ReadServicesAsync(command, cancellationToken);
+        var services = await ReadServicesAsync(command, cancellationToken);
+        return new PagedResult<LocalServiceDto>(services, paging.Page, paging.PageSize, totalCount);
     }
 
     public async Task<LocalServiceDto?> GetServiceAsync(Guid serviceId, CancellationToken cancellationToken)
@@ -186,6 +204,17 @@ public sealed class HyperlocalService(IDbConnectionFactory connectionFactory) : 
         }
 
         return services;
+    }
+
+    // "@x IS NULL" needs a typed parameter; an untyped null leaves Postgres unable to
+    // infer it and the query fails.
+    private static void AddOptionalText(DbCommand command, string name, string? value)
+    {
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = name;
+        parameter.DbType = System.Data.DbType.String;
+        parameter.Value = string.IsNullOrWhiteSpace(value) ? DBNull.Value : value.Trim();
+        command.Parameters.Add(parameter);
     }
 
     private static string? Normalize(string? value)

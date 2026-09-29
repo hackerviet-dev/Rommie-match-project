@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using RoomieMatch.Shared.Paging;
 
 namespace RoomieMatch.Modules.Rooms.Services;
 
@@ -6,8 +7,9 @@ public interface IRoomService
 {
     object GetModuleStatus();
 
-    Task<IReadOnlyList<RoomDto>> SearchAsync(
+    Task<PagedResult<RoomDto>> SearchAsync(
         RoomSearchQuery query,
+        PageQuery paging,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<RoomDto>> GetOwnedByAsync(Guid ownerUserId, CancellationToken cancellationToken);
@@ -65,12 +67,22 @@ public sealed record RoomDto(
     int Deposit,
     DateOnly AvailableFrom,
     int MaxOccupants,
+    string? PropertyType,
+    int? Bedrooms,
+    decimal? AreaM2,
+    int? RoommatesNeeded,
     IReadOnlyList<string> Amenities,
     decimal? Latitude,
     decimal? Longitude,
     bool IsActive,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
+
+public static class RoomPropertyTypes
+{
+    public static readonly IReadOnlySet<string> All =
+        new HashSet<string>(StringComparer.Ordinal) { "apartment", "house", "studio", "dormitory" };
+}
 
 public sealed record SaveRoomRequest(
     [Required, StringLength(180, MinimumLength = 4)] string Title,
@@ -82,6 +94,11 @@ public sealed record SaveRoomRequest(
     [Range(0, 1_000_000_000)] int Deposit,
     [Required] DateOnly? AvailableFrom,
     [Range(1, 20)] int MaxOccupants,
+    string? PropertyType,
+    [Range(1, 50)] int? Bedrooms,
+    [Range(typeof(decimal), "1", "99999.9", ParseLimitsInInvariantCulture = true)]
+    decimal? AreaM2,
+    [Range(1, 20)] int? RoommatesNeeded,
     string[]? Amenities,
     [Range(typeof(decimal), "-90", "90", ParseLimitsInInvariantCulture = true)]
     decimal? Latitude,
@@ -99,6 +116,21 @@ public sealed record SaveRoomRequest(
             yield return new ValidationResult(
                 "Toạ độ phải có đủ cả vĩ độ và kinh độ, hoặc bỏ trống cả hai.",
                 [nameof(Latitude), nameof(Longitude)]);
+        }
+
+        if (PropertyType is not null && !RoomPropertyTypes.All.Contains(PropertyType))
+        {
+            yield return new ValidationResult(
+                "Loại nhà phải là apartment, house, studio hoặc dormitory.",
+                [nameof(PropertyType)]);
+        }
+
+        // The poster lives there too, so at most MaxOccupants - 1 roommates can join.
+        if (RoommatesNeeded is not null && RoommatesNeeded >= MaxOccupants)
+        {
+            yield return new ValidationResult(
+                "Số bạn cùng phòng cần tìm phải nhỏ hơn số người ở tối đa.",
+                [nameof(RoommatesNeeded), nameof(MaxOccupants)]);
         }
 
         if (Amenities is { Length: > MaxAmenities })

@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using RoomieMatch.Modules.Users.Services;
 using RoomieMatch.Shared.Authentication;
+using RoomieMatch.Shared.Http;
 
 namespace RoomieMatch.Modules.Users.Controllers;
 
@@ -16,6 +18,7 @@ public sealed class AuthController(IAuthService authService, IUserService userSe
         return Ok(userService.GetModuleStatus());
     }
 
+    [EnableRateLimiting(RateLimitPolicies.Credentials)]
     [HttpPost("register")]
     public async Task<ActionResult<AuthSessionDto>> Register(
         RegisterRequest request,
@@ -25,6 +28,7 @@ public sealed class AuthController(IAuthService authService, IUserService userSe
         return result.Session is null ? Failure(result.Error) : Ok(result.Session);
     }
 
+    [EnableRateLimiting(RateLimitPolicies.Credentials)]
     [HttpPost("login")]
     public async Task<ActionResult<AuthSessionDto>> Login(
         LoginRequest request,
@@ -34,6 +38,7 @@ public sealed class AuthController(IAuthService authService, IUserService userSe
         return result.Session is null ? Failure(result.Error) : Ok(result.Session);
     }
 
+    [EnableRateLimiting(RateLimitPolicies.Credentials)]
     [HttpPost("refresh")]
     public async Task<ActionResult<AuthSessionDto>> Refresh(
         RefreshRequest request,
@@ -48,6 +53,20 @@ public sealed class AuthController(IAuthService authService, IUserService userSe
     {
         // Always 204: whether the token existed is not something an unauthenticated caller should learn.
         await authService.LogoutAsync(request, cancellationToken);
+        return NoContent();
+    }
+
+    // Takes effect immediately: the caller's current access token stops working too.
+    [Authorize]
+    [HttpPost("logout-all")]
+    public async Task<IActionResult> LogoutEverywhere(CancellationToken cancellationToken)
+    {
+        if (User.GetUserId() is not { } userId)
+        {
+            return Unauthorized();
+        }
+
+        await authService.LogoutEverywhereAsync(userId, cancellationToken);
         return NoContent();
     }
 

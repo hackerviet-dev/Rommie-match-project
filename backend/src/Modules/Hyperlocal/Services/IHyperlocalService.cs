@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using RoomieMatch.Shared.Paging;
 
 namespace RoomieMatch.Modules.Hyperlocal.Services;
 
@@ -6,9 +7,11 @@ public interface IHyperlocalService
 {
     object GetModuleStatus();
 
-    Task<IReadOnlyList<LocalServiceDto>> GetNearbyServicesAsync(
+    Task<PagedResult<LocalServiceDto>> GetNearbyServicesAsync(
         string city,
         string? district,
+        string? category,
+        PageQuery paging,
         CancellationToken cancellationToken);
 
     Task<LocalServiceDto?> GetServiceAsync(Guid serviceId, CancellationToken cancellationToken);
