@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using RoomieMatch.Modules.Matching.Services;
 using RoomieMatch.Shared.Authentication;
+using RoomieMatch.Shared.Paging;
 
 namespace RoomieMatch.Modules.Matching.Controllers;
 
@@ -10,22 +11,26 @@ namespace RoomieMatch.Modules.Matching.Controllers;
 [Route("api/matching")]
 public sealed class MatchingController(IMatchingService matchingService) : ControllerBase
 {
-    private static readonly Guid DemoUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
-
     [HttpGet("health")]
     public IActionResult Health()
     {
         return Ok(matchingService.GetModuleStatus());
     }
 
-    [HttpGet("matches")]
-    public async Task<ActionResult<IReadOnlyList<RoommateMatchDto>>> GetMatches(
-        [FromQuery] Guid? userId,
+    // Always the caller's own list: whose matches to read comes from the token, never
+    // from the request, so one member cannot read another member's matches.
+    [Authorize]
+    [HttpGet("me/matches")]
+    public async Task<ActionResult<PagedResult<RoommateMatchDto>>> GetMyMatches(
+        [FromQuery] PageQuery paging,
         CancellationToken cancellationToken)
     {
-        return Ok(await matchingService.GetMatchesAsync(
-            userId ?? DemoUserId,
-            cancellationToken));
+        if (User.GetUserId() is not { } userId)
+        {
+            return Unauthorized();
+        }
+
+        return Ok(await matchingService.GetMatchesAsync(userId, paging, cancellationToken));
     }
 
     [Authorize]

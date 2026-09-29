@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using RoomieMatch.Shared.Paging;
 
 namespace RoomieMatch.Modules.Users.Services;
 
@@ -6,9 +7,18 @@ public interface IUserService
 {
     object GetModuleStatus();
 
-    Task<IReadOnlyList<UserProfileDto>> GetProfilesAsync(CancellationToken cancellationToken);
+    Task<PagedResult<UserProfileDto>> GetProfilesAsync(
+        Guid viewerId,
+        PageQuery paging,
+        CancellationToken cancellationToken);
 
     Task<ProfileDetailDto?> GetProfileAsync(Guid userId, CancellationToken cancellationToken);
+
+    /// Returns null when the profile is missing, disabled, or private to this viewer.
+    Task<ProfileDetailDto?> GetVisibleProfileAsync(
+        Guid viewerId,
+        Guid userId,
+        CancellationToken cancellationToken);
 
     Task<ProfileDetailDto?> UpdateProfileAsync(
         Guid userId,

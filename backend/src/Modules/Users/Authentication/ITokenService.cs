@@ -2,7 +2,7 @@ namespace RoomieMatch.Modules.Users.Authentication;
 
 public interface ITokenService
 {
-    AccessToken CreateAccessToken(Guid userId, string email, string role);
+    AccessToken CreateAccessToken(Guid userId, string email, string role, int tokenVersion);
     RefreshToken CreateRefreshToken();
     string HashRefreshToken(string value);
 }

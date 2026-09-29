@@ -1,5 +1,6 @@
 using System.Data.Common;
 using RoomieMatch.Shared.Data;
+using RoomieMatch.Shared.Paging;
 
 namespace RoomieMatch.Modules.Users.Services;
 
@@ -24,20 +25,39 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
         };
     }
 
-    public async Task<IReadOnlyList<UserProfileDto>> GetProfilesAsync(CancellationToken cancellationToken)
+    public async Task<PagedResult<UserProfileDto>> GetProfilesAsync(
+        Guid viewerId,
+        PageQuery paging,
+        CancellationToken cancellationToken)
     {
-        const string sql = """
-            SELECT u.id, p.display_name, p.occupation, p.city, p.district,
-                   p.avatar_url, p.is_verified, p.profile_completion
+        const string fromWhere = """
             FROM users u
             INNER JOIN profiles p ON p.user_id = u.id
-            WHERE u.is_active = true AND u.role = 'member'
-            ORDER BY p.is_verified DESC, p.display_name
+            WHERE u.is_active = true
+              AND u.role = 'member'
+              AND p.is_public = true
+              AND u.id <> @viewer_id
             """;
 
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+
+        await using var countCommand = connection.CreateCommand();
+        countCommand.CommandText = $"SELECT count(*) {fromWhere}";
+        countCommand.AddParameter("viewer_id", viewerId);
+        var totalCount = (int)(long)(await countCommand.ExecuteScalarAsync(cancellationToken))!;
+
         await using var command = connection.CreateCommand();
-        command.CommandText = sql;
+        command.CommandText = $"""
+            SELECT u.id, p.display_name, p.occupation, p.city, p.district,
+                   p.avatar_url, p.is_verified, p.profile_completion
+            {fromWhere}
+            ORDER BY p.is_verified DESC, p.display_name, u.id
+            LIMIT @limit OFFSET @offset
+            """;
+        command
+            .AddParameter("viewer_id", viewerId)
+            .AddParameter("limit", paging.PageSize)
+            .AddParameter("offset", paging.Offset);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var profiles = new List<UserProfileDto>();
 
@@ -54,13 +74,24 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
                 reader.GetInt16(7)));
         }
 
-        return profiles;
+        return new PagedResult<UserProfileDto>(profiles, paging.Page, paging.PageSize, totalCount);
     }
 
     public async Task<ProfileDetailDto?> GetProfileAsync(Guid userId, CancellationToken cancellationToken)
     {
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
         return await ReadProfileAsync(connection, userId, cancellationToken);
+    }
+
+    public async Task<ProfileDetailDto?> GetVisibleProfileAsync(
+        Guid viewerId,
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        // A private profile answers 404 to others, the same as a missing one, so its
+        // existence is not revealed. Its owner still sees it.
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        return await ReadProfileAsync(connection, userId, cancellationToken, publicOnly: viewerId != userId);
     }
 
     public async Task<ProfileDetailDto?> UpdateProfileAsync(
@@ -178,13 +209,15 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
     private static async Task<ProfileDetailDto?> ReadProfileAsync(
         DbConnection connection,
         Guid userId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool publicOnly = false)
     {
         var sql = $"""
             SELECT {ProfileDetailColumns}
             FROM profiles p
             INNER JOIN users u ON u.id = p.user_id
             WHERE p.user_id = @user_id AND u.is_active = true
+            {(publicOnly ? "AND p.is_public = true" : "")}
             """;
 
         await using var command = connection.CreateCommand();

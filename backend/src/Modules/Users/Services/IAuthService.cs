@@ -8,6 +8,9 @@ public interface IAuthService
     Task<AuthResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken);
     Task<AuthResult> RefreshAsync(RefreshRequest request, CancellationToken cancellationToken);
     Task LogoutAsync(RefreshRequest request, CancellationToken cancellationToken);
+
+    /// Revokes every refresh token and every access token already issued to the user.
+    Task LogoutEverywhereAsync(Guid userId, CancellationToken cancellationToken);
     Task<AuthenticatedUserDto?> GetAuthenticatedUserAsync(Guid userId, CancellationToken cancellationToken);
 }
 

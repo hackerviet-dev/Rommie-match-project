@@ -76,7 +76,7 @@ public sealed class AuthService(
             Normalize(request.District),
             profileCompletion);
 
-        var session = await CreateSessionAsync(connection, transaction, user, cancellationToken);
+        var session = await CreateSessionAsync(connection, transaction, user, tokenVersion: 0, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         return AuthResult.Success(session);
@@ -86,7 +86,8 @@ public sealed class AuthService(
     {
         const string sql = """
             SELECT u.id, u.email, u.role, u.password_hash, u.is_active,
-                   p.display_name, p.avatar_url, p.city, p.district, p.profile_completion
+                   p.display_name, p.avatar_url, p.city, p.district, p.profile_completion,
+                   u.token_version
             FROM users u
             INNER JOIN profiles p ON p.user_id = u.id
             WHERE u.email = @email
@@ -98,6 +99,7 @@ public sealed class AuthService(
         command.AddParameter("email", request.Email.Trim().ToLowerInvariant());
 
         AuthenticatedUserDto user;
+        int tokenVersion;
         await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
         {
             if (!await reader.ReadAsync(cancellationToken))
@@ -124,10 +126,11 @@ public sealed class AuthService(
                 reader.GetString(7),
                 reader.IsDBNull(8) ? null : reader.GetString(8),
                 reader.GetInt16(9));
+            tokenVersion = reader.GetInt32(10);
         }
 
         return AuthResult.Success(
-            await CreateSessionAsync(connection, transaction: null, user, cancellationToken));
+            await CreateSessionAsync(connection, transaction: null, user, tokenVersion, cancellationToken));
     }
 
     public async Task<AuthResult> RefreshAsync(RefreshRequest request, CancellationToken cancellationToken)
@@ -138,15 +141,20 @@ public sealed class AuthService(
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
         // FOR UPDATE so two concurrent refreshes with the same token cannot both rotate it.
+        // FOR SHARE on the user row orders this against "log out everywhere", which takes
+        // that row's lock first: otherwise a refresh racing it could mint a session that
+        // its revoke statement never sees.
         const string selectSql = """
             SELECT t.user_id, t.expires_at, t.revoked_at,
                    u.email, u.role, u.is_active,
-                   p.display_name, p.avatar_url, p.city, p.district, p.profile_completion
+                   p.display_name, p.avatar_url, p.city, p.district, p.profile_completion,
+                   u.token_version
             FROM refresh_tokens t
             INNER JOIN users u ON u.id = t.user_id
             INNER JOIN profiles p ON p.user_id = t.user_id
             WHERE t.token_hash = @token_hash
             FOR UPDATE OF t
+            FOR SHARE OF u
             """;
 
         await using var select = connection.CreateCommand();
@@ -156,6 +164,7 @@ public sealed class AuthService(
 
         Guid userId;
         AuthenticatedUserDto user;
+        int tokenVersion;
         await using (var reader = await select.ExecuteReaderAsync(cancellationToken))
         {
             if (!await reader.ReadAsync(cancellationToken))
@@ -196,9 +205,10 @@ public sealed class AuthService(
                 reader.GetString(8),
                 reader.IsDBNull(9) ? null : reader.GetString(9),
                 reader.GetInt16(10));
+            tokenVersion = reader.GetInt32(11);
         }
 
-        var session = await CreateSessionAsync(connection, transaction, user, cancellationToken);
+        var session = await CreateSessionAsync(connection, transaction, user, tokenVersion, cancellationToken);
 
         const string rotateSql = """
             UPDATE refresh_tokens
@@ -230,6 +240,14 @@ public sealed class AuthService(
         command.CommandText = sql;
         command.AddParameter("token_hash", tokenService.HashRefreshToken(request.RefreshToken));
         await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task LogoutEverywhereAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await RevokeAllForUserAsync(connection, transaction, userId, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task<AuthenticatedUserDto?> GetAuthenticatedUserAsync(
@@ -270,9 +288,10 @@ public sealed class AuthService(
         DbConnection connection,
         DbTransaction? transaction,
         AuthenticatedUserDto user,
+        int tokenVersion,
         CancellationToken cancellationToken)
     {
-        var accessToken = tokenService.CreateAccessToken(user.Id, user.Email, user.Role);
+        var accessToken = tokenService.CreateAccessToken(user.Id, user.Email, user.Role, tokenVersion);
         var refreshToken = tokenService.CreateRefreshToken();
 
         const string sql = """
@@ -303,6 +322,18 @@ public sealed class AuthService(
         Guid userId,
         CancellationToken cancellationToken)
     {
+        // Bumping the version kills every access token already issued; it also takes the
+        // user row's lock, so a concurrent refresh (FOR SHARE OF u) either finishes first,
+        // and its new refresh token is caught by the revoke below, or waits and then
+        // finds its own token revoked.
+        await using (var bump = connection.CreateCommand())
+        {
+            bump.Transaction = transaction;
+            bump.CommandText = "UPDATE users SET token_version = token_version + 1 WHERE id = @user_id";
+            bump.AddParameter("user_id", userId);
+            await bump.ExecuteNonQueryAsync(cancellationToken);
+        }
+
         const string sql = """
             UPDATE refresh_tokens
             SET revoked_at = now()

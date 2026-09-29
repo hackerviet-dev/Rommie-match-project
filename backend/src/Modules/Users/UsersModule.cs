@@ -51,6 +51,10 @@ public static class UsersModuleExtensions
                     NameClaimType = JwtRegisteredClaimNames.Email,
                     RoleClaimType = "role"
                 };
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = TokenVersionValidator.ValidateAsync
+                };
             });
         services.AddAuthorization();
 

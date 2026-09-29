@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RoomieMatch.Modules.Hyperlocal.Services;
+using RoomieMatch.Shared.Paging;
 
 namespace RoomieMatch.Modules.Hyperlocal.Controllers;
 
@@ -18,12 +19,13 @@ public sealed class HyperlocalController(IHyperlocalService hyperlocalService) :
     }
 
     [HttpGet("services")]
-    public async Task<ActionResult<IReadOnlyList<LocalServiceDto>>> GetServices(
+    public async Task<ActionResult<PagedResult<LocalServiceDto>>> GetServices(
+        [FromQuery] PageQuery paging,
         [FromQuery] string city = "TP.HCM",
         [FromQuery] string? district = null,
         CancellationToken cancellationToken = default)
     {
-        return Ok(await hyperlocalService.GetNearbyServicesAsync(city, district, cancellationToken));
+        return Ok(await hyperlocalService.GetNearbyServicesAsync(city, district, paging, cancellationToken));
     }
 
     [HttpGet("services/{serviceId:guid}")]
