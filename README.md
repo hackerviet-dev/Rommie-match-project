@@ -2,8 +2,7 @@
 
 RoomieMatch is organized as a monorepo with:
 
-- `backend/src`: .NET modular monolith API.
-- `backend/chat-service`: Go WebSocket chat service.
+- `backend/src`: .NET modular monolith API, including chat (REST + SignalR).
 - `frontend/web-app/rommie-match`: React + Vite RoomieMatch web app.
 - `frontend/mobile-app`: React Native student mobile app.
 
@@ -133,13 +132,12 @@ PostgreSQL-backed sample endpoints:
 - `GET /api/hyperlocal/services?city=TP.HCM`
 - `GET /api/hyperlocal/services?city=TP.HCM&district=Quận%201`
 
-## Chat service
+## Chat
 
-```bash
-cd backend/chat-service
-go mod tidy
-go run .
-```
+Chat is part of the .NET API: history and sending over REST at `/api/chat`, realtime
+events over SignalR at `/hubs/chat`. Clients pass the access token as
+`?access_token=` (the SignalR client's `accessTokenFactory` does this). Events go only
+to the members of the conversation. See `docs/backend-api-summary.md`.
 
 ## Web app
 
@@ -159,8 +157,8 @@ npm run start
 
 ## Docker development stack
 
-The repository includes PostgreSQL 17, the .NET API, the Go WebSocket chat
-service, and the Vite web app behind nginx.
+The repository includes PostgreSQL 17, the .NET API (chat included), and the Vite
+web app behind nginx.
 
 ```bash
 cp .env.example .env
@@ -171,8 +169,7 @@ Services are available at:
 
 - Web: `http://localhost:3100`
 - .NET API: `http://localhost:5000`
-- Go chat health: `http://localhost:8081/health`
-- WebSocket: `ws://localhost:8081/ws` or `ws://localhost:3100/ws`
+- Chat hub (SignalR): `http://localhost:5000/hubs/chat` or `http://localhost:3100/hubs/chat`
 - PostgreSQL: `localhost:55432`
 
 The scripts in `database/init` create the schema and Vietnamese demo data the
@@ -187,21 +184,12 @@ docker compose up --build
 `docker compose down --volumes` deletes the local development database. Do not
 run it when the volume contains data you need to keep.
 
-The seeded demo user id used by the matching endpoint is
-`00000000-0000-0000-0000-000000000001`. WebSocket messages must use this JSON
-shape and reference seeded or real UUIDs:
-
-```json
-{
-  "conversationId": "30000000-0000-0000-0000-000000000001",
-  "senderId": "00000000-0000-0000-0000-000000000001",
-  "content": "Chào bạn!"
-}
-```
+The seeded demo user id is `00000000-0000-0000-0000-000000000001`; its seeded
+conversations are `30000000-0000-0000-0000-000000000001` and `...0002`.
 
 The credentials in `.env.example` are for local development only. Replace all
 passwords and `JWT_SECRET` before deploying outside a developer machine.
-`JWT_SECRET` is shared by the API and the chat service and must be at least
+`JWT_SECRET` signs the API's access tokens and must be at least
 32 bytes; the API refuses to start otherwise.
 
 ## CI/CD
@@ -209,16 +197,14 @@ passwords and `JWT_SECRET` before deploying outside a developer machine.
 GitHub Actions validates every pull request and every relevant push to `main`:
 
 - `.NET API`: restore, release build, and tests.
-- `Go chat service`: formatting, vet, race-enabled tests, and build.
 - `Web app`: deterministic install, lint, and production build.
 - `Mobile app`: deterministic install and TypeScript typecheck.
-- `Docker`: Compose validation and image builds for web, API, and chat.
+- `Docker`: Compose validation and image builds for web and API.
 
 After the frontend workflow succeeds on `main`, the web build is deployed to
 GitHub Pages. In the repository settings, select **Settings → Pages → Source:
 GitHub Actions** once to enable the target environment.
 
 Pushing a version tag such as `v1.0.0` creates a GitHub Release containing the
-web bundle, the Linux x64 .NET API publish output, and the Linux amd64 Go chat
-service. A manually dispatched release workflow builds the same artifacts but
+web bundle and the Linux x64 .NET API publish output. A manually dispatched release workflow builds the same artifacts but
 does not publish a GitHub Release.

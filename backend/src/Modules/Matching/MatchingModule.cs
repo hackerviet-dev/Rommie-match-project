@@ -12,9 +12,12 @@ public sealed class MatchingModule : IModule
 
 public static class MatchingModuleExtensions
 {
+    // Needs an IPremiumStatus, which the Billing module registers.
     public static IServiceCollection AddMatchingModule(this IServiceCollection services, IConfiguration configuration)
     {
+        services.Configure<MatchingOptions>(configuration.GetSection(MatchingOptions.SectionName));
         services.AddScoped<IMatchingService, MatchingService>();
+        services.AddScoped<IQuizService, QuizService>();
         return services;
     }
 }

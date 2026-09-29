@@ -80,6 +80,7 @@ public sealed record LifestylePreferencesDto(
     bool Smoking,
     bool PetFriendly,
     string? CookingFrequency,
+    string? RoomEnvironment,
     int BudgetMin,
     int BudgetMax,
     DateOnly? MoveInDate,
@@ -93,6 +94,8 @@ public sealed record SaveLifestylePreferencesRequest(
     bool Smoking,
     bool PetFriendly,
     [StringLength(40)] string? CookingFrequency,
+    // "Chịu ồn": quiet, moderate or lively. Null leaves the score to the quiz answers.
+    [AllowedValues("quiet", "moderate", "lively", null)] string? RoomEnvironment,
     [Range(0, 1_000_000_000)] int BudgetMin,
     [Range(0, 1_000_000_000)] int BudgetMax,
     DateOnly? MoveInDate,

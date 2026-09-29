@@ -14,7 +14,7 @@ public sealed class BillingService(
         id, plan_code, amount, currency, provider, status, created_at, expires_at, paid_at
         """;
 
-    private const string ActiveSubscriptionSql = """
+    internal const string ActiveSubscriptionSql = """
         SELECT id, starts_at, ends_at
         FROM subscriptions
         WHERE user_id = @user_id AND plan = 'premium' AND status = 'active' AND ends_at > now()
