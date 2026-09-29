@@ -7,22 +7,46 @@ CREATE TABLE IF NOT EXISTS users (
     role varchar(30) NOT NULL DEFAULT 'member' CHECK (role IN ('member', 'moderator', 'admin')),
     auth_provider varchar(30) NOT NULL DEFAULT 'local',
     is_active boolean NOT NULL DEFAULT true,
+    -- Bumped on "log out everywhere" and password change; access tokens carry the
+    -- value they were issued with, so a bump invalidates them immediately.
+    token_version integer NOT NULL DEFAULT 0,
+    two_factor_enabled boolean NOT NULL DEFAULT false,
+    two_factor_secret text,
+    two_factor_recovery_code_hashes text[] NOT NULL DEFAULT '{}',
+    google_subject varchar(255),
+    last_seen_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_users_google_subject
+    ON users(google_subject) WHERE google_subject IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS profiles (
     user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     display_name varchar(120) NOT NULL,
     birth_date date,
-    gender varchar(30),
+    -- Onboarding asks for age; the year is stored so it does not go stale.
+    -- birth_date, when present, wins.
+    birth_year smallint CHECK (birth_year BETWEEN 1900 AND 2100),
+    gender varchar(30) CONSTRAINT profiles_gender_check CHECK (gender IN ('male', 'female', 'other')),
     occupation varchar(120),
+    occupation_status varchar(20) CHECK (occupation_status IN ('student', 'employed', 'both', 'other')),
+    organization_name varchar(160),
+    hide_organization boolean NOT NULL DEFAULT false,
+    preferred_roommate_gender varchar(10) NOT NULL DEFAULT 'any'
+        CHECK (preferred_roommate_gender IN ('male', 'female', 'any')),
+    has_room boolean,
     bio text,
     city varchar(100) NOT NULL,
     district varchar(100),
     avatar_url text,
     is_verified boolean NOT NULL DEFAULT false,
     profile_completion smallint NOT NULL DEFAULT 0 CHECK (profile_completion BETWEEN 0 AND 100),
+    is_public boolean NOT NULL DEFAULT true,
+    show_online_status boolean NOT NULL DEFAULT true,
+    hide_age boolean NOT NULL DEFAULT false,
+    onboarding_completed_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -34,6 +58,13 @@ CREATE TABLE IF NOT EXISTS lifestyle_preferences (
     social_style varchar(40) NOT NULL,
     smoking boolean NOT NULL DEFAULT false,
     pet_friendly boolean NOT NULL DEFAULT false,
+    drinking boolean NOT NULL DEFAULT false,
+    -- Feeds the "Chịu ồn" (noise tolerance) score.
+    room_environment varchar(20) CHECK (room_environment IN ('quiet', 'moderate', 'lively')),
+    extroversion smallint CHECK (extroversion BETWEEN 0 AND 100),
+    preferred_distance varchar(20) CHECK (preferred_distance IN ('lt_2km', '2_5km', '5_10km', 'anywhere')),
+    preferred_room_type varchar(20)
+        CHECK (preferred_room_type IN ('private', 'shared', 'studio', 'whole_apartment')),
     cooking_frequency varchar(40),
     budget_min integer NOT NULL CHECK (budget_min >= 0),
     budget_max integer NOT NULL CHECK (budget_max >= budget_min),
@@ -54,6 +85,10 @@ CREATE TABLE IF NOT EXISTS rooms (
     deposit integer NOT NULL DEFAULT 0 CHECK (deposit >= 0),
     available_from date NOT NULL,
     max_occupants smallint NOT NULL DEFAULT 2 CHECK (max_occupants > 0),
+    property_type varchar(20) CHECK (property_type IN ('apartment', 'house', 'studio', 'dormitory')),
+    bedrooms smallint CHECK (bedrooms > 0),
+    area_m2 numeric(6, 1) CHECK (area_m2 > 0),
+    roommates_needed smallint CHECK (roommates_needed > 0),
     amenities text[] NOT NULL DEFAULT '{}',
     latitude numeric(9, 6),
     longitude numeric(9, 6),
@@ -77,6 +112,8 @@ CREATE TABLE IF NOT EXISTS matching_scores (
 
 CREATE TABLE IF NOT EXISTS conversations (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    -- "<smaller uuid>:<larger uuid>" for 1:1 conversations.
+    direct_key text,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -85,6 +122,7 @@ CREATE TABLE IF NOT EXISTS conversation_members (
     conversation_id uuid NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
     user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     joined_at timestamptz NOT NULL DEFAULT now(),
+    last_read_at timestamptz,
     PRIMARY KEY (conversation_id, user_id)
 );
 
@@ -132,11 +170,14 @@ CREATE TABLE IF NOT EXISTS payments (
     currency varchar(3) NOT NULL DEFAULT 'VND',
     provider varchar(30) NOT NULL,
     status varchar(20) NOT NULL DEFAULT 'pending'
-        CHECK (status IN ('pending', 'paid', 'failed', 'expired')),
+        CHECK (status IN ('pending', 'paid', 'failed', 'expired', 'refunded')),
     provider_transaction_id text,
     subscription_id uuid REFERENCES subscriptions(id),
     expires_at timestamptz NOT NULL,
     paid_at timestamptz,
+    refunded_at timestamptz,
+    refund_reason text,
+    provider_refund_id text,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -156,6 +197,164 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 
 CREATE INDEX IF NOT EXISTS ix_refresh_tokens_user_active
     ON refresh_tokens(user_id) WHERE revoked_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS user_settings (
+    user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    notify_new_match boolean NOT NULL DEFAULT true,
+    notify_messages boolean NOT NULL DEFAULT true,
+    notify_profile_views boolean NOT NULL DEFAULT true,
+    notify_promotions boolean NOT NULL DEFAULT false,
+    language varchar(5) NOT NULL DEFAULT 'vi' CHECK (language IN ('vi', 'en', 'ja')),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Removing a saved profile or a block is a soft delete; saving or blocking again
+-- revives the same row.
+CREATE TABLE IF NOT EXISTS saved_profiles (
+    user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    saved_user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    deleted_at timestamptz,
+    PRIMARY KEY (user_id, saved_user_id),
+    CONSTRAINT saved_profiles_not_self CHECK (user_id <> saved_user_id)
+);
+
+CREATE TABLE IF NOT EXISTS user_blocks (
+    blocker_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    blocked_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    deleted_at timestamptz,
+    PRIMARY KEY (blocker_id, blocked_id),
+    CONSTRAINT user_blocks_not_self CHECK (blocker_id <> blocked_id)
+);
+
+CREATE INDEX IF NOT EXISTS ix_user_blocks_blocked_active
+    ON user_blocks(blocked_id) WHERE deleted_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS user_reports (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    reporter_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    reported_user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    reason varchar(20) NOT NULL
+        CHECK (reason IN ('fake', 'scam', 'harass', 'sexual', 'spam', 'underage', 'other')),
+    details text CHECK (details IS NULL OR length(details) <= 2000),
+    status varchar(20) NOT NULL DEFAULT 'open'
+        CHECK (status IN ('open', 'resolved', 'dismissed')),
+    resolution_note text,
+    reviewed_by uuid REFERENCES users(id),
+    reviewed_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT user_reports_not_self CHECK (reporter_id <> reported_user_id)
+);
+
+CREATE INDEX IF NOT EXISTS ix_user_reports_status_created ON user_reports(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS ix_user_reports_reported ON user_reports(reported_user_id);
+
+-- Only image references and the last four digits are kept; the full CCCD number is
+-- never stored.
+CREATE TABLE IF NOT EXISTS identity_verifications (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    document_type varchar(10) NOT NULL DEFAULT 'cccd' CHECK (document_type IN ('cccd', 'cmnd')),
+    document_number_last4 varchar(4) NOT NULL CHECK (document_number_last4 ~ '^[0-9]{4}$'),
+    front_image_url text NOT NULL,
+    back_image_url text NOT NULL,
+    selfie_image_url text,
+    status varchar(20) NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'approved', 'rejected')),
+    rejection_reason text,
+    reviewed_by uuid REFERENCES users(id),
+    reviewed_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_identity_verifications_one_pending
+    ON identity_verifications(user_id) WHERE status = 'pending';
+CREATE INDEX IF NOT EXISTS ix_identity_verifications_status_created
+    ON identity_verifications(status, created_at);
+
+-- One row per viewer, viewed user and day.
+CREATE TABLE IF NOT EXISTS profile_views (
+    viewer_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    viewed_user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    view_date date NOT NULL DEFAULT CURRENT_DATE,
+    last_viewed_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (viewer_id, viewed_user_id, view_date),
+    CONSTRAINT profile_views_not_self CHECK (viewer_id <> viewed_user_id)
+);
+
+CREATE INDEX IF NOT EXISTS ix_profile_views_viewed_recent
+    ON profile_views(viewed_user_id, last_viewed_at DESC);
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type varchar(40) NOT NULL,
+    title varchar(200) NOT NULL,
+    body text,
+    data jsonb NOT NULL DEFAULT '{}',
+    read_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS ix_notifications_user_created ON notifications(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS ix_notifications_user_unread
+    ON notifications(user_id) WHERE read_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS quiz_responses (
+    user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    quiz_code varchar(40) NOT NULL,
+    answers jsonb NOT NULL,
+    result jsonb NOT NULL DEFAULT '{}',
+    completed_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, quiz_code)
+);
+
+-- One row per recalculation, so the free tier's monthly scan limit can be counted.
+CREATE TABLE IF NOT EXISTS matching_runs (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    candidates_scored integer NOT NULL DEFAULT 0 CHECK (candidates_scored >= 0),
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS ix_matching_runs_user_created ON matching_runs(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS profile_boosts (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    starts_at timestamptz NOT NULL DEFAULT now(),
+    ends_at timestamptz NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT profile_boosts_valid_window CHECK (ends_at > starts_at)
+);
+
+CREATE INDEX IF NOT EXISTS ix_profile_boosts_user_ends ON profile_boosts(user_id, ends_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_conversations_direct_key
+    ON conversations(direct_key) WHERE direct_key IS NOT NULL;
+CREATE INDEX IF NOT EXISTS ix_conversation_members_user ON conversation_members(user_id);
+
+-- Cancelling a booking is a status change, never a delete.
+CREATE TABLE IF NOT EXISTS service_bookings (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    service_id uuid NOT NULL REFERENCES local_services(id),
+    user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    scheduled_at timestamptz NOT NULL,
+    address text NOT NULL,
+    contact_phone varchar(30) NOT NULL,
+    note text CHECK (note IS NULL OR length(note) <= 1000),
+    status varchar(20) NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'confirmed', 'completed', 'cancelled')),
+    cancelled_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS ix_service_bookings_user_created ON service_bookings(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS ix_profiles_location ON profiles(city, district);
 CREATE INDEX IF NOT EXISTS ix_rooms_location_active ON rooms(city, district, is_active);
 CREATE INDEX IF NOT EXISTS ix_matching_scores_user_score ON matching_scores(user_id, overall_score DESC);
@@ -188,4 +387,24 @@ FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 DROP TRIGGER IF EXISTS payments_set_updated_at ON payments;
 CREATE TRIGGER payments_set_updated_at BEFORE UPDATE ON payments
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS user_settings_set_updated_at ON user_settings;
+CREATE TRIGGER user_settings_set_updated_at BEFORE UPDATE ON user_settings
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS user_reports_set_updated_at ON user_reports;
+CREATE TRIGGER user_reports_set_updated_at BEFORE UPDATE ON user_reports
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS identity_verifications_set_updated_at ON identity_verifications;
+CREATE TRIGGER identity_verifications_set_updated_at BEFORE UPDATE ON identity_verifications
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS quiz_responses_set_updated_at ON quiz_responses;
+CREATE TRIGGER quiz_responses_set_updated_at BEFORE UPDATE ON quiz_responses
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS service_bookings_set_updated_at ON service_bookings;
+CREATE TRIGGER service_bookings_set_updated_at BEFORE UPDATE ON service_bookings
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();

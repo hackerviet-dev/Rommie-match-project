@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RoomieMatch.Modules.Users.Services;
 using RoomieMatch.Shared.Authentication;
+using RoomieMatch.Shared.Paging;
 
 namespace RoomieMatch.Modules.Users.Controllers;
 
@@ -9,11 +10,20 @@ namespace RoomieMatch.Modules.Users.Controllers;
 [Route("api/users")]
 public sealed class ProfilesController(IUserService userService) : ControllerBase
 {
+    // Members only: "Hồ sơ công khai" means visible to people on RoomieMatch, not to
+    // anonymous scrapers.
+    [Authorize]
     [HttpGet("profiles")]
-    public async Task<ActionResult<IReadOnlyList<UserProfileDto>>> GetProfiles(
+    public async Task<ActionResult<PagedResult<UserProfileDto>>> GetProfiles(
+        [FromQuery] PageQuery paging,
         CancellationToken cancellationToken)
     {
-        return Ok(await userService.GetProfilesAsync(cancellationToken));
+        if (User.GetUserId() is not { } viewerId)
+        {
+            return Unauthorized();
+        }
+
+        return Ok(await userService.GetProfilesAsync(viewerId, paging, cancellationToken));
     }
 
     [Authorize]
@@ -78,7 +88,12 @@ public sealed class ProfilesController(IUserService userService) : ControllerBas
         Guid userId,
         CancellationToken cancellationToken)
     {
-        var profile = await userService.GetProfileAsync(userId, cancellationToken);
+        if (User.GetUserId() is not { } viewerId)
+        {
+            return Unauthorized();
+        }
+
+        var profile = await userService.GetVisibleProfileAsync(viewerId, userId, cancellationToken);
         return profile is null ? NotFound() : Ok(profile);
     }
 }

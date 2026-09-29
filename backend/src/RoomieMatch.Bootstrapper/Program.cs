@@ -17,8 +17,7 @@ builder.Services.AddSingleton<IDbConnectionFactory>(
     new PostgresConnectionFactory(postgresConnectionString));
 builder.Services.AddHealthChecks()
     .AddCheck<PostgresHealthCheck>("postgres");
-builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
-    policy.AllowAnyHeader().AllowAnyMethod().SetIsOriginAllowed(_ => true)));
+builder.Services.AddHttpHardening(builder.Configuration);
 
 builder.Services.AddControllers()
     .AddApplicationPart(typeof(UsersModule).Assembly)
@@ -53,8 +52,11 @@ builder.Services.AddOpenApi(options =>
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
 app.UseCors();
 app.UseAuthentication();
+// After authentication so the global limit can be keyed on the signed-in user.
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapOpenApi("/openapi/v1.json");

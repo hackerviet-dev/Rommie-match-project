@@ -1,6 +1,7 @@
 using System.Data.Common;
 using System.Text.Json;
 using RoomieMatch.Shared.Data;
+using RoomieMatch.Shared.Paging;
 
 namespace RoomieMatch.Modules.Matching.Services;
 
@@ -15,12 +16,13 @@ public sealed class MatchingService(IDbConnectionFactory connectionFactory) : IM
         };
     }
 
-    public async Task<IReadOnlyList<RoommateMatchDto>> GetMatchesAsync(
+    public async Task<PagedResult<RoommateMatchDto>> GetMatchesAsync(
         Guid userId,
+        PageQuery paging,
         CancellationToken cancellationToken)
     {
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
-        return await ReadMatchesAsync(connection, userId, cancellationToken);
+        return await ReadMatchesAsync(connection, userId, paging, cancellationToken);
     }
 
     public async Task<MatchRecalculationResult?> RecalculateAsync(
@@ -37,9 +39,12 @@ public sealed class MatchingService(IDbConnectionFactory connectionFactory) : IM
         }
 
         var candidates = snapshots.Where(snapshot => snapshot.UserId != userId).ToArray();
+        var firstPage = new PageQuery();
         if (candidates.Length == 0)
         {
-            return new MatchRecalculationResult(0, []);
+            return new MatchRecalculationResult(
+                0,
+                new PagedResult<RoommateMatchDto>([], firstPage.Page, firstPage.PageSize, 0));
         }
 
         // Scores are symmetric, so store both directions and keep the candidate's list fresh too.
@@ -86,7 +91,7 @@ public sealed class MatchingService(IDbConnectionFactory connectionFactory) : IM
 
         return new MatchRecalculationResult(
             candidates.Length,
-            await ReadMatchesAsync(connection, userId, cancellationToken));
+            await ReadMatchesAsync(connection, userId, firstPage, cancellationToken));
     }
 
     private static async Task<LifestyleSnapshot[]> LoadSnapshotsAsync(
@@ -133,27 +138,46 @@ public sealed class MatchingService(IDbConnectionFactory connectionFactory) : IM
         return [.. snapshots];
     }
 
-    private static async Task<IReadOnlyList<RoommateMatchDto>> ReadMatchesAsync(
+    private static async Task<PagedResult<RoommateMatchDto>> ReadMatchesAsync(
         DbConnection connection,
         Guid userId,
+        PageQuery paging,
         CancellationToken cancellationToken)
     {
-        const string sql = """
+        // Visibility is checked at read time, not when scores are written, so turning
+        // "Hồ sơ công khai" off (or disabling the account) hides the candidate at once
+        // from every list that already contains them.
+        const string fromWhere = """
+            FROM matching_scores ms
+            INNER JOIN users u ON u.id = ms.candidate_user_id
+            INNER JOIN profiles p ON p.user_id = ms.candidate_user_id
+            INNER JOIN lifestyle_preferences lp ON lp.user_id = ms.candidate_user_id
+            WHERE ms.user_id = @user_id
+              AND u.is_active = true
+              AND u.role = 'member'
+              AND p.is_public = true
+            """;
+
+        await using var countCommand = connection.CreateCommand();
+        countCommand.CommandText = $"SELECT count(*) {fromWhere}";
+        countCommand.AddParameter("user_id", userId);
+        var totalCount = (int)(long)(await countCommand.ExecuteScalarAsync(cancellationToken))!;
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"""
             SELECT p.user_id, p.display_name,
                    COALESCE(date_part('year', age(current_date, p.birth_date))::int, 0),
                    p.occupation, p.city, p.district, p.avatar_url, p.is_verified,
                    ms.overall_score, ms.breakdown::text, ms.explanation,
                    lp.budget_min, lp.budget_max, array_to_string(lp.interests, '|')
-            FROM matching_scores ms
-            INNER JOIN profiles p ON p.user_id = ms.candidate_user_id
-            INNER JOIN lifestyle_preferences lp ON lp.user_id = ms.candidate_user_id
-            WHERE ms.user_id = @user_id
-            ORDER BY ms.overall_score DESC
+            {fromWhere}
+            ORDER BY ms.overall_score DESC, ms.candidate_user_id
+            LIMIT @limit OFFSET @offset
             """;
-
-        await using var command = connection.CreateCommand();
-        command.CommandText = sql;
-        command.AddParameter("user_id", userId);
+        command
+            .AddParameter("user_id", userId)
+            .AddParameter("limit", paging.PageSize)
+            .AddParameter("offset", paging.Offset);
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var matches = new List<RoommateMatchDto>();
@@ -176,6 +200,6 @@ public sealed class MatchingService(IDbConnectionFactory connectionFactory) : IM
                 reader.GetString(13).Split('|', StringSplitOptions.RemoveEmptyEntries)));
         }
 
-        return matches;
+        return new PagedResult<RoommateMatchDto>(matches, paging.Page, paging.PageSize, totalCount);
     }
 }

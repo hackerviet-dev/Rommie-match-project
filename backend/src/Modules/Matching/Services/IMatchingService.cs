@@ -1,11 +1,14 @@
+using RoomieMatch.Shared.Paging;
+
 namespace RoomieMatch.Modules.Matching.Services;
 
 public interface IMatchingService
 {
     object GetModuleStatus();
 
-    Task<IReadOnlyList<RoommateMatchDto>> GetMatchesAsync(
+    Task<PagedResult<RoommateMatchDto>> GetMatchesAsync(
         Guid userId,
+        PageQuery paging,
         CancellationToken cancellationToken);
 
     /// Returns null when the user has not saved lifestyle preferences yet.
@@ -30,6 +33,7 @@ public sealed record RoommateMatchDto(
     int BudgetMax,
     string[] Interests);
 
+// Matches is the first page; later pages come from GET /api/matching/me/matches.
 public sealed record MatchRecalculationResult(
     int CandidatesScored,
-    IReadOnlyList<RoommateMatchDto> Matches);
+    PagedResult<RoommateMatchDto> Matches);

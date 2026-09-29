@@ -1,9 +1,11 @@
+using System.Globalization;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
+using RoomieMatch.Shared.Authentication;
 
 namespace RoomieMatch.Modules.Users.Authentication;
 
@@ -11,7 +13,7 @@ public sealed class TokenService(IOptions<JwtOptions> options) : ITokenService
 {
     private readonly JwtOptions options = options.Value;
 
-    public AccessToken CreateAccessToken(Guid userId, string email, string role)
+    public AccessToken CreateAccessToken(Guid userId, string email, string role, int tokenVersion)
     {
         var expiresAt = DateTimeOffset.UtcNow.AddMinutes(options.AccessTokenLifetimeMinutes);
         var descriptor = new SecurityTokenDescriptor
@@ -24,7 +26,11 @@ public sealed class TokenService(IOptions<JwtOptions> options) : ITokenService
                 new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, email),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim("role", role)
+                new Claim("role", role),
+                new Claim(
+                    ClaimsPrincipalExtensions.TokenVersionClaimType,
+                    tokenVersion.ToString(CultureInfo.InvariantCulture),
+                    ClaimValueTypes.Integer32)
             ]),
             SigningCredentials = new SigningCredentials(
                 new SymmetricSecurityKey(Encoding.UTF8.GetBytes(options.Secret)),

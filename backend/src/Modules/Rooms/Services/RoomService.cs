@@ -1,6 +1,7 @@
 using System.Data.Common;
 using System.Text;
 using RoomieMatch.Shared.Data;
+using RoomieMatch.Shared.Paging;
 
 namespace RoomieMatch.Modules.Rooms.Services;
 
@@ -22,8 +23,9 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
         };
     }
 
-    public async Task<IReadOnlyList<RoomDto>> SearchAsync(
+    public async Task<PagedResult<RoomDto>> SearchAsync(
         RoomSearchQuery query,
+        PageQuery paging,
         CancellationToken cancellationToken)
     {
         var filters = new StringBuilder("WHERE r.is_active = true AND r.deleted_at IS NULL");
@@ -47,38 +49,52 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
             filters.Append(" AND r.available_from <= @available_by");
         }
 
-        var sql = $"""
+        void AddFilterParameters(DbCommand command)
+        {
+            if (!string.IsNullOrWhiteSpace(query.City))
+            {
+                command.AddParameter("city", query.City.Trim());
+            }
+
+            if (!string.IsNullOrWhiteSpace(query.District))
+            {
+                command.AddParameter("district", query.District.Trim());
+            }
+
+            if (query.MaxRent is not null)
+            {
+                command.AddParameter("max_rent", query.MaxRent.Value);
+            }
+
+            if (query.AvailableBy is not null)
+            {
+                command.AddParameter("available_by", query.AvailableBy.Value);
+            }
+        }
+
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+
+        await using var countCommand = connection.CreateCommand();
+        countCommand.CommandText = $"SELECT count(*) FROM rooms r {filters}";
+        AddFilterParameters(countCommand);
+        var totalCount = (int)(long)(await countCommand.ExecuteScalarAsync(cancellationToken))!;
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"""
             SELECT {RoomColumns}
             FROM rooms r
             INNER JOIN profiles p ON p.user_id = r.owner_user_id
             {filters}
-            ORDER BY r.available_from, r.monthly_rent
+            ORDER BY r.available_from, r.monthly_rent, r.id
+            LIMIT @limit OFFSET @offset
             """;
+        AddFilterParameters(command);
+        command
+            .AddParameter("limit", paging.PageSize)
+            .AddParameter("offset", paging.Offset);
 
-        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = sql;
-        if (!string.IsNullOrWhiteSpace(query.City))
-        {
-            command.AddParameter("city", query.City.Trim());
-        }
-
-        if (!string.IsNullOrWhiteSpace(query.District))
-        {
-            command.AddParameter("district", query.District.Trim());
-        }
-
-        if (query.MaxRent is not null)
-        {
-            command.AddParameter("max_rent", query.MaxRent.Value);
-        }
-
-        if (query.AvailableBy is not null)
-        {
-            command.AddParameter("available_by", query.AvailableBy.Value);
-        }
-
-        return await ReadRoomsAsync(command, cancellationToken);
+        var rooms = await ReadRoomsAsync(command, cancellationToken);
+        return new PagedResult<RoomDto>(rooms, paging.Page, paging.PageSize, totalCount);
     }
 
     public async Task<IReadOnlyList<RoomDto>> GetOwnedByAsync(

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using RoomieMatch.Shared.Paging;
 
 namespace RoomieMatch.Modules.Rooms.Services;
 
@@ -6,8 +7,9 @@ public interface IRoomService
 {
     object GetModuleStatus();
 
-    Task<IReadOnlyList<RoomDto>> SearchAsync(
+    Task<PagedResult<RoomDto>> SearchAsync(
         RoomSearchQuery query,
+        PageQuery paging,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<RoomDto>> GetOwnedByAsync(Guid ownerUserId, CancellationToken cancellationToken);

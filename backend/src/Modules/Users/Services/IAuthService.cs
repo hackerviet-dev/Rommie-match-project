@@ -8,6 +8,9 @@ public interface IAuthService
     Task<AuthResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken);
     Task<AuthResult> RefreshAsync(RefreshRequest request, CancellationToken cancellationToken);
     Task LogoutAsync(RefreshRequest request, CancellationToken cancellationToken);
+
+    /// Revokes every refresh token and every access token already issued to the user.
+    Task LogoutEverywhereAsync(Guid userId, CancellationToken cancellationToken);
     Task<AuthenticatedUserDto?> GetAuthenticatedUserAsync(Guid userId, CancellationToken cancellationToken);
 }
 
@@ -34,7 +37,7 @@ public sealed record RegisterRequest(
     [Required, StringLength(100)] string City,
     [StringLength(100)] string? District,
     DateOnly? BirthDate,
-    [StringLength(30)] string? Gender,
+    [StringLength(30), Gender] string? Gender,
     [StringLength(120)] string? Occupation);
 
 public sealed record LoginRequest(

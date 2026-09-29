@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using RoomieMatch.Modules.Rooms.Services;
 using RoomieMatch.Shared.Authentication;
+using RoomieMatch.Shared.Paging;
 
 namespace RoomieMatch.Modules.Rooms.Controllers;
 
@@ -17,15 +18,16 @@ public sealed class RoomsController(IRoomService roomService) : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<RoomDto>>> Search(
+    public async Task<ActionResult<PagedResult<RoomDto>>> Search(
         [FromQuery] string? city,
         [FromQuery] string? district,
         [FromQuery] int? maxRent,
         [FromQuery] DateOnly? availableBy,
+        [FromQuery] PageQuery paging,
         CancellationToken cancellationToken)
     {
         var query = new RoomSearchQuery(city, district, maxRent, availableBy);
-        return Ok(await roomService.SearchAsync(query, cancellationToken));
+        return Ok(await roomService.SearchAsync(query, paging, cancellationToken));
     }
 
     [Authorize]
