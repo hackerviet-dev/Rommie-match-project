@@ -34,6 +34,7 @@ public static class UsersModuleExtensions
         services.AddSingleton<ITokenService, TokenService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<AdminService>();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>

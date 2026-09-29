@@ -21,6 +21,14 @@ public interface IBillingService
         bool succeeded,
         string? providerTransactionId,
         CancellationToken cancellationToken);
+
+    // Refunds a paid order of the caller within the refund window and takes the
+    // order's months back off the subscription.
+    Task<RefundResult> RefundAsync(
+        Guid userId,
+        Guid paymentId,
+        RefundRequest request,
+        CancellationToken cancellationToken);
 }
 
 public static class PaymentStatus
@@ -29,7 +37,28 @@ public static class PaymentStatus
     public const string Paid = "paid";
     public const string Failed = "failed";
     public const string Expired = "expired";
+    public const string Refunded = "refunded";
 }
+
+public enum RefundError
+{
+    None,
+    NotFound,
+    NotPaid,
+    AlreadyRefunded,
+    WindowExpired,
+    GatewayNotConfigured
+}
+
+public sealed record RefundResult(RefundError Error, PaymentDto? Payment)
+{
+    public static RefundResult Success(PaymentDto payment) => new(RefundError.None, payment);
+
+    public static RefundResult Failure(RefundError error) => new(error, null);
+}
+
+public sealed record RefundRequest(
+    [StringLength(1000)] string? Reason);
 
 public enum CheckoutError
 {
@@ -65,7 +94,10 @@ public sealed record PaymentDto(
     string Status,
     DateTimeOffset CreatedAt,
     DateTimeOffset ExpiresAt,
-    DateTimeOffset? PaidAt);
+    DateTimeOffset? PaidAt,
+    DateTimeOffset? RefundedAt,
+    // Set only while the order is paid and still inside the refund window.
+    DateTimeOffset? RefundableUntil);
 
 public sealed record SubscriptionDto(
     string Tier,

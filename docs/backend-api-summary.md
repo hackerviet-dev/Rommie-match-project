@@ -66,12 +66,22 @@ Lỗi gắn gói/quota đều là problem details có trường `code` ổn đ�
 - `GET /api/rooms/me` [Auth]
 - `GET /api/rooms/{roomId}`
 - `POST /api/rooms` [Auth] / `PUT /api/rooms/{roomId}` [Auth] / `DELETE /api/rooms/{roomId}` [Auth] (soft delete qua `deleted_at`)
+- Trường chi tiết phòng (đều tuỳ chọn, có trong cả `RoomDto` lẫn body POST/PUT): `propertyType` (`apartment|house|studio|dormitory`), `bedrooms` (1–50), `areaM2` (số thập phân 1 chữ số), `roommatesNeeded` (phải **nhỏ hơn** `maxOccupants`, vì người đăng cũng ở đó). PUT là ghi đè toàn bộ: bỏ trống trường nào thì trường đó thành `null`.
 
 ## 6. Hyperlocal — `api/hyperlocal`
 
-- `GET /api/hyperlocal/services?city=&district=`
+- `GET /api/hyperlocal/services?city=&district=&category=` — `category` so khớp chính xác với giá trị lưu trong DB (vd `Giặt ủi`, `Giao nước`); bỏ trống thì lấy tất cả.
 - `GET /api/hyperlocal/services/{serviceId}`
 - `POST/PUT/DELETE /api/hyperlocal/services/{serviceId}` — chỉ role `admin`/`moderator`
+
+**Đặt dịch vụ** [Auth] — chỉ thấy và thao tác được lịch hẹn của chính mình; lịch của người khác trả **404**.
+
+- `POST /api/hyperlocal/services/{serviceId}/bookings` — `{scheduledAt, address, contactPhone, note?}` → 201 `ServiceBookingDto`. `scheduledAt` phải sau hiện tại ít nhất 30 phút và không quá 60 ngày (sai thì 400). Dịch vụ không tồn tại/đã xoá → 404.
+- `GET /api/hyperlocal/me/bookings?page=&pageSize=` → `PagedResult<ServiceBookingDto>`, mới nhất trước
+- `GET /api/hyperlocal/me/bookings/{bookingId}` → `ServiceBookingDto`
+- `POST /api/hyperlocal/me/bookings/{bookingId}/cancel` → `ServiceBookingDto` đã huỷ. Chỉ huỷ được lịch `pending`/`confirmed` chưa tới giờ; còn lại **409 `booking_not_cancellable`**.
+
+`ServiceBookingDto`: `{id, serviceId, serviceName, serviceCategory, servicePhone, scheduledAt, address, contactPhone, note, status, cancelledAt, createdAt, updatedAt}` — `status`: `pending | confirmed | completed | cancelled`.
 
 ## 6b. Thanh toán theo gói — `api/billing`
 
@@ -81,8 +91,11 @@ Hiện dùng **cổng thanh toán giả lập (mock)** — không trừ tiền t
   `free` 0₫ · `premium_monthly` 20.000₫/1 tháng · `premium_yearly` 180.000₫/12 tháng
 - `GET /api/billing/me/subscription` [Auth] → `{tier: "free"|"premium", isPremium, subscriptionId, startsAt, endsAt}`
 - `POST /api/billing/checkout` [Auth] — `{planCode}` → `{paymentId, planCode, amount, currency, paymentUrl, expiresAt}` (đơn hết hạn sau 15 phút)
-- `GET /api/billing/payments/{paymentId}` [Auth] → trạng thái đơn: `pending | paid | failed | expired`
+- `GET /api/billing/payments/{paymentId}` [Auth] → trạng thái đơn: `pending | paid | failed | expired | refunded`
 - `GET /api/billing/payments` [Auth] — lịch sử thanh toán (50 đơn gần nhất)
+- `POST /api/billing/payments/{paymentId}/refund` [Auth] — body tuỳ chọn `{reason?}` → `PaymentDto` với `status: "refunded"`. Chỉ hoàn được đơn `paid` trong **7 ngày** kể từ `paidAt`. Số tháng của đơn đó bị trừ khỏi ngày hết hạn Premium (đơn cộng dồn khác vẫn giữ nguyên ngày); nếu không còn ngày nào thì Premium kết thúc ngay. Lỗi (409, có `code`): `already_refunded`, `payment_not_refundable` (đơn chưa thanh toán), `refund_window_expired`; 503 `gateway_unavailable`; đơn của người khác → 404.
+
+`PaymentDto`: `{id, planCode, amount, currency, provider, status, createdAt, expiresAt, paidAt, refundedAt, refundableUntil}` — `refundableUntil` chỉ có giá trị khi đơn còn hoàn được, nên dùng nó để quyết định hiện nút "Hoàn tiền".
 
 **Luồng frontend cần làm:**
 
@@ -153,5 +166,6 @@ Cổng đã được đổi khỏi mặc định (3000/5432) để chạy song s
 
 - Chat: chưa có trạng thái online, chưa gửi ảnh/file, chưa có thông báo đẩy khi offline. Hub giữ kết nối trong RAM của một instance — chạy nhiều instance API cần thêm Redis backplane.
 - Chưa gắn cổng thanh toán thật (VNPay/MoMo) — đang dùng mock.
-- Chưa có hoàn tiền, chưa tự gia hạn (cổng VN thanh toán một lần; hết hạn thì mua lại).
+- Chưa tự gia hạn (cổng VN thanh toán một lần; hết hạn thì mua lại).
+- Đặt dịch vụ: chưa có API để staff/nhà cung cấp chuyển lịch sang `confirmed`/`completed` — hiện lịch mới luôn ở `pending` cho tới khi user huỷ. Chưa có API liệt kê danh sách category (frontend tự giữ danh sách chip).
 - "Xem ai đã xem bạn" (Premium) chưa có API.

@@ -10,6 +10,7 @@ public interface IHyperlocalService
     Task<PagedResult<LocalServiceDto>> GetNearbyServicesAsync(
         string city,
         string? district,
+        string? category,
         PageQuery paging,
         CancellationToken cancellationToken);
 

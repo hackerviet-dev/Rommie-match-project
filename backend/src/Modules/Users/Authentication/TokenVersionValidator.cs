@@ -27,7 +27,7 @@ internal static class TokenVersionValidator
             return;
         }
 
-        const string sql = "SELECT token_version FROM users WHERE id = @user_id AND is_active = true";
+        const string sql = "SELECT token_version, role FROM users WHERE id = @user_id AND is_active = true";
 
         var connectionFactory = context.HttpContext.RequestServices.GetRequiredService<IDbConnectionFactory>();
         var cancellationToken = context.HttpContext.RequestAborted;
@@ -36,10 +36,12 @@ internal static class TokenVersionValidator
         command.CommandText = sql;
         command.AddParameter("user_id", userId);
 
-        if (await command.ExecuteScalarAsync(cancellationToken) is not int currentVersion
-            || currentVersion != tokenVersion)
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken)
+            || reader.GetInt32(0) != tokenVersion
+            || reader.GetString(1) != principal.FindFirst("role")?.Value)
         {
-            context.Fail("Access token has been revoked.");
+            context.Fail("Access token has been revoked or the user's role has changed.");
         }
     }
 }

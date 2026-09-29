@@ -23,9 +23,11 @@ public sealed class HyperlocalController(IHyperlocalService hyperlocalService) :
         [FromQuery] PageQuery paging,
         [FromQuery] string city = "TP.HCM",
         [FromQuery] string? district = null,
+        [FromQuery] string? category = null,
         CancellationToken cancellationToken = default)
     {
-        return Ok(await hyperlocalService.GetNearbyServicesAsync(city, district, paging, cancellationToken));
+        return Ok(await hyperlocalService.GetNearbyServicesAsync(
+            city, district, category, paging, cancellationToken));
     }
 
     [HttpGet("services/{serviceId:guid}")]

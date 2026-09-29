@@ -15,6 +15,7 @@ public static class HyperlocalModuleExtensions
     public static IServiceCollection AddHyperlocalModule(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IHyperlocalService, HyperlocalService>();
+        services.AddScoped<IServiceBookingService, ServiceBookingService>();
         return services;
     }
 }

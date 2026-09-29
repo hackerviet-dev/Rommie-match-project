@@ -24,6 +24,7 @@ public sealed class HyperlocalService(IDbConnectionFactory connectionFactory) : 
     public async Task<PagedResult<LocalServiceDto>> GetNearbyServicesAsync(
         string city,
         string? district,
+        string? category,
         PageQuery paging,
         CancellationToken cancellationToken)
     {
@@ -31,18 +32,15 @@ public sealed class HyperlocalService(IDbConnectionFactory connectionFactory) : 
             FROM local_services
             WHERE city = @city
               AND (@district IS NULL OR district = @district)
+              AND (@category IS NULL OR category = @category)
               AND deleted_at IS NULL
             """;
 
         void AddFilterParameters(DbCommand command)
         {
             command.AddParameter("city", city);
-
-            var districtParameter = command.CreateParameter();
-            districtParameter.ParameterName = "district";
-            districtParameter.DbType = System.Data.DbType.String;
-            districtParameter.Value = string.IsNullOrWhiteSpace(district) ? DBNull.Value : district;
-            command.Parameters.Add(districtParameter);
+            AddOptionalText(command, "district", district);
+            AddOptionalText(command, "category", category);
         }
 
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
@@ -206,6 +204,17 @@ public sealed class HyperlocalService(IDbConnectionFactory connectionFactory) : 
         }
 
         return services;
+    }
+
+    // "@x IS NULL" needs a typed parameter; an untyped null leaves Postgres unable to
+    // infer it and the query fails.
+    private static void AddOptionalText(DbCommand command, string name, string? value)
+    {
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = name;
+        parameter.DbType = System.Data.DbType.String;
+        parameter.Value = string.IsNullOrWhiteSpace(value) ? DBNull.Value : value.Trim();
+        command.Parameters.Add(parameter);
     }
 
     private static string? Normalize(string? value)

@@ -11,7 +11,8 @@ public sealed class BillingService(
     IOptions<BillingOptions> options) : IBillingService
 {
     private const string PaymentColumns = """
-        id, plan_code, amount, currency, provider, status, created_at, expires_at, paid_at
+        id, plan_code, amount, currency, provider, status, created_at, expires_at, paid_at,
+        refunded_at
         """;
 
     internal const string ActiveSubscriptionSql = """
@@ -28,7 +29,7 @@ public sealed class BillingService(
         {
             module = "Billing",
             provider = string.IsNullOrEmpty(options.Value.Provider) ? "none" : options.Value.Provider,
-            features = new[] { "plans", "checkout", "subscriptions", "payment-history" }
+            features = new[] { "plans", "checkout", "subscriptions", "payment-history", "refunds" }
         };
     }
 
@@ -212,6 +213,148 @@ public sealed class BillingService(
         return await GetPaymentAsync(paymentId, null, cancellationToken);
     }
 
+    public async Task<RefundResult> RefundAsync(
+        Guid userId,
+        Guid paymentId,
+        RefundRequest request,
+        CancellationToken cancellationToken)
+    {
+        await using (var connection = await connectionFactory.OpenConnectionAsync(cancellationToken))
+        await using (var transaction = await connection.BeginTransactionAsync(cancellationToken))
+        {
+            // FOR UPDATE makes a second, concurrent refund of the same order wait and
+            // then see "refunded" instead of refunding twice.
+            const string selectSql = """
+                SELECT plan_code, status, paid_at, provider, provider_transaction_id, amount, subscription_id
+                FROM payments
+                WHERE id = @id AND user_id = @user_id
+                FOR UPDATE
+                """;
+
+            string planCode;
+            string status;
+            DateTimeOffset? paidAt;
+            string provider;
+            string? providerTransactionId;
+            int amount;
+            Guid? subscriptionId;
+            await using (var select = CreateCommand(connection, transaction, selectSql))
+            {
+                select.AddParameter("id", paymentId);
+                select.AddParameter("user_id", userId);
+                await using var reader = await select.ExecuteReaderAsync(cancellationToken);
+                if (!await reader.ReadAsync(cancellationToken))
+                {
+                    return RefundResult.Failure(RefundError.NotFound);
+                }
+
+                planCode = reader.GetString(0);
+                status = reader.GetString(1);
+                paidAt = reader.IsDBNull(2) ? null : reader.GetFieldValue<DateTimeOffset>(2);
+                provider = reader.GetString(3);
+                providerTransactionId = reader.IsDBNull(4) ? null : reader.GetString(4);
+                amount = reader.GetInt32(5);
+                subscriptionId = reader.IsDBNull(6) ? null : reader.GetGuid(6);
+            }
+
+            if (status == PaymentStatus.Refunded)
+            {
+                return RefundResult.Failure(RefundError.AlreadyRefunded);
+            }
+
+            if (status != PaymentStatus.Paid || paidAt is null)
+            {
+                return RefundResult.Failure(RefundError.NotPaid);
+            }
+
+            if (RefundDeadline(paidAt.Value) <= DateTimeOffset.UtcNow)
+            {
+                return RefundResult.Failure(RefundError.WindowExpired);
+            }
+
+            // Refund through the provider that took the money, not whichever one is
+            // configured now.
+            var gateway = gateways.FirstOrDefault(g => g.Name == provider);
+            if (gateway is null)
+            {
+                return RefundResult.Failure(RefundError.GatewayNotConfigured);
+            }
+
+            // Called while the row is locked so a concurrent request cannot slip in
+            // between. If the provider throws, the transaction rolls back untouched.
+            var providerRefundId = await gateway.RefundAsync(
+                paymentId, providerTransactionId, amount, cancellationToken);
+
+            const string refundSql = """
+                UPDATE payments
+                SET status = 'refunded', refunded_at = now(),
+                    refund_reason = @refund_reason, provider_refund_id = @provider_refund_id
+                WHERE id = @id
+                """;
+
+            await using (var refund = CreateCommand(connection, transaction, refundSql))
+            {
+                refund.AddParameter("id", paymentId);
+                refund.AddParameter(
+                    "refund_reason",
+                    string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim());
+                refund.AddParameter("provider_refund_id", providerRefundId);
+                await refund.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            if (subscriptionId is { } id)
+            {
+                var plan = Plans.All.First(p => p.Code == planCode);
+                await ShortenSubscriptionAsync(
+                    connection, transaction, userId, id, plan.DurationMonths, cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+
+        return RefundResult.Success((await GetPaymentAsync(paymentId, userId, cancellationToken))!);
+    }
+
+    // The mirror of ExtendSubscriptionAsync: only the refunded order's months come off,
+    // so days paid for by other, stacked orders are kept. When nothing is left the
+    // subscription ends now.
+    private static async Task ShortenSubscriptionAsync(
+        DbConnection connection,
+        DbTransaction transaction,
+        Guid userId,
+        Guid subscriptionId,
+        int months,
+        CancellationToken cancellationToken)
+    {
+        // Same lock as ExtendSubscriptionAsync, so a refund and a purchase of the same
+        // user cannot interleave.
+        await using (var lockUser = CreateCommand(connection, transaction, "SELECT 1 FROM users WHERE id = @user_id FOR UPDATE"))
+        {
+            lockUser.AddParameter("user_id", userId);
+            await lockUser.ExecuteScalarAsync(cancellationToken);
+        }
+
+        const string sql = """
+            UPDATE subscriptions
+            SET ends_at = GREATEST(now(), ends_at - make_interval(months => @months)),
+                status = CASE
+                    WHEN ends_at - make_interval(months => @months) <= now() THEN 'cancelled'
+                    ELSE status
+                END
+            WHERE id = @id
+            """;
+
+        await using var command = CreateCommand(connection, transaction, sql);
+        command.AddParameter("id", subscriptionId);
+        command.AddParameter("months", months);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private DateTimeOffset RefundDeadline(DateTimeOffset paidAt)
+    {
+        return paidAt.AddDays(options.Value.RefundWindowDays);
+    }
+
     // Buying while already premium stacks onto the current end date instead of
     // overwriting it, so a user never loses days they already paid for.
     private static async Task<Guid> ExtendSubscriptionAsync(
@@ -282,15 +425,23 @@ public sealed class BillingService(
         return command;
     }
 
-    private static PaymentDto ReadPayment(DbDataReader reader)
+    private PaymentDto ReadPayment(DbDataReader reader)
     {
         var status = reader.GetString(5);
         var expiresAt = reader.GetFieldValue<DateTimeOffset>(7);
+        var paidAt = reader.IsDBNull(8) ? (DateTimeOffset?)null : reader.GetFieldValue<DateTimeOffset>(8);
+        var now = DateTimeOffset.UtcNow;
 
         // Abandoned checkouts are never called back, so they only become "expired" on read.
-        if (status == PaymentStatus.Pending && expiresAt <= DateTimeOffset.UtcNow)
+        if (status == PaymentStatus.Pending && expiresAt <= now)
         {
             status = PaymentStatus.Expired;
+        }
+
+        DateTimeOffset? refundableUntil = null;
+        if (status == PaymentStatus.Paid && paidAt is { } paid && RefundDeadline(paid) > now)
+        {
+            refundableUntil = RefundDeadline(paid);
         }
 
         return new PaymentDto(
@@ -302,6 +453,8 @@ public sealed class BillingService(
             status,
             reader.GetFieldValue<DateTimeOffset>(6),
             expiresAt,
-            reader.IsDBNull(8) ? null : reader.GetFieldValue<DateTimeOffset>(8));
+            paidAt,
+            reader.IsDBNull(9) ? null : reader.GetFieldValue<DateTimeOffset>(9),
+            refundableUntil);
     }
 }

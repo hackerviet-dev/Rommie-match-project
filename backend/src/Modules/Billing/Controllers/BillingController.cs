@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using RoomieMatch.Modules.Billing.Services;
 using RoomieMatch.Shared.Authentication;
 
@@ -81,5 +82,48 @@ public sealed class BillingController(IBillingService billingService) : Controll
 
         var payment = await billingService.GetPaymentAsync(paymentId, userId, cancellationToken);
         return payment is null ? NotFound() : Ok(payment);
+    }
+
+    // The body is optional; a refund without a reason is still a refund.
+    [Authorize]
+    [HttpPost("payments/{paymentId:guid}/refund")]
+    public async Task<ActionResult<PaymentDto>> Refund(
+        Guid paymentId,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] RefundRequest? request,
+        CancellationToken cancellationToken)
+    {
+        if (User.GetUserId() is not { } userId)
+        {
+            return Unauthorized();
+        }
+
+        var result = await billingService.RefundAsync(
+            userId, paymentId, request ?? new RefundRequest(null), cancellationToken);
+
+        return result.Error switch
+        {
+            RefundError.None => Ok(result.Payment),
+            RefundError.NotFound => NotFound(),
+            RefundError.AlreadyRefunded => CodedProblem(
+                StatusCodes.Status409Conflict, "already_refunded", "Đơn này đã được hoàn tiền."),
+            RefundError.NotPaid => CodedProblem(
+                StatusCodes.Status409Conflict, "payment_not_refundable", "Chỉ hoàn tiền được đơn đã thanh toán."),
+            RefundError.WindowExpired => CodedProblem(
+                StatusCodes.Status409Conflict, "refund_window_expired", "Đã quá thời hạn hoàn tiền của đơn này."),
+            _ => CodedProblem(
+                StatusCodes.Status503ServiceUnavailable, "gateway_unavailable",
+                "Cổng thanh toán của đơn này hiện không khả dụng.")
+        };
+    }
+
+    private ObjectResult CodedProblem(int status, string code, string detail)
+    {
+        var problem = ProblemDetailsFactory.CreateProblemDetails(HttpContext, status, detail: detail);
+        problem.Extensions["code"] = code;
+        return new ObjectResult(problem)
+        {
+            StatusCode = status,
+            ContentTypes = { "application/problem+json" }
+        };
     }
 }
