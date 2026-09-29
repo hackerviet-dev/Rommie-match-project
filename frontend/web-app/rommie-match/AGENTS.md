@@ -1,4 +1,14 @@
-# Cấu trúc mã nguồn frontend
+# Quy tắc bắt buộc cho frontend web
+
+Mọi AI coding agent khi đọc, tạo, sửa, di chuyển hoặc review file trong thư mục `frontend/web-app/rommie-match` phải tuân thủ tài liệu này.
+
+- Áp dụng các quy tắc dưới đây cho toàn bộ web app, bao gồm `src`, cấu hình Vite, package, Docker và test.
+- Giữ nguyên hành vi hiện có khi chỉ được yêu cầu refactor cấu trúc.
+- Không xóa hoặc thay thế Supabase cho đến khi người dùng quyết định backend chính thức.
+- Sau khi thay đổi code, phải chạy lint, TypeScript typecheck và production build phù hợp.
+- Nếu yêu cầu của người dùng xung đột với tài liệu này, ưu tiên yêu cầu mới nhất của người dùng.
+
+## Cấu trúc mã nguồn frontend
 
 Ứng dụng web được tổ chức theo trách nhiệm và từng tính năng nghiệp vụ:
 
