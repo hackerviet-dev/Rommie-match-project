@@ -4,7 +4,7 @@
   "currentPhase": "MVP - nối frontend với backend và hoàn thiện các luồng cốt lõi",
   "baseline": {
     "branch": "Bao-Branch + main",
-    "commit": "4b635d7 + c2fcdaa (integration)"
+    "commit": "ea08928"
   },
   "statusLabels": {
     "done": "Hoàn thành",
@@ -74,8 +74,8 @@
       "frontend": "done",
       "verification": "done",
       "status": "done",
-      "evidence": "Compose và cấu hình Render/Neon đã có; Docker smoke test 10 migration, rerun an toàn, không seed demo, health và CORS đạt",
-      "nextAction": "Hoàn tất deploy Render/Neon và kiểm tra endpoint HTTPS"
+      "evidence": "Render API Live với Neon, 10 migration production thành công; HTTPS health Healthy, 3 plans, CORS production/preview đạt; Vercel main/Bao-Branch redeploy Ready; Docker rerun không seed demo đạt",
+      "nextAction": "Theo dõi hạn mức Free; dùng instance luôn bật trước khi nhận thanh toán thật"
     },
     {
       "id": "CAP-02",
@@ -306,7 +306,7 @@
     {
       "date": "2026-10-01",
       "version": "1.2",
-      "summary": "Hợp nhất Bao-Branch và main; thêm cấu hình Render/Neon, migration production an toàn và nối Auth/payOS frontend; chưa bật thanh toán thật."
+      "summary": "Hợp nhất Bao-Branch và main; Render/Neon Live, HTTPS health/CORS đạt, Vercel production/preview Ready; nối Auth/payOS frontend; chưa bật thanh toán thật."
     },
     {
       "date": "2026-09-30",

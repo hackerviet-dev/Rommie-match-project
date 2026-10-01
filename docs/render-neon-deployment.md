@@ -30,6 +30,11 @@ The configured service is `https://roomiematch-api.onrender.com`. The Vercel pro
 linked to this repository serves `https://rommie-match.vercel.app` from `main`,
 with a `Bao-Branch` preview. Both origins are allowed explicitly; no wildcard CORS.
 
+Verified on 2026-10-01: Render Live; ten migrations applied to Neon; `/health`
+returns `Healthy`; three billing plans; production and Bao-Branch preview CORS
+preflights pass. Both Vercel deployments are Ready with `VITE_API_BASE_URL` configured.
+Payment provider remains `none` until fresh payOS credentials are installed.
+
 Free Render does not provide a pre-deploy command. `Database__MigrateOnStartup=true`
 therefore runs the existing SQL migrations before the HTTP server starts. Migrations
 are transactional, serialized, and recorded in `roomiematch_schema_migrations`.

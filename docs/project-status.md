@@ -2,7 +2,7 @@
 
 - Cập nhật: **2026-10-01**
 - Phiên bản tài liệu: **1.2**
-- Branch/commit kiểm tra: **Bao-Branch + main / 4b635d7 + c2fcdaa (integration)**
+- Branch/commit kiểm tra: **Bao-Branch + main / ea08928**
 - Giai đoạn hiện tại: **MVP - nối frontend với backend và hoàn thiện các luồng cốt lõi**
 - Mức bao phủ kỹ thuật: **62%**
 
@@ -24,7 +24,7 @@
 
 | Mã | Năng lực | Backend | DB | Frontend | Kiểm tra | Tổng thể | Việc tiếp theo |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| CAP-01 | Hạ tầng Docker | Hoàn thành | Hoàn thành | Hoàn thành | Hoàn thành | Hoàn thành | Hoàn tất deploy Render/Neon và kiểm tra endpoint HTTPS |
+| CAP-01 | Hạ tầng Docker | Hoàn thành | Hoàn thành | Hoàn thành | Hoàn thành | Hoàn thành | Render/Neon Live, HTTPS health/CORS đạt; theo dõi quota và nâng instance trước thanh toán thật |
 | CAP-02 | Đăng ký và đăng nhập | Hoàn thành | Hoàn thành | Một phần | Một phần | Một phần | Kiểm thử auth HTTPS và tự động refresh/logout server |
 | CAP-03 | Hồ sơ cá nhân | Hoàn thành | Hoàn thành | Một phần | Một phần | Một phần | Nối Profile page và Settings với profileApi |
 | CAP-04 | Sở thích lối sống | Hoàn thành | Hoàn thành | Một phần | Dự kiến | Một phần | Nối onboarding với lifestyleApi và thêm kiểm thử lưu dữ liệu |
@@ -54,7 +54,7 @@
 
 ## Lịch sử cập nhật
 
-- **2026-10-01 - v1.2:** Hợp nhất Bao-Branch và main; cấu hình Render/Neon, migration production an toàn, nối Auth/payOS frontend; chưa bật thanh toán thật.
+- **2026-10-01 - v1.2:** Hợp nhất Bao-Branch và main; Render/Neon Live, HTTPS health/CORS đạt, Vercel production/preview Ready; nối Auth/payOS frontend; chưa bật thanh toán thật.
 - **2026-09-30 - v1.2:** Đồng bộ tiến độ sau khi thêm quiz, SignalR chat, Premium enforcement, booking/refund, moderation và migration tự động.
 - **2026-09-29 - v1.2:** Tạo dashboard tiến độ, ma trận 17 năng lực, roadmap và quy tắc cập nhật tài liệu sống.
 - **2026-09-29 - v1.1:** Bổ sung định vị, roadmap, Premium, eKYC, AI, GTM và danh sách quyết định mở.
