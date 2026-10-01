@@ -4,6 +4,8 @@ Các AI coding agent khi sửa chức năng, API, database, frontend, mobile, ch
 
 ## Nguồn trạng thái
 
+Tài liệu trạng thái, ảnh kiểm tra và PDF chỉ lưu cục bộ. Không stage, commit hoặc push `docs/`, `output/`, `tmp/` và file tài liệu xuất; không dùng `git add -f` để bỏ qua quy tắc ignore. Vẫn cập nhật và kiểm tra tài liệu cục bộ theo các bước dưới đây. Ảnh/logo/icon là tài nguyên chạy ứng dụng trong frontend không thuộc nhóm tài liệu kiểm tra này.
+
 - Dữ liệu nguồn: `docs/project-status.json`.
 - Bản đọc nhanh: `docs/project-status.md`.
 - Bản SRS có dashboard: `output/pdf/RoomieMatch-SRS-v1.2-progress.pdf`.

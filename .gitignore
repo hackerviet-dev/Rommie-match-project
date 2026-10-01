@@ -15,3 +15,12 @@ build/
 .env
 .env.*
 !.env.example
+
+# Local documentation, QA screenshots and generated artifacts
+/docs/
+/output/
+/tmp/
+*.pdf
+*.docx
+*.pptx
+*.xlsx
