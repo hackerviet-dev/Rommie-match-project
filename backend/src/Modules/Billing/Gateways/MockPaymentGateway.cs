@@ -8,9 +8,18 @@ public sealed class MockPaymentGateway(IOptions<BillingOptions> options) : IPaym
 
     public string Name => ProviderName;
 
-    public string CreatePaymentUrl(Guid paymentId, PlanDto plan)
+    // The mock page is addressed by our own payment id, so there is no code to mint.
+    public bool UsesProviderOrderCode => false;
+
+    public Task<GatewayCheckout> CreateCheckoutAsync(
+        Guid paymentId,
+        PlanDto plan,
+        long? providerOrderCode,
+        DateTimeOffset expiresAt,
+        CancellationToken cancellationToken)
     {
-        return $"{options.Value.PublicApiBaseUrl.TrimEnd('/')}/api/billing/mock-gateway/{paymentId}";
+        var paymentUrl = $"{options.Value.PublicApiBaseUrl.TrimEnd('/')}/api/billing/mock-gateway/{paymentId}";
+        return Task.FromResult(new GatewayCheckout(paymentUrl));
     }
 
     public Task<string> RefundAsync(

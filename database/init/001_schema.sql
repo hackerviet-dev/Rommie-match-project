@@ -172,6 +172,8 @@ CREATE TABLE IF NOT EXISTS payments (
     status varchar(20) NOT NULL DEFAULT 'pending'
         CHECK (status IN ('pending', 'paid', 'failed', 'expired', 'refunded')),
     provider_transaction_id text,
+    -- payOS (and providers like it) identify an order by a code of their own in the callback.
+    provider_order_code bigint,
     subscription_id uuid REFERENCES subscriptions(id),
     expires_at timestamptz NOT NULL,
     paid_at timestamptz,
@@ -184,6 +186,15 @@ CREATE TABLE IF NOT EXISTS payments (
 
 CREATE INDEX IF NOT EXISTS ix_payments_user_created ON payments(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS ix_subscriptions_user_ends ON subscriptions(user_id, ends_at DESC);
+-- One provider order code belongs to exactly one payment, so a replayed callback cannot be
+-- pointed at someone else's order.
+CREATE UNIQUE INDEX IF NOT EXISTS ux_payments_provider_order_code
+    ON payments(provider, provider_order_code)
+    WHERE provider_order_code IS NOT NULL;
+
+-- Hands out provider order codes so they are unique across app instances and stay far below the
+-- 2^53 ceiling JavaScript can hold. 1000000 is clear of payOS's sample 123.
+CREATE SEQUENCE IF NOT EXISTS payments_provider_order_code_seq START WITH 1000000;
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

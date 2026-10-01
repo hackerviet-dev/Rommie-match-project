@@ -72,9 +72,17 @@ public sealed class BillingService(
 
         var expiresAt = DateTimeOffset.UtcNow.AddMinutes(options.Value.PaymentTimeoutMinutes);
 
+        // A gateway that identifies orders by its own code gets one from a database sequence, so
+        // two app instances never mint the same value. It is written by the INSERT, before the
+        // order is opened, so the provider's callback can find the row even if we crash right after
+        // telling the provider the code.
+        var providerOrderCode = gateway.UsesProviderOrderCode
+            ? await NextProviderOrderCodeAsync(cancellationToken)
+            : (long?)null;
+
         const string sql = """
-            INSERT INTO payments (user_id, plan_code, amount, currency, provider, expires_at)
-            VALUES (@user_id, @plan_code, @amount, @currency, @provider, @expires_at)
+            INSERT INTO payments (user_id, plan_code, amount, currency, provider, provider_order_code, expires_at)
+            VALUES (@user_id, @plan_code, @amount, @currency, @provider, @provider_order_code, @expires_at)
             RETURNING id
             """;
 
@@ -86,17 +94,31 @@ public sealed class BillingService(
         command.AddParameter("amount", plan.Price);
         command.AddParameter("currency", plan.Currency);
         command.AddParameter("provider", gateway.Name);
+        command.AddParameter("provider_order_code", providerOrderCode);
         command.AddParameter("expires_at", expiresAt);
 
         var paymentId = (Guid)(await command.ExecuteScalarAsync(cancellationToken))!;
 
-        return CheckoutResult.Success(new CheckoutResponse(
-            paymentId,
-            plan.Code,
-            plan.Price,
-            plan.Currency,
-            gateway.CreatePaymentUrl(paymentId, plan),
-            expiresAt));
+        try
+        {
+            var checkout = await gateway.CreateCheckoutAsync(
+                paymentId, plan, providerOrderCode, expiresAt, cancellationToken);
+
+            return CheckoutResult.Success(new CheckoutResponse(
+                paymentId,
+                plan.Code,
+                plan.Price,
+                plan.Currency,
+                checkout.PaymentUrl,
+                expiresAt));
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // Missing credentials, a provider outage...: the order never reached the buyer, so
+            // it is closed as failed instead of staying pending until it times out.
+            await SetStatusAsync(paymentId, PaymentStatus.Failed, cancellationToken);
+            return CheckoutResult.Failure(CheckoutError.GatewayFailed);
+        }
     }
 
     public async Task<PaymentDto?> GetPaymentAsync(
@@ -145,11 +167,60 @@ public sealed class BillingService(
         string? providerTransactionId,
         CancellationToken cancellationToken)
     {
+        var (_, payment) = await ConfirmAsync(
+            paymentId, succeeded, expectedAmount: null, requireAmount: false, providerTransactionId,
+            cancellationToken);
+        return payment;
+    }
+
+    public async Task<WebhookConfirmResult> ConfirmWebhookPaymentAsync(
+        string provider,
+        long providerOrderCode,
+        bool succeeded,
+        int? amount,
+        string? providerTransactionId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT id
+            FROM payments
+            WHERE provider = @provider AND provider_order_code = @provider_order_code
+            """;
+
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.AddParameter("provider", provider);
+        command.AddParameter("provider_order_code", providerOrderCode);
+
+        if (await command.ExecuteScalarAsync(cancellationToken) is not Guid paymentId)
+        {
+            return new WebhookConfirmResult(PaymentConfirmOutcome.NotFound, null);
+        }
+
+        var (outcome, payment) = await ConfirmAsync(
+            paymentId, succeeded, amount, requireAmount: true, providerTransactionId, cancellationToken);
+        return new WebhookConfirmResult(outcome, payment);
+    }
+
+    // The one place a payment is settled, so the mock page and the payOS webhook apply exactly the
+    // same rules. expectedAmount is what the provider reports it collected; requireAmount is set
+    // on the webhook path, where a success carrying no usable amount counts as a mismatch.
+    private async Task<(PaymentConfirmOutcome Outcome, PaymentDto? Payment)> ConfirmAsync(
+        Guid paymentId,
+        bool succeeded,
+        int? expectedAmount,
+        bool requireAmount,
+        string? providerTransactionId,
+        CancellationToken cancellationToken)
+    {
+        var outcome = PaymentConfirmOutcome.Applied;
+
         await using (var connection = await connectionFactory.OpenConnectionAsync(cancellationToken))
         await using (var transaction = await connection.BeginTransactionAsync(cancellationToken))
         {
             const string selectSql = """
-                SELECT user_id, plan_code, status, expires_at
+                SELECT user_id, plan_code, status, expires_at, amount
                 FROM payments
                 WHERE id = @id
                 FOR UPDATE
@@ -159,32 +230,46 @@ public sealed class BillingService(
             string planCode;
             string status;
             DateTimeOffset expiresAt;
+            int amount;
             await using (var select = CreateCommand(connection, transaction, selectSql))
             {
                 select.AddParameter("id", paymentId);
                 await using var reader = await select.ExecuteReaderAsync(cancellationToken);
                 if (!await reader.ReadAsync(cancellationToken))
                 {
-                    return null;
+                    return (PaymentConfirmOutcome.NotFound, null);
                 }
 
                 userId = reader.GetGuid(0);
                 planCode = reader.GetString(1);
                 status = reader.GetString(2);
                 expiresAt = reader.GetFieldValue<DateTimeOffset>(3);
+                amount = reader.GetInt32(4);
             }
 
             if (status != PaymentStatus.Pending)
             {
-                // Already settled by an earlier callback; nothing to apply.
+                // Already settled by an earlier callback. A repeat is fine, but money reported for
+                // an order we already closed (failed/expired/refunded) must not grant Premium.
+                outcome = succeeded && status != PaymentStatus.Paid
+                    ? PaymentConfirmOutcome.NotPending
+                    : PaymentConfirmOutcome.Applied;
             }
             else if (expiresAt <= DateTimeOffset.UtcNow)
             {
                 await SetStatusAsync(connection, transaction, paymentId, PaymentStatus.Expired, cancellationToken);
+                // Money can still arrive after we closed the order; that needs a human.
+                outcome = succeeded ? PaymentConfirmOutcome.NotPending : PaymentConfirmOutcome.Applied;
             }
             else if (!succeeded)
             {
                 await SetStatusAsync(connection, transaction, paymentId, PaymentStatus.Failed, cancellationToken);
+            }
+            else if (requireAmount && expectedAmount != amount)
+            {
+                // A webhook that reports success has to carry the amount we charged: a different
+                // one, or none at all, grants nothing and leaves the order for someone to look at.
+                outcome = PaymentConfirmOutcome.AmountMismatch;
             }
             else
             {
@@ -210,7 +295,7 @@ public sealed class BillingService(
             await transaction.CommitAsync(cancellationToken);
         }
 
-        return await GetPaymentAsync(paymentId, null, cancellationToken);
+        return (outcome, await GetPaymentAsync(paymentId, null, cancellationToken));
     }
 
     public async Task<RefundResult> RefundAsync(
@@ -281,9 +366,18 @@ public sealed class BillingService(
             }
 
             // Called while the row is locked so a concurrent request cannot slip in
-            // between. If the provider throws, the transaction rolls back untouched.
-            var providerRefundId = await gateway.RefundAsync(
-                paymentId, providerTransactionId, amount, cancellationToken);
+            // between; a throw aborts the transaction before anything is written.
+            string providerRefundId;
+            try
+            {
+                providerRefundId = await gateway.RefundAsync(
+                    paymentId, providerTransactionId, amount, cancellationToken);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                // Some providers (payOS) only give money back by hand.
+                return RefundResult.Failure(RefundError.GatewayRejected);
+            }
 
             const string refundSql = """
                 UPDATE payments
@@ -347,6 +441,31 @@ public sealed class BillingService(
         await using var command = CreateCommand(connection, transaction, sql);
         command.AddParameter("id", subscriptionId);
         command.AddParameter("months", months);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    // Mints the provider's order code from a database sequence, so it is unique across app
+    // instances and never repeats. The sequence starts at 1000000 — clear of payOS's sample 123 —
+    // and stays far below the 2^53 ceiling JavaScript can hold.
+    private async Task<long> NextProviderOrderCodeAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT nextval('payments_provider_order_code_seq')";
+        return (long)(await command.ExecuteScalarAsync(cancellationToken))!;
+    }
+
+    // Same update as the static SetStatusAsync, for the paths that are not inside a transaction.
+    private async Task SetStatusAsync(
+        Guid paymentId,
+        string status,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE payments SET status = @status WHERE id = @id";
+        command.AddParameter("id", paymentId);
+        command.AddParameter("status", status);
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 

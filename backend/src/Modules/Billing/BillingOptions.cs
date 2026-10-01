@@ -18,4 +18,6 @@ public sealed class BillingOptions
 
     // A paid order can be refunded for this many days after paid_at.
     public int RefundWindowDays { get; set; } = 7;
+
+    public PayOsOptions PayOs { get; set; } = new();
 }
