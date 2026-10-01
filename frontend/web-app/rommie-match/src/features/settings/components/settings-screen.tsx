@@ -4,7 +4,7 @@ import { roommates } from "@/mocks/data/mock-data";
 import { getSaved, removeSaved, profileApi } from "@/features/profile";
 import { toast } from "sonner";
 import { Bookmark, MessageCircle, Search } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AppShell } from "@/layouts/main-layout";
 import { authApi, useAuthStore } from "@/features/auth";
 import { Card } from "@/components/ui/card";
@@ -25,7 +25,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  User,
   Bell,
   Shield,
   Lock,
@@ -46,6 +45,9 @@ import { useEffect, useState } from "react";
 import { lifestyleApi } from "@/features/lifestyle/services/lifestyle-api";
 import { billingApi } from "@/features/billing/services/billing-api";
 import { ApiError } from "@/services/api-error";
+import { ACCOUNT_SECTIONS, type AccountSection } from "@/constants/account-sections";
+import { AccountWorkspace } from "./account-workspace";
+import { AccountPreviewPanels } from "./account-preview-panels";
 import { SettingsProfileEditor } from "./settings-profile-editor";
 
 function Section({
@@ -148,6 +150,9 @@ function SavedProfiles() {
 
 export function SettingsScreen() {
   const nav = useNavigate();
+  const [params] = useSearchParams();
+  const section = (ACCOUNT_SECTIONS.some(item => item.id === params.get("section")) ? params.get("section") : "profile") as AccountSection;
+  const isProfile = section === "profile";
   const logout = useAuthStore((s) => s.logout);
   const queryClient = useQueryClient();
   const signOut = useMutation({
@@ -162,48 +167,49 @@ export function SettingsScreen() {
   const [dark, setDark] = useState(false);
   const userId = useAuthStore(state => state.user?.id);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
-  const profile = useQuery({ queryKey: ["profile", "me", userId], queryFn: profileApi.getMine, enabled: Boolean(userId) });
+  const profile = useQuery({ queryKey: ["profile", "me", userId], queryFn: profileApi.getMine, enabled: Boolean(userId) && isProfile });
   const lifestyle = useQuery({
-    queryKey: ["lifestyle", "me", userId], enabled: Boolean(userId),
+    queryKey: ["lifestyle", "me", userId], enabled: Boolean(userId) && isProfile,
     queryFn: async () => {
       try { return await lifestyleApi.getMine(); }
       catch (error) { if (error instanceof ApiError && error.status === 404) return null; throw error; }
     },
   });
-  const subscription = useQuery({ queryKey: ["subscription", "me", userId], queryFn: billingApi.subscription, enabled: Boolean(userId) });
+  const subscription = useQuery({ queryKey: ["subscription", "me", userId], queryFn: billingApi.subscription, enabled: Boolean(userId) && isProfile });
   const openEditProfile = () => setEditProfileOpen(true);
-  if (profile.isPending) return <AppShell><p role="status">Đang tải hồ sơ…</p></AppShell>;
-  if (!profile.data) return <AppShell><p role="alert">{profile.error?.message ?? "Không thể tải hồ sơ."}</p><Button onClick={() => void profile.refetch()}>Thử lại</Button></AppShell>;
+  if (isProfile && profile.isPending) return <AppShell><AccountWorkspace section={section}><p role="status">Đang tải hồ sơ…</p></AccountWorkspace></AppShell>;
+  if (isProfile && !profile.data) return <AppShell><AccountWorkspace section={section}><p role="alert">{profile.error?.message ?? "Không thể tải hồ sơ."}</p><Button onClick={() => void profile.refetch()}>Thử lại</Button></AccountWorkspace></AppShell>;
   const actual = profile.data;
   const missing = "Chưa cập nhật";
-  const birth = actual.birthDate ? new Date(`${actual.birthDate}T00:00:00`) : null;
+  const birth = actual?.birthDate ? new Date(`${actual?.birthDate}T00:00:00`) : null;
   const today = new Date();
   const age = birth ? today.getFullYear() - birth.getFullYear() - (today.getMonth() < birth.getMonth() || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate()) ? 1 : 0) : null;
   const life = lifestyle.data;
   const p = {
-    name: actual.displayName, age: age === null ? missing : `${age} tuổi`,
-    gender: ({ male: "Nam", female: "Nữ", other: "Khác" } as Record<string, string>)[actual.gender ?? ""] ?? missing,
-    occupation: actual.occupation || missing, city: actual.city || missing, district: actual.district || missing,
-    bio: actual.bio || "Chưa có giới thiệu.", avatar: actual.avatarUrl ?? undefined, verified: actual.isVerified,
+    name: actual?.displayName, age: age === null ? missing : `${age} tuổi`,
+    gender: ({ male: "Nam", female: "Nữ", other: "Khác" } as Record<string, string>)[actual?.gender ?? ""] ?? missing,
+    occupation: actual?.occupation || missing, city: actual?.city || missing, district: actual?.district || missing,
+    bio: actual?.bio || "Chưa có giới thiệu.", avatar: actual?.avatarUrl ?? undefined, verified: actual?.isVerified,
     sleep: life?.sleepSchedule || missing, cleanliness: life ? `${life.cleanliness}/5` : missing,
     smoke: life ? (life.smoking ? "Có" : "Không") : missing,
     pets: life ? (life.petFriendly ? "Có" : "Không") : missing,
     social: life?.socialStyle || missing,
   };
-  const completion = actual.profileCompletion;
+  const completion = actual?.profileCompletion;
 
   return (
     <AppShell>
-      <div className="mb-6"><SavedProfiles /></div>
-      <h1 className="text-3xl font-display font-bold">Cài đặt</h1>
-      <p className="text-muted-foreground mt-1">Quản lý tài khoản, bảo mật và tuỳ chỉnh.</p>
+      <AccountWorkspace section={section}>
+      {section === "saved" && <SavedProfiles />}
+      <AccountPreviewPanels section={section} />
+      {isProfile && <>
 
       {/* Tổng quan hồ sơ */}
       <Card className="mt-6 p-6 rounded-3xl border-0 shadow-sm overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center gap-5">
           <Avatar className="h-20 w-20 ring-2 ring-mint shrink-0">
             <AvatarImage src={p.avatar} />
-            <AvatarFallback>ME</AvatarFallback>
+            <AvatarFallback>{p.name?.trim().slice(0, 2).toUpperCase() || "ME"}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -277,20 +283,17 @@ export function SettingsScreen() {
           <DialogHeader>
             <DialogTitle className="font-display">Chỉnh sửa thông tin cá nhân</DialogTitle>
           </DialogHeader>
-          <SettingsProfileEditor profile={actual} onSaved={() => setEditProfileOpen(false)} />
+          {actual && <SettingsProfileEditor profile={actual} onSaved={() => setEditProfileOpen(false)} />}
         </DialogContent>
       </Dialog>
 
-      <div className="mt-6 grid lg:grid-cols-2 gap-5">
-        <Section icon={User} title="Chỉnh sửa hồ sơ" desc="Cách bạn hiển thị với những người khác.">
-          <p className="text-sm text-muted-foreground mb-4">Cập nhật tên, ngày sinh, giới tính, nơi ở và giới thiệu của bạn.</p>
-          <Button variant="outline" className="rounded-xl" onClick={openEditProfile}>Chỉnh sửa hồ sơ</Button>
-        </Section>
-
-        <Section icon={Bell} title="Thông báo" desc="Chọn nội dung muốn nhận.">
+      <Card className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl p-5"><div><h2 className="font-semibold">Lối sống & khảo sát</h2><p className="mt-1 text-sm text-muted-foreground">Bổ sung thói quen và điều bạn mong đợi ở người ở ghép.</p></div><div className="flex gap-2"><Button asChild variant="outline"><Link to="/onboarding">Hoàn thiện hồ sơ</Link></Button><Button asChild><Link to="/quiz">Làm khảo sát</Link></Button></div></Card>
+      </>}
+      {section === "settings" && <div className="grid lg:grid-cols-2 gap-5">
+        <Section icon={Bell} title="Thông báo" desc="Tuỳ chọn thông báo · Sắp có.">
           <div className="space-y-4">
             {[
-              ["Ghép đôi mới", "Báo khi có người hợp với bạn"],
+              ["Ở ghép mới", "Báo khi có người hợp với bạn"],
               ["Tin nhắn", "Tin nhắn trực tiếp và trả lời"],
               ["Lượt xem hồ sơ", "Khi có người xem hồ sơ của bạn"],
               ["Khuyến mãi", "Mẹo, tin tức và ưu đãi đặc biệt"],
@@ -302,7 +305,7 @@ export function SettingsScreen() {
                     <div className="text-sm font-medium">{title}</div>
                     <div className="text-xs text-muted-foreground">{desc}</div>
                   </div>
-                  <Switch defaultChecked={i < 3} />
+                  <Switch disabled defaultChecked={i < 3} aria-label={`${title} · Sắp có`} />
                 </div>
               );
             })}
@@ -312,7 +315,7 @@ export function SettingsScreen() {
         <Section
           icon={Shield}
           title="Quyền riêng tư"
-          desc="Kiểm soát ai có thể xem và liên hệ bạn."
+          desc="Tuỳ chọn quyền riêng tư · Sắp có."
         >
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -322,7 +325,7 @@ export function SettingsScreen() {
                   Mọi người trên RoomieMatch có thể tìm thấy bạn
                 </div>
               </div>
-              <Switch defaultChecked />
+              <Switch disabled defaultChecked aria-label="Sắp có" />
             </div>
             <div className="flex items-center justify-between">
               <div>
@@ -331,28 +334,28 @@ export function SettingsScreen() {
                   Hiển thị chấm xanh khi đang hoạt động
                 </div>
               </div>
-              <Switch defaultChecked />
+              <Switch disabled defaultChecked aria-label="Sắp có" />
             </div>
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-medium">Ẩn tuổi</div>
                 <div className="text-xs text-muted-foreground">Giữ kín tuổi của bạn</div>
               </div>
-              <Switch />
+              <Switch disabled aria-label="Sắp có" />
             </div>
           </div>
         </Section>
 
         <Section icon={Lock} title="Bảo mật tài khoản" desc="Bảo vệ tài khoản của bạn.">
           <div className="space-y-3">
-            <Button variant="outline" className="w-full justify-start rounded-xl">
-              Đổi mật khẩu
+            <Button disabled variant="outline" className="w-full justify-start rounded-xl">
+              Đổi mật khẩu · Sắp có
             </Button>
-            <Button variant="outline" className="w-full justify-start rounded-xl">
-              Xác thực 2 lớp
+            <Button disabled variant="outline" className="w-full justify-start rounded-xl">
+              Xác thực 2 lớp · Sắp có
             </Button>
-            <Button variant="outline" className="w-full justify-start rounded-xl">
-              Xác minh CCCD/CMND
+            <Button disabled variant="outline" className="w-full justify-start rounded-xl">
+              Xác minh CCCD/CMND · Sắp có
             </Button>
             <Button variant="outline" disabled={signOut.isPending} onClick={() => signOut.mutate(false)}>
               Đăng xuất thiết bị này
@@ -384,8 +387,8 @@ export function SettingsScreen() {
           </div>
         </Section>
 
-        <Section icon={Globe} title="Ngôn ngữ" desc="Chọn ngôn ngữ ưa thích.">
-          <Select defaultValue="vi">
+        <Section icon={Globe} title="Ngôn ngữ" desc="Chọn ngôn ngữ ưa thích · Sắp có.">
+          <Select disabled defaultValue="vi">
             <SelectTrigger className="rounded-xl h-10">
               <SelectValue />
             </SelectTrigger>
@@ -396,7 +399,8 @@ export function SettingsScreen() {
             </SelectContent>
           </Select>
         </Section>
-      </div>
+      </div>}
+      </AccountWorkspace>
     </AppShell>
   );
 }

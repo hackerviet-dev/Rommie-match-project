@@ -6,6 +6,7 @@ export const ROUTES = {
   quiz: "/quiz",
   dashboard: "/dashboard",
   matches: "/matches",
+  rooms: "/rooms",
   chat: "/chat",
   services: "/services",
   premium: "/premium",

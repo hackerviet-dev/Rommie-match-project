@@ -40,9 +40,10 @@ for title,group in [('B.1 Năng lực cốt lõi',caps[:9]),('B.2 Năng lực m�
 story+=[p('B.3 Roadmap và lịch sử cập nhật','VNTitle'),table([['Giai đoạn','Mục tiêu','Trạng thái']]+[[r['phase']+' - '+r['name'],r['goal'],labels[r['status']]] for r in d['roadmap']],[105,315,95]),Spacer(1,15),p('Lịch sử cập nhật','VNHead')]
 styles.add(ParagraphStyle(name='VNHistory',fontName='Arial',fontSize=8,leading=10,spaceAfter=3))
 for e in d['changelog']:story+=[KeepTogether([p(e['date']+' - v'+e['version'],'VNHead'),p(e['summary'],'VNHistory')])]
-styles.add(ParagraphStyle(name='VNEvidence',fontName='Arial',fontSize=8,leading=9,spaceAfter=2))
+styles.add(ParagraphStyle(name='VNEvidence',fontName='Arial',fontSize=8,leading=9,spaceAfter=1))
+styles.add(ParagraphStyle(name='VNEvidenceHead',fontName='ArialBold',fontSize=10,leading=12,spaceAfter=3))
 story+=[PageBreak(),p('B.4 Bằng chứng và quy trình cập nhật','VNTitle')]
-for c in caps:story+=[p(c['id']+' - '+c['name'],'VNHead'),p(c['evidence'],'VNEvidence')]
+for c in caps:story+=[p(c['id']+' - '+c['name'],'VNEvidenceHead'),p(c['evidence'],'VNEvidence')]
 story+=[KeepTogether([p('Quy trình cập nhật','VNHead'),p('Sửa JSON nguồn; đồng bộ Markdown và dashboard PDF; kiểm tra trạng thái từng tầng, lịch sử thay đổi và bản render trước khi kết thúc.')])]
 tmp=ROOT/'tmp/pdfs';tmp.mkdir(parents=True,exist_ok=True);appendix=tmp/'status-appendix.pdf'
 def footer(canvas,doc):

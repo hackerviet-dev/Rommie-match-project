@@ -217,7 +217,7 @@ export function OnboardingFlow() {
                 </Field>
                 <div>
                   <Label>Bạn sạch sẽ ở mức nào? <span className="text-muted-foreground font-normal">(1 bừa → 5 sạch tinh)</span></Label>
-                  <Slider defaultValue={[4]} max={5} min={1} step={1} className="mt-4" />
+                  <Slider aria-label="Mức độ sạch sẽ" defaultValue={[4]} max={5} min={1} step={1} className="mt-2" />
                 </div>
                 <div className="grid sm:grid-cols-3 gap-4">
                   {[["smoke","Có hút thuốc?"],["drink","Có uống rượu bia?"],["pets","Có nuôi thú cưng?"]].map(([k,l]) => (
@@ -231,7 +231,7 @@ export function OnboardingFlow() {
                 </div>
                 <div>
                   <Label>Hướng nội ←→ Hướng ngoại</Label>
-                  <Slider defaultValue={[60]} max={100} step={5} className="mt-4" />
+                  <Slider aria-label="Mức độ hướng ngoại" defaultValue={[60]} max={100} step={5} className="mt-2" />
                 </div>
                 <Field field="env" error={errors.env}>
                   <Label>Không gian phòng ưa thích <span className="text-destructive">*</span></Label>
@@ -326,7 +326,7 @@ export function OnboardingFlow() {
               <div className="mt-8 space-y-6">
                 <div>
                   <Label>Ngân sách hàng tháng (VND)</Label>
-                  <Slider defaultValue={[3,7]} max={15} min={1} step={1} className="mt-4" />
+                  <Slider aria-label="Ngân sách hàng tháng" defaultValue={[3,7]} max={15} min={1} step={1} className="mt-2" />
                   <div className="flex justify-between text-xs text-muted-foreground mt-2"><span>3 triệu</span><span>7 triệu</span></div>
                 </div>
                 <Field field="distance" error={errors.distance}>

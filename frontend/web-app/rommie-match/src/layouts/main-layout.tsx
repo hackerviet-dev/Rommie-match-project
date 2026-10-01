@@ -1,12 +1,11 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Link, useLocation } from "react-router-dom";
-import { Home, Heart, MessageCircle, Store, Settings, Sparkles, Menu, Bell, TrendingUp } from "lucide-react";
+import { Home, Heart, MessageCircle, Store, Settings, Sparkles, Menu, Bell, TrendingUp, Crown, House } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { useAuthStore } from "@/features/auth";
+import { AccountMenu, useAuthStore } from "@/features/auth";
 
 const NOTIFICATIONS = [
   { i: Heart, t: "Linh đã xem hồ sơ của bạn", time: "2 phút", color: "text-rose-500 bg-rose-50", unread: true },
@@ -21,10 +20,10 @@ function NotificationBell() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Thông báo" className="rounded-full relative">
-          <Bell className="h-5 w-5" />
+        <Button variant="ghost" size="icon" aria-label="Thông báo" className="relative h-9 w-9 rounded-full bg-muted/60 text-navy/80 transition-colors hover:bg-muted data-[state=open]:bg-muted">
+          <Bell className="h-[18px] w-[18px]" strokeWidth={2} />
           {unread > 0 && (
-            <span className="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-teal text-white text-[10px] font-bold grid place-items-center">{unread}</span>
+            <span className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-teal px-1 text-[9px] font-semibold text-white ring-2 ring-background">{unread}</span>
           )}
         </Button>
       </PopoverTrigger>
@@ -52,16 +51,17 @@ function NotificationBell() {
 }
 
 const nav = [
-  { to: "/dashboard", label: "Trang chính", icon: Home },
-  { to: "/matches", label: "Ghép đôi", icon: Heart },
+  { to: "/matches", label: "Ở ghép", icon: Heart },
+  { to: "/rooms", label: "Tìm phòng", icon: House },
   { to: "/chat", label: "Tin nhắn", icon: MessageCircle },
   { to: "/services", label: "Dịch vụ", icon: Store },
   { to: "/premium", label: "Premium", icon: Sparkles },
 ];
 
 export function Logo({ className = "" }: { className?: string }) {
+  const isMember = useAuthStore((s) => s.isInitialized && s.isAuthenticated && Boolean(s.user));
   return (
-    <Link to="/" className={`flex items-center gap-2 font-display font-bold text-lg ${className}`}>
+    <Link to={isMember ? "/dashboard" : "/"} className={`flex items-center gap-2 font-display font-bold text-lg ${className}`}>
       <img src={`${import.meta.env.BASE_URL}logo-mark.png`} alt="RoomieMatch" className="h-10 w-10 object-contain" />
       <span>
         <span className="text-navy">Roomie</span>
@@ -81,9 +81,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const showNavigation = path !== "/premium" || isMember;
   const visibleNav = isMember ? nav : [
     { to: "/", label: "Trang chủ", icon: Home },
-    ...nav.filter((item) => item.to === "/services" || item.to === "/premium"),
+    ...nav.filter((item) => item.to === "/rooms" || item.to === "/services" || item.to === "/premium"),
   ];
-  const initials = user?.name?.trim().slice(0, 2).toUpperCase() || "ME";
 
   return (
     <div className="min-h-screen bg-background">
@@ -93,7 +92,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-6">
             <Logo className="[&>span]:hidden sm:[&>span]:inline" />
             <nav aria-label="Điều hướng chính" className="hidden lg:flex items-center gap-1">
-              {visibleNav.map((n) => {
+              {visibleNav.filter((n) => n.to !== "/chat" && (!isMember || n.to !== "/premium")).map((n) => {
                 const active = n.to === "/" ? path === "/" : path.startsWith(n.to);
                 return (
                   <Link
@@ -110,15 +109,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <div className="flex items-center gap-2">
             {isMember ? <>
+            <Button asChild size="sm" className={`gap-1.5 rounded-full text-amber-950 shadow-sm hover:bg-amber-300 ${path.startsWith("/premium") ? "bg-amber-300" : "bg-amber-200"}`}>
+              <Link to="/premium" aria-label="Premium" aria-current={path.startsWith("/premium") ? "page" : undefined}>
+                <Crown className="h-4 w-4" /> <span className="hidden sm:inline">Premium</span>
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" size="icon" className={`h-9 w-9 rounded-full transition-colors ${path.startsWith("/chat") ? "bg-mint/30 text-teal hover:bg-mint/40" : "bg-muted/60 text-navy/80 hover:bg-muted"}`}>
+              <Link to="/chat" aria-label="Tin nhắn" title="Tin nhắn" aria-current={path.startsWith("/chat") ? "page" : undefined}>
+                <MessageCircle className="h-[18px] w-[18px]" strokeWidth={2} />
+              </Link>
+            </Button>
             <NotificationBell />
-            <Link to="/settings" aria-label="Cài đặt tài khoản" className="grid h-11 w-11 place-items-center rounded-full">
-              <Avatar className="h-9 w-9 ring-2 ring-mint">
-                <AvatarImage
-                  src={user?.avatar}
-                />
-                <AvatarFallback>{initials}</AvatarFallback>
-              </Avatar>
-            </Link>
+            <AccountMenu />
             </> : <>
               <Button asChild variant="ghost" size="sm"><Link to="/login">Đăng nhập</Link></Button>
               <Button asChild size="sm"><Link to="/register">Đăng ký</Link></Button>
@@ -173,7 +175,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main id="main-content" tabIndex={-1} className="mx-auto max-w-7xl px-4 sm:px-6 pb-28 lg:pb-10 pt-8 sm:pt-10">{children}</main>
 
       {showNavigation && <nav aria-label="Điều hướng nhanh" className="lg:hidden fixed bottom-[max(.75rem,env(safe-area-inset-bottom))] inset-x-3 z-40 glass rounded-2xl shadow-lg border border-border/60">
-        <div className={`grid ${isMember ? "grid-cols-5" : "grid-cols-3"}`}>
+        <div className={`grid ${isMember ? "grid-cols-5" : "grid-cols-4"}`}>
           {visibleNav.map((n) => {
             const active = n.to === "/" ? path === "/" : path.startsWith(n.to);
             return (

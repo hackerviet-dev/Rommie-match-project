@@ -67,7 +67,7 @@ export function DashboardScreen() {
   const stats = [
     {
       i: Heart,
-      label: "Kết quả ghép đôi",
+      label: "Người ở ghép phù hợp",
       value: "24",
       change: "+6 tuần này",
       color: "from-teal/20 to-teal/5",
@@ -113,7 +113,7 @@ export function DashboardScreen() {
         </div>
         <Link to="/matches">
           <Button className="rounded-full bg-navy hover:bg-navy/90 text-white">
-            Xem ghép đôi <ArrowRight className="ml-2 h-4 w-4" />
+            Khám phá ở ghép <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </Link>
       </m.div>

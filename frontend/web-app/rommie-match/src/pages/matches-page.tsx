@@ -31,7 +31,7 @@ export default function MatchesPage() {
     <AppShell>
       <div className="flex items-end justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-display font-bold">Kết quả ghép đôi</h1>
+          <h1 className="text-3xl font-display font-bold">Người ở ghép phù hợp</h1>
           <p className="text-muted-foreground mt-1">
             {roommates.length} bạn cùng phòng phù hợp, xếp theo điểm AI.
           </p>
