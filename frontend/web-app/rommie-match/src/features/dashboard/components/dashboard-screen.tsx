@@ -1,5 +1,10 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useAuthStore } from "@/features/auth";
+import { profileApi } from "@/features/profile";
+import { lifestyleApi } from "@/features/lifestyle/services/lifestyle-api";
+import { ApiError } from "@/services/api-error";
 import * as m from "motion/react-m";
 import { AppShell, CompatRing } from "@/layouts/main-layout";
 import { Card } from "@/components/ui/card";
@@ -28,6 +33,15 @@ import {
 } from "lucide-react";
 
 export function DashboardScreen() {
+  const location = useLocation();
+  const user = useAuthStore(state => state.user);
+  const profile = useQuery({ queryKey: ["profile", "me", user?.id], queryFn: profileApi.getMine, enabled: Boolean(user?.id) });
+  const lifestyle = useQuery({ queryKey: ["lifestyle", "me", user?.id], enabled: Boolean(user?.id), queryFn: async () => {
+    try { return await lifestyleApi.getMine(); }
+    catch (error) { if (error instanceof ApiError && error.status === 404) return null; throw error; }
+  } });
+  const displayName = profile.data?.displayName || user?.name || "bạn";
+  const completion = profile.data?.profileCompletion;
   const quizHistory = [
     {
       date: "12/06/2026",
@@ -106,7 +120,7 @@ export function DashboardScreen() {
         animate={{ opacity: 1, y: 0 }}
       >
         <div>
-          <h1 className="text-3xl font-display font-bold">Chào mừng trở lại, Linh 👋</h1>
+          <h1 className="text-3xl font-display font-bold">Chào mừng trở lại, {displayName} 👋</h1>
           <p className="text-muted-foreground mt-1">
             Đây là những gì đang diễn ra với hành trình tìm bạn của bạn.
           </p>
@@ -118,7 +132,8 @@ export function DashboardScreen() {
         </Link>
       </m.div>
 
-      <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <p className="mt-5 text-xs text-muted-foreground">Số liệu hoạt động và gợi ý bên dưới đang là minh họa.</p>
+      <div className="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s, index) => (
           <m.div
             key={s.label}
@@ -151,24 +166,25 @@ export function DashboardScreen() {
                   Hồ sơ đầy đủ nhận được nhiều hơn gấp 3 lần ghép đôi.
                 </div>
               </div>
-              <Badge className="rounded-full bg-mint/40 text-navy border-0">85%</Badge>
+              <Badge className="rounded-full bg-mint/40 text-navy border-0">{completion === undefined ? "Đang cập nhật" : `${completion}%`}</Badge>
             </div>
-            <Progress value={85} className="mt-4 h-2.5" />
+            <Progress value={completion ?? 0} className="mt-4 h-2.5" />
+            {profile.isError && <p role="alert" className="mt-2 text-xs text-destructive">Chưa tải được hồ sơ. <button onClick={() => void profile.refetch()} className="underline">Thử lại</button></p>}
             <div className="mt-4 flex flex-wrap gap-2 text-xs">
               <span className="px-3 py-1.5 rounded-full bg-mint/30 text-navy font-medium">
-                ✓ Thông tin cơ bản
+                {profile.data?.displayName && profile.data.city ? "✓ Thông tin cơ bản" : "Thông tin cơ bản"}
               </span>
               <span className="px-3 py-1.5 rounded-full bg-mint/30 text-navy font-medium">
-                ✓ Lối sống
+                {lifestyle.data ? "✓ Lối sống" : "Bổ sung lối sống"}
               </span>
               <span className="px-3 py-1.5 rounded-full bg-mint/30 text-navy font-medium">
-                ✓ Trắc nghiệm
+                <Link to="/quiz">Làm khảo sát</Link>
               </span>
               <span className="px-3 py-1.5 rounded-full bg-muted text-muted-foreground">
-                + Thêm ảnh
+                {profile.data?.avatarUrl ? "✓ Ảnh đại diện" : "+ Thêm ảnh"}
               </span>
               <span className="px-3 py-1.5 rounded-full bg-muted text-muted-foreground">
-                + Xác minh CCCD
+                {profile.data?.isVerified ? "✓ Đã xác minh" : "Chưa xác minh"}
               </span>
             </div>
           </Card>
@@ -180,7 +196,7 @@ export function DashboardScreen() {
                 Xem tất cả
               </Link>
             </div>
-            <div className="grid sm:grid-cols-2 gap-4">
+            <m.div key={location.key} className="grid sm:grid-cols-2 gap-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
               {roommates.slice(0, 4).map((r) => (
                 <Link key={r.id} to={`/profile/${r.id}`} className="group">
                   <div className="flex items-center gap-4 p-4 rounded-2xl border hover:border-teal/40 hover:shadow-md transition-all">
@@ -195,7 +211,7 @@ export function DashboardScreen() {
                   </div>
                 </Link>
               ))}
-            </div>
+            </m.div>
           </Card>
 
           <Card className="p-6 rounded-2xl border-0 shadow-sm">

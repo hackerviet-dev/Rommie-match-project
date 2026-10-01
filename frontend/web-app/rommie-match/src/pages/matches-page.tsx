@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { getSaved, toggleSaved } from "@/features/profile";
 import { toast } from "sonner";
@@ -11,7 +11,13 @@ import { Input } from "@/components/ui/input";
 import { roommates } from "@/mocks/data/mock-data";
 import { MessageCircle, Bookmark, SlidersHorizontal, Search } from "lucide-react";
 
+import { normalizeSearch } from "@/utils/normalize-search";
+
 export default function MatchesPage() {
+  const [params, setParams] = useSearchParams();
+  const search = params.get("q") ?? "";
+  const city = params.get("city") ?? "";
+  const results = roommates.filter(roommate => normalizeSearch([roommate.name, roommate.city, roommate.occupation, ...roommate.interests].join(" ")).includes(normalizeSearch(search)) && normalizeSearch(roommate.city).includes(normalizeSearch(city)));
   const [savedIds, setSavedIds] = useState(getSaved);
   useEffect(() => {
     const sync = () => setSavedIds(getSaved());
@@ -33,14 +39,14 @@ export default function MatchesPage() {
         <div>
           <h1 className="text-3xl font-display font-bold">Người ở ghép phù hợp</h1>
           <p className="text-muted-foreground mt-1">
-            {roommates.length} bạn cùng phòng phù hợp, xếp theo điểm AI.
+            {results.length} hồ sơ minh họa phù hợp với tìm kiếm.
           </p>
         </div>
         <div className="flex gap-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Tìm theo tên hoặc sở thích..."
+              aria-label="Tìm người ở ghép" value={search} onChange={event => setParams(previous => { const next = new URLSearchParams(previous); if (event.target.value) next.set("q", event.target.value); else next.delete("q"); return next; }, { replace: true })} placeholder="Tìm theo tên hoặc sở thích..."
               className="pl-9 h-10 rounded-xl w-64"
             />
           </div>
@@ -69,8 +75,9 @@ export default function MatchesPage() {
         ))}
       </div>
 
+      {!results.length && <p role="status" className="mt-8 text-center text-muted-foreground">Không có hồ sơ phù hợp. Thử tên hoặc khu vực khác.</p>}
       <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {roommates.map((r, index) => (
+        {results.map((r, index) => (
           <m.div
             key={r.id}
             initial={{ opacity: 0, y: 24 }}

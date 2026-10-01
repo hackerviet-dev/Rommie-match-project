@@ -43,7 +43,9 @@ for e in d['changelog']:story+=[KeepTogether([p(e['date']+' - v'+e['version'],'V
 styles.add(ParagraphStyle(name='VNEvidence',fontName='Arial',fontSize=8,leading=9,spaceAfter=1))
 styles.add(ParagraphStyle(name='VNEvidenceHead',fontName='ArialBold',fontSize=10,leading=12,spaceAfter=3))
 story+=[PageBreak(),p('B.4 Bằng chứng và quy trình cập nhật','VNTitle')]
-for c in caps:story+=[p(c['id']+' - '+c['name'],'VNEvidenceHead'),p(c['evidence'],'VNEvidence')]
+for index,c in enumerate(caps):
+ if index==9:story+=[PageBreak(),p('B.4 Bằng chứng - năng lực mở rộng','VNTitle')]
+ story+=[KeepTogether([p(c['id']+' - '+c['name'],'VNEvidenceHead'),p(c['evidence'],'VNEvidence')])]
 story+=[KeepTogether([p('Quy trình cập nhật','VNHead'),p('Sửa JSON nguồn; đồng bộ Markdown và dashboard PDF; kiểm tra trạng thái từng tầng, lịch sử thay đổi và bản render trước khi kết thúc.')])]
 tmp=ROOT/'tmp/pdfs';tmp.mkdir(parents=True,exist_ok=True);appendix=tmp/'status-appendix.pdf'
 def footer(canvas,doc):

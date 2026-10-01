@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { House, MapPin, Search, SlidersHorizontal } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { AppShell } from "@/layouts/main-layout";
 import { Button } from "@/components/ui/button";
@@ -9,10 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function RoomsPage() {
-  const [area, setArea] = useState("");
+  const [params, setParams] = useSearchParams();
+  const area = params.get("q") ?? "";
+  const setArea = (value: string) => setParams(previous => { const next = new URLSearchParams(previous); if (value) next.set("q", value); else next.delete("q"); return next; }, { replace: true });
   const [budget, setBudget] = useState("all");
   return <AppShell>
     <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="mb-2 text-sm font-medium text-teal">Một nơi ở, nhiều kết nối</p><h1 className="text-3xl font-display font-bold sm:text-4xl">Tìm căn phòng phù hợp với bạn</h1><p className="mt-3 text-muted-foreground">Chọn khu vực và ngân sách để bắt đầu hành trình ở ghép.</p></div><Button asChild variant="outline"><Link to="/settings?section=rooms"><House className="h-4 w-4" />Phòng của tôi</Link></Button></div>
+    {params.get("city") && <p className="mt-4 flex items-center gap-2 text-sm text-teal"><MapPin className="h-4 w-4" />Khu vực đã chọn: {params.get("city")}</p>}
     <Card className="mt-8 rounded-2xl border-mint/40 p-5 sm:p-6">
       <div className="grid items-end gap-4 sm:grid-cols-[minmax(0,1fr)_200px_auto]">
         <div><Label htmlFor="room-area">Khu vực mong muốn</Label><div className="relative mt-2"><MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input id="room-area" value={area} onChange={event => setArea(event.target.value)} placeholder="Thành phố, quận hoặc khu vực" className="pl-9" /></div></div>

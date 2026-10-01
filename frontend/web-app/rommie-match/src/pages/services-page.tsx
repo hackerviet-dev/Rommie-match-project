@@ -1,3 +1,5 @@
+import { useSearchParams } from "react-router-dom";
+import { normalizeSearch } from "@/utils/normalize-search";
 import { useState } from "react";
 import { AppShell } from "@/layouts/main-layout";
 import { Card } from "@/components/ui/card";
@@ -17,10 +19,12 @@ const CATS = ["Tất cả", ...Object.keys(catIcons)];
 
 
 export default function ServicesPage() {
+  const [params] = useSearchParams();
+  const search = params.get("q") ?? "";
   const [list] = useState(seed);
   const [cat, setCat] = useState("Tất cả");
 
-  const filtered = cat === "Tất cả" ? list : list.filter(s => s.category === cat);
+  const filtered = list.filter(s => (cat === "Tất cả" || s.category === cat) && normalizeSearch(`${s.name} ${s.category}`).includes(normalizeSearch(search)));
 
   return (
     <AppShell>
@@ -29,6 +33,8 @@ export default function ServicesPage() {
         <p className="text-muted-foreground mt-1">Các dịch vụ địa phương đáng tin cậy, hỗ trợ bạn ổn định cuộc sống.</p>
       </div>
 
+      {params.get("city") && <p className="mt-4 text-sm text-muted-foreground">Vị trí đã chọn: {params.get("city")} · Lọc dịch vụ theo vị trí sẽ sớm có.</p>}
+      {search && <p role="status" className="mt-4 text-sm text-muted-foreground">{filtered.length} dịch vụ minh họa cho “{search}”</p>}
       <div className="mt-6 flex flex-wrap gap-2">
         {CATS.map(c => {
           const active = c === cat;

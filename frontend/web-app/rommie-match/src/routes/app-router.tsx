@@ -1,6 +1,6 @@
 import { AuthGuard } from "./auth-guard";
 import { useAuthSession } from "@/features/auth";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
 
 import { AIChatbox } from "@/components/common/ai-chatbox";
 import { PageTransition } from "@/components/common/page-transition";
@@ -25,6 +25,7 @@ import RoomsPage from "@/pages/rooms-page";
 
 export function AppRouter() {
   useAuthSession();
+  const { pathname } = useLocation();
   return (
     <>
       <PageTransition><Routes>
@@ -46,7 +47,7 @@ export function AppRouter() {
         <Route path={ROUTES.profile} element={<AuthGuard><ProfilePage /></AuthGuard>} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes></PageTransition>
-      <AIChatbox />
+      {pathname !== ROUTES.chat && <AIChatbox />}
     </>
   );
 }

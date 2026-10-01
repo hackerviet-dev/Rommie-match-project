@@ -1,11 +1,12 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Home, Heart, MessageCircle, Store, Settings, Sparkles, Menu, Bell, TrendingUp, Crown, House } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { AccountMenu, useAuthStore } from "@/features/auth";
+import { HeaderSearch } from "@/components/common/header-search";
 
 const NOTIFICATIONS = [
   { i: Heart, t: "Linh đã xem hồ sơ của bạn", time: "2 phút", color: "text-rose-500 bg-rose-50", unread: true },
@@ -60,8 +61,15 @@ const nav = [
 
 export function Logo({ className = "" }: { className?: string }) {
   const isMember = useAuthStore((s) => s.isInitialized && s.isAuthenticated && Boolean(s.user));
+  const location = useLocation();
+  const navigate = useNavigate();
   return (
-    <Link to={isMember ? "/dashboard" : "/"} className={`flex items-center gap-2 font-display font-bold text-lg ${className}`}>
+    <Link to={isMember ? "/dashboard" : "/"} onClick={event => {
+      if (!isMember || location.pathname !== "/dashboard" || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+      navigate("/dashboard", { replace: true, state: { refreshSuggestions: true } });
+    }} className={`flex items-center gap-2 font-display font-bold text-lg ${className}`}>
       <img src={`${import.meta.env.BASE_URL}logo-mark.png`} alt="RoomieMatch" className="h-10 w-10 object-contain" />
       <span>
         <span className="text-navy">Roomie</span>
@@ -71,7 +79,7 @@ export function Logo({ className = "" }: { className?: string }) {
   );
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, fullHeight = false, hideHeader = false }: { children: ReactNode; fullHeight?: boolean; hideHeader?: boolean }) {
   const path = useLocation().pathname;
   const [open, setOpen] = useState(false);
   const user = useAuthStore((s) => s.user);
@@ -85,9 +93,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={fullHeight ? "flex h-dvh flex-col overflow-hidden bg-background" : "min-h-screen bg-background"}>
       <a href="#main-content" className="skip-link">Đến nội dung chính</a>
-      {showNavigation ? <header className="sticky top-0 z-40 glass border-b border-border/60">
+      {!hideHeader && (showNavigation ? <header className="sticky top-0 z-40 glass border-b border-border/60">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
           <div className="flex items-center gap-6">
             <Logo className="[&>span]:hidden sm:[&>span]:inline" />
@@ -107,8 +115,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               })}
             </nav>
           </div>
-          <div className="flex items-center gap-2">
+          {isMember && <div className="hidden min-w-0 flex-1 justify-center px-4 xl:flex"><HeaderSearch /></div>}
+          <div className="flex shrink-0 items-center gap-2">
             {isMember ? <>
+            <div className="xl:hidden"><HeaderSearch /></div>
             <Button asChild size="sm" className={`gap-1.5 rounded-full text-amber-950 shadow-sm hover:bg-amber-300 ${path.startsWith("/premium") ? "bg-amber-300" : "bg-amber-200"}`}>
               <Link to="/premium" aria-label="Premium" aria-current={path.startsWith("/premium") ? "page" : undefined}>
                 <Crown className="h-4 w-4" /> <span className="hidden sm:inline">Premium</span>
@@ -170,11 +180,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Button asChild className="rounded-full bg-navy text-white hover:bg-navy/90"><Link to="/register">Đăng ký</Link></Button>
           </div>
         </div>
-      </header>}
+      </header>)}
 
-      <main id="main-content" tabIndex={-1} className="mx-auto max-w-7xl px-4 sm:px-6 pb-28 lg:pb-10 pt-8 sm:pt-10">{children}</main>
+      <main id="main-content" tabIndex={-1} className={fullHeight ? "min-h-0 flex-1 overflow-hidden" : "mx-auto max-w-7xl px-4 sm:px-6 pb-28 lg:pb-10 pt-8 sm:pt-10"}>{children}</main>
 
-      {showNavigation && <nav aria-label="Điều hướng nhanh" className="lg:hidden fixed bottom-[max(.75rem,env(safe-area-inset-bottom))] inset-x-3 z-40 glass rounded-2xl shadow-lg border border-border/60">
+      {!hideHeader && showNavigation && !fullHeight && <nav aria-label="Điều hướng nhanh" className="lg:hidden fixed bottom-[max(.75rem,env(safe-area-inset-bottom))] inset-x-3 z-40 glass rounded-2xl shadow-lg border border-border/60">
         <div className={`grid ${isMember ? "grid-cols-5" : "grid-cols-4"}`}>
           {visibleNav.map((n) => {
             const active = n.to === "/" ? path === "/" : path.startsWith(n.to);

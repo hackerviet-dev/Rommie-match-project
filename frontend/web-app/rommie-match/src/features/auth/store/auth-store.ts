@@ -15,7 +15,7 @@ type AuthState = {
 };
 const toUser = (user: AuthenticatedUser): User => ({
   id: user.id, name: user.displayName, email: user.email, role: user.role,
-  avatar: user.avatarUrl ?? "https://api.dicebear.com/9.x/avataaars/svg?seed=Me",
+  avatar: user.avatarUrl ?? "",
 });
 export const useAuthStore = create<AuthState>((set) => ({
   user: null, isAuthenticated: false, isInitialized: false,
