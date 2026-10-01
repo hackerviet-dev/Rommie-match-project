@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 
 export type User = {
   id: string;
@@ -10,35 +10,24 @@ export type User = {
 
 type AuthState = {
   user: User | null;
+  accessToken: string | null;
   isAuthenticated: boolean;
-  login: (user: User) => void;
+  login: (user: User, accessToken: string) => void;
   logout: () => void;
   updateUser: (patch: Partial<User>) => void;
 };
-
-const DEFAULT_AVATAR = "https://api.dicebear.com/9.x/avataaars/svg?seed=Me";
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
+      accessToken: null,
       isAuthenticated: false,
-      login: (user) => set({ user, isAuthenticated: true }),
-      logout: () => set({ user: null, isAuthenticated: false }),
+      login: (user, accessToken) => set({ user, accessToken, isAuthenticated: true }),
+      logout: () => set({ user: null, accessToken: null, isAuthenticated: false }),
       updateUser: (patch) =>
         set((state) => ({ user: state.user ? { ...state.user, ...patch } : state.user })),
     }),
-    { name: "roomiematch-auth" },
+    { name: "roomiematch-auth", storage: createJSONStorage(() => sessionStorage) },
   ),
 );
-
-/** Tạo nhanh một user mock từ email/tên người dùng nhập vào biểu mẫu. */
-export function makeMockUser(email: string, name?: string): User {
-  const safeName = name?.trim() || email.split("@")[0] || "Bạn";
-  return {
-    id: "me",
-    name: safeName,
-    email,
-    avatar: DEFAULT_AVATAR,
-  };
-}

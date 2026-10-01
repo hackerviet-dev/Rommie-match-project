@@ -22,4 +22,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Demo accounts are only seeded by local Docker Compose, never in production. -->
+    <Content Include="..\..\..\database\init\*.sql" Exclude="..\..\..\database\init\002_seed.sql"
+             Link="Migrations\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

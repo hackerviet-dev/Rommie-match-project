@@ -15,6 +15,31 @@ public static class BillingModuleExtensions
 {
     public static IServiceCollection AddBillingModule(this IServiceCollection services, IConfiguration configuration)
     {
+        var billing = configuration.GetSection(BillingOptions.SectionName).Get<BillingOptions>() ?? new BillingOptions();
+        if (billing.Provider is not ("" or "mock" or "payos"))
+        {
+            throw new InvalidOperationException("Billing:Provider must be empty, mock, or payos.");
+        }
+
+        if (billing.Provider == PayOsPaymentGateway.ProviderName)
+        {
+            if (string.IsNullOrWhiteSpace(billing.PayOs.ClientId)
+                || string.IsNullOrWhiteSpace(billing.PayOs.ApiKey)
+                || string.IsNullOrWhiteSpace(billing.PayOs.ChecksumKey))
+            {
+                throw new InvalidOperationException(
+                    "payOS requires Billing:PayOs:ClientId, ApiKey, and ChecksumKey environment values.");
+            }
+
+            if (!Uri.TryCreate(billing.ReturnUrl, UriKind.Absolute, out var returnUrl)
+                || returnUrl.Scheme is not ("http" or "https")
+                || !Uri.TryCreate(billing.PayOs.ApiBaseUrl, UriKind.Absolute, out var apiUrl)
+                || apiUrl.Scheme != "https")
+            {
+                throw new InvalidOperationException("payOS requires a valid return URL and HTTPS API base URL.");
+            }
+        }
+
         services.Configure<BillingOptions>(configuration.GetSection(BillingOptions.SectionName));
         services.AddSingleton<IPaymentGateway, MockPaymentGateway>();
         // payOS is reached over HTTP, so it gets a named client. Registered once and shared by

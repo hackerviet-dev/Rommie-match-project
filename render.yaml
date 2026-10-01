@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: roomiematch-api
+    runtime: docker
+    plan: free
+    region: singapore
+    repo: https://github.com/hackerviet-dev/Rommie-match-project
+    branch: Bao-Branch
+    dockerfilePath: ./backend/src/RoomieMatch.Bootstrapper/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    buildFilter:
+      paths:
+        - backend/**
+        - database/init/**
+        - render.yaml
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: PORT
+        value: "8080"
+      - key: Database__MigrateOnStartup
+        value: "true"
+      - key: ConnectionStrings__Postgres
+        sync: false
+      - key: Jwt__Secret
+        generateValue: true
+      - key: Cors__AllowedOrigins__0
+        value: https://roomate-1.vercel.app
+      - key: ReverseProxy__TrustForwardedHeaders
+        value: "true"
+      - key: Billing__ReturnUrl
+        value: https://roomate-1.vercel.app/premium/result
+      - key: Billing__Provider
+        value: ""

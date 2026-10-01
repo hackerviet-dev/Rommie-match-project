@@ -14,6 +14,14 @@ var builder = WebApplication.CreateBuilder(args);
 var postgresConnectionString = builder.Configuration.GetConnectionString("Postgres")
     ?? throw new InvalidOperationException("ConnectionStrings:Postgres is required.");
 
+var migrateOnly = args.Contains("--migrate", StringComparer.Ordinal);
+if (migrateOnly || builder.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
+{
+    await DatabaseMigration.ApplyAsync(postgresConnectionString);
+    if (migrateOnly)
+        return;
+}
+
 builder.Services.AddSingleton<IDbConnectionFactory>(
     new PostgresConnectionFactory(postgresConnectionString));
 builder.Services.AddHealthChecks()

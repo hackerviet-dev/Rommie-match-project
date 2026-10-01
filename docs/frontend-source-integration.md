@@ -30,9 +30,10 @@ Lovable/TanStack runtime configuration and telemetry were not imported.
 
 ## Integration boundaries
 
-This source provides frontend demonstrations, not production integrations.
-Assistant replies are keyword-based, notifications are fixtures, and Premium
-buttons do not process payments. Onboarding/profile forms are local UI state;
+This source began as a frontend demonstration. The Premium buttons now call the
+backend checkout API, and login/register use backend sessions. payOS still needs
+merchant credentials and a public HTTPS backend webhook before real payments work.
+Assistant replies are keyword-based and notifications are fixtures. Onboarding/profile forms are local UI state;
 bookmarks use browser storage, not PostgreSQL. Report submission and server-side
 blocking still require backend endpoints. The ZIP lacks the live website's
 separate chat-avatar image, so `mascot-frame-middle.png` is used as the avatar.

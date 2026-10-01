@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
-import { makeMockUser, useAuthStore } from "@/stores/auth-store";
+import { useAuthStore } from "@/stores/auth-store";
+import { apiRequest, sessionUser, type AuthSession } from "@/lib/api";
 import { useState } from "react";
 import { Logo } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -31,8 +32,34 @@ export default function Register() {
   const [gender, setGender] = useState("");
   const [prefer, setPrefer] = useState("");
   const [city, setCity] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const canSubmit = gender && prefer && city;
+
+  const createAccount = async (form: HTMLFormElement) => {
+    setBusy(true);
+    setError("");
+    const fields = new FormData(form);
+    try {
+      const session = await apiRequest<AuthSession>("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({
+          email: String(fields.get("email") ?? ""),
+          password: String(fields.get("password") ?? ""),
+          displayName: String(fields.get("name") ?? ""),
+          city,
+          gender: gender === "m" ? "male" : gender === "f" ? "female" : gender === "o" ? "other" : null,
+        }),
+      });
+      login(sessionUser(session), session.accessToken);
+      nav("/onboarding");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Không thể tạo tài khoản.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-mint/20 via-background to-teal/10 p-4 sm:p-8 grid place-items-center">
@@ -41,7 +68,7 @@ export default function Register() {
         <h1 className="mt-6 text-3xl font-display font-bold">Tạo tài khoản</h1>
         <p className="mt-2 text-muted-foreground text-sm">Bắt đầu hành trình tìm bạn cùng phòng lý tưởng.</p>
 
-        <form className="mt-8 space-y-4" onSubmit={(e)=>{e.preventDefault(); if (!canSubmit) return; const form = new FormData(e.currentTarget); login(makeMockUser(String(form.get("email")), String(form.get("name")))); nav("/onboarding");}}>
+        <form className="mt-8 space-y-4" onSubmit={(e)=>{e.preventDefault(); if (canSubmit) void createAccount(e.currentTarget);}}>
           <div>
             <Label>Họ và tên</Label>
             <Input name="name" required className="mt-1.5 h-11 rounded-xl" placeholder="Nguyễn Văn A" />
@@ -98,11 +125,12 @@ export default function Register() {
 
           <Button
             type="submit"
-            disabled={!canSubmit}
+            disabled={!canSubmit || busy}
             className="w-full h-12 rounded-xl bg-navy hover:bg-navy/90 text-white font-semibold mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Tạo tài khoản
+            {busy ? "Đang tạo tài khoản…" : "Tạo tài khoản"}
           </Button>
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
           {!canSubmit && (
             <p className="text-center text-xs text-muted-foreground">
               Vui lòng chọn giới tính, đối tượng muốn ở cùng và thành phố để tiếp tục.

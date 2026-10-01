@@ -12,6 +12,7 @@ import Matches from "./routes/matches";
 import Chat from "./routes/chat";
 import Services from "./routes/services";
 import Premium from "./routes/premium";
+import PremiumResult from "./routes/premium-result";
 import Settings from "./routes/settings";
 import Admin from "./routes/admin";
 import Profile from "./routes/profile";
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="/chat" element={<Chat />} />
             <Route path="/services" element={<Services />} />
             <Route path="/premium" element={<Premium />} />
+            <Route path="/premium/result" element={<PremiumResult />} />
             <Route path="/community-guidelines" element={<CommunityGuidelines />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/admin" element={<Admin />} />

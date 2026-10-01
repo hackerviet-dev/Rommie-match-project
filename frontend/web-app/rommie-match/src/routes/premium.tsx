@@ -3,6 +3,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, X, Sparkles, Zap, Eye, Filter, TrendingUp } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { apiRequest } from "@/lib/api";
+import { useAuthStore } from "@/stores/auth-store";
 
 
 const features = [
@@ -18,6 +24,35 @@ const features = [
 ];
 
 export default function Premium() {
+  const navigate = useNavigate();
+  const token = useAuthStore((state) => state.accessToken);
+  const [busy, setBusy] = useState<string | null>(null);
+  const { data: gateway } = useQuery({
+    queryKey: ["billing-health"],
+    queryFn: () => apiRequest<{ provider: string }>("/api/billing/health"),
+    retry: false,
+  });
+  const paymentReady = gateway?.provider === "payos" || gateway?.provider === "mock";
+  const checkout = async (planCode: string) => {
+    if (!paymentReady) return;
+    if (!token) {
+      navigate("/login", { state: { returnTo: "/premium" } });
+      return;
+    }
+    setBusy(planCode);
+    try {
+      const payment = await apiRequest<{ paymentUrl: string }>(
+        "/api/billing/checkout",
+        { method: "POST", body: JSON.stringify({ planCode }) },
+        token,
+      );
+      window.location.assign(payment.paymentUrl);
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : "Không thể tạo đơn thanh toán.");
+      setBusy(null);
+    }
+  };
+
   return (
     <AppShell>
       <div className="text-center max-w-2xl mx-auto">
@@ -31,7 +66,7 @@ export default function Premium() {
           <div className="text-sm font-medium text-muted-foreground">Miễn phí</div>
           <div className="mt-2 flex items-baseline gap-2"><span className="text-4xl font-display font-extrabold">0₫</span><span className="text-muted-foreground">/mãi mãi</span></div>
           <p className="mt-2 text-sm text-muted-foreground">Mọi thứ để bắt đầu hành trình.</p>
-          <Button variant="outline" className="w-full mt-6 rounded-xl">Gói hiện tại</Button>
+          <Button variant="outline" disabled className="w-full mt-6 rounded-xl">Gói miễn phí</Button>
           <ul className="mt-6 space-y-3 text-sm">
             {["Ghép đôi cơ bản","Trò chuyện trong ứng dụng","5 lượt quét/tháng","Bộ lọc tiêu chuẩn"].map(f=>(
               <li key={f} className="flex gap-2"><Check className="h-4 w-4 text-mint mt-0.5" /> {f}</li>
@@ -45,8 +80,8 @@ export default function Premium() {
           </div>
           <div className="text-sm font-medium text-white/80">Premium</div>
           <div className="mt-2 flex items-baseline gap-2"><span className="text-4xl font-display font-extrabold">20.000₫</span><span className="text-white/80">/tháng</span></div>
-          <p className="mt-2 text-sm text-white/80">Huỷ bất cứ lúc nào.</p>
-          <Button className="w-full mt-6 rounded-xl bg-white text-navy hover:bg-white/90 font-semibold">Nâng cấp ngay</Button>
+          <p className="mt-2 text-sm text-white/80">Thanh toán một lần, không tự gia hạn.</p>
+          <Button onClick={() => void checkout("premium_monthly")} disabled={Boolean(busy) || !paymentReady} className="w-full mt-6 rounded-xl bg-white text-navy hover:bg-white/90 font-semibold">{busy === "premium_monthly" ? "Đang chuyển đến thanh toán…" : "Nâng cấp ngay"}</Button>
           <ul className="mt-6 space-y-3 text-sm">
             {[
               { i: Sparkles, t: "Phân tích hợp nhau nâng cao" },
@@ -67,7 +102,7 @@ export default function Premium() {
           <div className="text-sm font-medium text-muted-foreground">Premium năm</div>
           <div className="mt-2 flex items-baseline gap-2"><span className="text-4xl font-display font-extrabold">180.000đ</span><span className="text-muted-foreground">/năm</span></div>
           <p className="mt-2 text-sm text-muted-foreground">Tiết kiệm 60.000đ so với trả theo tháng.</p>
-          <Button className="w-full mt-6 rounded-xl bg-navy hover:bg-navy/90 text-white font-semibold">Chọn gói năm</Button>
+          <Button onClick={() => void checkout("premium_yearly")} disabled={Boolean(busy) || !paymentReady} className="w-full mt-6 rounded-xl bg-navy hover:bg-navy/90 text-white font-semibold">{busy === "premium_yearly" ? "Đang chuyển đến thanh toán…" : "Chọn gói năm"}</Button>
           <ul className="mt-6 space-y-3 text-sm">
             {[
               { i: Sparkles, t: "Tất cả tính năng Premium tháng" },
@@ -106,8 +141,9 @@ export default function Premium() {
         </Card>
 
         <div className="mt-10 text-center">
-          <Button size="lg" className="rounded-full bg-navy hover:bg-navy/90 text-white px-10 h-14 text-base">Nâng cấp Premium — 20.000₫/tháng</Button>
-          <p className="mt-3 text-xs text-muted-foreground">Thanh toán an toàn · Huỷ bất cứ lúc nào · Hoàn tiền trong 7 ngày</p>
+          <Button onClick={() => void checkout("premium_monthly")} disabled={Boolean(busy) || !paymentReady} size="lg" className="rounded-full bg-navy hover:bg-navy/90 text-white px-10 h-14 text-base">Nâng cấp Premium — 20.000₫/tháng</Button>
+          {!paymentReady && <p role="status" className="mt-3 text-sm text-muted-foreground">Cổng thanh toán chưa được kích hoạt.</p>}
+          <p className="mt-3 text-xs text-muted-foreground">Thanh toán qua payOS khi cổng được kích hoạt · Liên hệ hỗ trợ để yêu cầu hoàn tiền</p>
         </div>
       </div>
     </AppShell>
