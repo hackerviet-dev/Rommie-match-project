@@ -1,5 +1,8 @@
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { makeMockUser, useAuthStore } from "@/features/auth";
+import { authApi, useAuthStore, registerSchema } from "@/features/auth";
 import { useState } from "react";
 import { Logo } from "@/layouts/main-layout";
 import { Button } from "@/components/ui/button";
@@ -8,35 +11,63 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { VN_LOCATIONS } from "@/constants/locations";
+import { ArrowLeft } from "lucide-react";
 
 export default function RegisterPage() {
+  const form = useForm({ resolver: zodResolver(registerSchema), defaultValues: { email: "", password: "", displayName: "", city: "" } });
   const nav = useNavigate();
   const login = useAuthStore(s => s.login);
   const [gender, setGender] = useState("");
-  const [prefer, setPrefer] = useState("");
   const [city, setCity] = useState("");
 
-  const canSubmit = gender && prefer && city;
+  const queryClient = useQueryClient();
+  const register = useMutation({
+    mutationFn: authApi.register,
+    onSuccess: (session) => { queryClient.clear(); login(session); nav("/onboarding"); },
+  });
+  const canSubmit = gender && city;
+
+  function handleBack() {
+    if (typeof window.history.state?.idx === "number" && window.history.state.idx > 0) {
+      nav(-1);
+    } else {
+      nav("/");
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-mint/20 via-background to-teal/10 p-4 sm:p-8 grid place-items-center">
-      <Card className="w-full max-w-xl p-8 sm:p-10 rounded-3xl border-0 shadow-xl">
+    <div className="min-h-screen bg-gradient-to-br from-mint/20 via-background to-teal/10 p-4 pl-28 sm:p-8 sm:pl-28 lg:p-8 grid place-items-center">
+      <Card className="relative w-full max-w-xl p-8 sm:p-10 rounded-3xl border-0 shadow-xl">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={handleBack}
+            aria-label="Quay lại"
+            title="Quay lại"
+            className="absolute right-full mr-2 top-8 sm:top-10 gap-2 px-2 rounded-xl text-navy hover:bg-mint/30"
+          >
+            <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+            Quay lại
+          </Button>
         <Logo />
         <h1 className="mt-6 text-3xl font-display font-bold">Tạo tài khoản</h1>
         <p className="mt-2 text-muted-foreground text-sm">Bắt đầu hành trình tìm bạn cùng phòng lý tưởng.</p>
 
-        <form className="mt-8 space-y-4" onSubmit={(e)=>{e.preventDefault(); if (!canSubmit) return; const form = new FormData(e.currentTarget); login(makeMockUser(String(form.get("email")), String(form.get("name")))); nav("/onboarding");}}>
+        <form className="mt-8 space-y-4" onSubmit={form.handleSubmit(values => {
+          if (!canSubmit || register.isPending) return;
+          register.mutate({ ...values, gender: ({ m: "male", f: "female", o: "other", x: null } as Record<string, string | null>)[gender] });
+        })}>
           <div>
             <Label>Họ và tên</Label>
-            <Input name="name" required className="mt-1.5 h-11 rounded-xl" placeholder="Nguyễn Văn A" />
+            <Input {...form.register("displayName")} required minLength={2} maxLength={120} className="mt-1.5 h-11 rounded-xl" placeholder="Nguyễn Văn A" />
           </div>
           <div>
             <Label>Email</Label>
-            <Input name="email" required type="email" className="mt-1.5 h-11 rounded-xl" placeholder="ban@truonghoc.edu.vn" />
+            <Input {...form.register("email")} required type="email" className="mt-1.5 h-11 rounded-xl" placeholder="ban@truonghoc.edu.vn" />
           </div>
           <div>
             <Label>Mật khẩu</Label>
-            <Input name="password" required minLength={8} type="password" className="mt-1.5 h-11 rounded-xl" placeholder="Ít nhất 8 ký tự" />
+            <Input {...form.register("password")} required minLength={8} maxLength={200} type="password" className="mt-1.5 h-11 rounded-xl" placeholder="Ít nhất 8 ký tự" />
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
@@ -51,26 +82,10 @@ export default function RegisterPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Tuổi</Label>
-              <Input type="number" className="mt-1.5 h-11 rounded-xl" placeholder="22" />
-            </div>
-          </div>
-          <div>
-            <Label>Bạn muốn ở cùng với <span className="text-destructive">*</span></Label>
-            <Select value={prefer} onValueChange={setPrefer}>
-              <SelectTrigger className="mt-1.5 h-11 rounded-xl"><SelectValue placeholder="Chọn đối tượng" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="m">Chỉ nam</SelectItem>
-                <SelectItem value="f">Chỉ nữ</SelectItem>
-                <SelectItem value="mf">Nam hoặc nữ</SelectItem>
-                <SelectItem value="any">Không quan trọng</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
           <div>
             <Label>Thành phố / Tỉnh hiện tại <span className="text-destructive">*</span></Label>
-            <Select value={city} onValueChange={setCity}>
+            <Select value={city} onValueChange={value => { setCity(value); form.setValue("city", value, { shouldValidate: true }); }}>
               <SelectTrigger className="mt-1.5 h-11 rounded-xl"><SelectValue placeholder="Chọn thành phố hoặc tỉnh" /></SelectTrigger>
               <SelectContent className="max-h-72">
                 {VN_LOCATIONS.map((c) => (
@@ -82,14 +97,16 @@ export default function RegisterPage() {
 
           <Button
             type="submit"
-            disabled={!canSubmit}
+            disabled={!canSubmit || register.isPending}
             className="w-full h-12 rounded-xl bg-navy hover:bg-navy/90 text-white font-semibold mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Tạo tài khoản
+            {register.isPending ? "Đang tạo tài khoản…" : "Tạo tài khoản"}
           </Button>
+          {Object.values(form.formState.errors).map((error, i) => <p key={i} role="alert" className="text-sm text-destructive">{error.message}</p>)}
+          {register.error && <p role="alert" className="text-sm text-destructive">{register.error.message}</p>}
           {!canSubmit && (
             <p className="text-center text-xs text-muted-foreground">
-              Vui lòng chọn giới tính, đối tượng muốn ở cùng và thành phố để tiếp tục.
+              Vui lòng chọn giới tính và thành phố để tiếp tục.
             </p>
           )}
           <p className="text-center text-xs text-muted-foreground">

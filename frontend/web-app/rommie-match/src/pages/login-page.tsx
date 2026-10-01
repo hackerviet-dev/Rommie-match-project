@@ -1,20 +1,26 @@
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { Logo } from "@/layouts/main-layout";
-import { makeMockUser, useAuthStore } from "@/features/auth";
+import { authApi, useAuthStore, loginSchema } from "@/features/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Heart } from "lucide-react";
+import { ArrowLeft, Heart } from "lucide-react";
 
 export default function LoginPage() {
+  const form = useForm({ resolver: zodResolver(loginSchema), defaultValues: { email: "", password: "" } });
   const nav = useNavigate();
   const login = useAuthStore((s) => s.login);
 
-  const signIn = (email: string) => {
-    login(makeMockUser(email || "ban@truonghoc.edu.vn"));
-    nav("/dashboard");
-  };
+  const health = useQuery({ queryKey: ["auth", "health"], queryFn: authApi.health, retry: false });
+  const queryClient = useQueryClient();
+  const signIn = useMutation({
+    mutationFn: authApi.login,
+    onSuccess: (session) => { queryClient.clear(); login(session); nav("/dashboard"); },
+  });
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-background">
@@ -49,6 +55,12 @@ export default function LoginPage() {
 
       <div className="flex items-center justify-center p-6 sm:p-12">
         <Card className="w-full max-w-md p-8 rounded-3xl border-0 shadow-lg lg:shadow-none lg:border-0">
+          <Button asChild variant="ghost" className="mb-6 -ml-2 gap-2 rounded-xl px-2 text-navy hover:bg-mint/30">
+            <Link to="/">
+              <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+              Quay lại trang chủ
+            </Link>
+          </Button>
           <div className="lg:hidden mb-8">
             <Logo />
           </div>
@@ -57,19 +69,15 @@ export default function LoginPage() {
             Đăng nhập để tìm bạn cùng phòng lý tưởng.
           </p>
 
+          {health.isError && <p role="status" className="mt-4 text-sm text-destructive">Không kết nối được máy chủ. Vui lòng thử lại sau.</p>}
           <form
             className="mt-8 space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const email = (e.currentTarget.elements.namedItem("email") as HTMLInputElement)
-                ?.value;
-              signIn(email);
-            }}
+            onSubmit={form.handleSubmit(values => signIn.mutate(values))}
           >
             <div>
               <Label htmlFor="email">Email</Label>
               <Input
-                id="email"
+                {...form.register("email")} id="email" required autoComplete="email"
                 type="email"
                 placeholder="ban@truonghoc.edu.vn"
                 className="mt-1.5 h-12 rounded-xl"
@@ -83,15 +91,17 @@ export default function LoginPage() {
                 </a>
               </div>
               <Input
-                id="pw"
+                {...form.register("password")} id="pw" required autoComplete="current-password"
                 type="password"
                 placeholder="••••••••"
                 className="mt-1.5 h-12 rounded-xl"
               />
             </div>
-            <Button className="w-full h-12 rounded-xl bg-navy hover:bg-navy/90 text-white font-semibold">
-              Đăng nhập
+            <Button disabled={signIn.isPending} className="w-full h-12 rounded-xl bg-navy hover:bg-navy/90 text-white font-semibold">
+              {signIn.isPending ? "Đang đăng nhập…" : "Đăng nhập"}
             </Button>
+            {Object.values(form.formState.errors).map((error, i) => <p key={i} role="alert" className="text-sm text-destructive">{error.message}</p>)}
+            {signIn.error && <p role="alert" className="text-sm text-destructive">{signIn.error.message}</p>}
           </form>
 
           <div className="relative my-6">
@@ -106,7 +116,7 @@ export default function LoginPage() {
           <Button
             variant="outline"
             className="w-full h-12 rounded-xl"
-            onClick={() => signIn("ban@truonghoc.edu.vn")}
+            disabled title="Đăng nhập Google chưa được hỗ trợ"
           >
             <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
               <path

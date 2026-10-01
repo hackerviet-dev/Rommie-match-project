@@ -1,10 +1,12 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { tokenStorage } from "@/services/token-storage";
 import { roommates } from "@/mocks/data/mock-data";
 import { getSaved, removeSaved } from "@/features/profile";
 import { toast } from "sonner";
 import { Bookmark, MessageCircle, Search } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { AppShell } from "@/layouts/main-layout";
-import { useAuthStore } from "@/features/auth";
+import { authApi, useAuthStore } from "@/features/auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -203,10 +205,16 @@ function SavedProfiles() {
 export function SettingsScreen() {
   const nav = useNavigate();
   const logout = useAuthStore((s) => s.logout);
-  const handleLogout = () => {
-    logout();
-    nav("/");
-  };
+  const queryClient = useQueryClient();
+  const signOut = useMutation({
+    mutationFn: async (allDevices: boolean) => {
+      if (allDevices) await authApi.logoutAll();
+      else { const token = tokenStorage.getRefreshToken(); if (token) await authApi.logout(token); }
+    },
+    onSuccess: () => { logout(); queryClient.clear(); nav("/"); },
+    onError: (error) => toast.error(error.message),
+  });
+  const handleLogout = () => signOut.mutate(true);
   const [dark, setDark] = useState(false);
   const [p, setP] = useState(initialProfileData);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
@@ -936,7 +944,11 @@ export function SettingsScreen() {
             <Button variant="outline" className="w-full justify-start rounded-xl">
               Xác minh CCCD/CMND
             </Button>
+            <Button variant="outline" disabled={signOut.isPending} onClick={() => signOut.mutate(false)}>
+              Đăng xuất thiết bị này
+            </Button>
             <Button
+              disabled={signOut.isPending}
               onClick={handleLogout}
               variant="outline"
               className="w-full justify-start rounded-xl text-destructive border-destructive/30 hover:bg-destructive/5"

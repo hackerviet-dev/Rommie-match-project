@@ -1,10 +1,10 @@
 {
   "documentVersion": "1.2",
-  "lastUpdated": "2026-09-30",
+  "lastUpdated": "2026-10-01",
   "currentPhase": "MVP - nối frontend với backend và hoàn thiện các luồng cốt lõi",
   "baseline": {
     "branch": "Duy-feature/landing-page-fe",
-    "commit": "3be31f6"
+    "commit": "816fa43"
   },
   "statusLabels": {
     "done": "Hoàn thành",
@@ -18,7 +18,7 @@
       "code": "G",
       "name": "Khách",
       "target": "Xem nội dung công khai và tạo phiên đăng nhập",
-      "current": "Auth và các API công khai đã chạy; form frontend vẫn chưa gọi Auth API",
+      "current": "Form đăng ký/đăng nhập web đã nối Auth API; phiên được kiểm tra qua /me và tự refresh; chưa có Google OAuth.",
       "status": "partial"
     },
     {
@@ -83,11 +83,11 @@
       "target": "Đăng ký, login, refresh, logout và lấy user hiện tại",
       "backend": "done",
       "database": "done",
-      "frontend": "partial",
+      "frontend": "done",
       "verification": "partial",
       "status": "partial",
-      "evidence": "Register/login/refresh/logout/me có JWT; smoke test register và /api/auth/me đạt",
-      "nextAction": "Nối authApi, token storage và refresh flow vào form"
+      "evidence": "Form web gọi register/login thật, React Hook Form + Zod; lưu JWT/refresh token; khôi phục /me; refresh tự động có single-flight; logout và logout-all gọi backend; route thành viên có kiểm tra phiên. Lint/typecheck/build đạt; smoke API thật kiểm tra đăng ký, login sai/đúng, /me, refresh đồng thời, logout và logout-all; chưa kiểm thử UI trình duyệt.",
+      "nextAction": "Kiểm thử tương tác trình duyệt và nhiều tab; Google OAuth là luồng riêng chưa triển khai."
     },
     {
       "id": "CAP-03",
@@ -303,6 +303,11 @@
     }
   ],
   "changelog": [
+    {
+      "date": "2026-10-01",
+      "version": "1.2",
+      "summary": "Nối Auth web với register/login/me/refresh/logout/logout-all; loại bỏ phiên mock, thêm validation/loading/error và vô hiệu hóa nút Google chưa hỗ trợ. Kiểm tra API thật, lint, typecheck và build; còn kiểm thử UI trình duyệt."
+    },
     {
       "date": "2026-09-30",
       "version": "1.2",
