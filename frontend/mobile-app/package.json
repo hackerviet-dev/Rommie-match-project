@@ -18,7 +18,8 @@
     "react-native": "latest",
     "react-native-reanimated": "latest",
     "react-native-safe-area-context": "latest",
-    "react-native-svg": "latest"
+    "react-native-svg": "latest",
+    "react-native-worklets": "^0.9.3"
   },
   "devDependencies": {
     "@react-native-community/cli": "^20.1.3",

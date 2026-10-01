@@ -1,0 +1,16 @@
+export const ROUTES = {
+  landing: "/",
+  login: "/login",
+  register: "/register",
+  onboarding: "/onboarding",
+  quiz: "/quiz",
+  dashboard: "/dashboard",
+  matches: "/matches",
+  chat: "/chat",
+  services: "/services",
+  premium: "/premium",
+  communityGuidelines: "/community-guidelines",
+  settings: "/settings",
+  admin: "/admin",
+  profile: "/profile/:id",
+} as const;

@@ -12,7 +12,8 @@ services:
     buildFilter:
       paths:
         - backend/**
-        - database/init/**
+          - database/init/**
+          - database/migrations/**
         - render.yaml
     envVars:
       - key: ASPNETCORE_ENVIRONMENT

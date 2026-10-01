@@ -14,6 +14,7 @@ RUN dotnet restore backend/src/RoomieMatch.Bootstrapper/RoomieMatch.Bootstrapper
 
 COPY backend/src backend/src
 COPY database/init database/init
+COPY database/migrations database/migrations
 RUN dotnet publish backend/src/RoomieMatch.Bootstrapper/RoomieMatch.Bootstrapper.csproj \
     --configuration Release \
     --no-restore \
