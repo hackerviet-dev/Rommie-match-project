@@ -24,17 +24,19 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-background">
-      <div className="hidden lg:block relative gradient-brand overflow-hidden">
-        <div className="absolute inset-0 grid place-items-center p-12">
-          <div className="text-white max-w-md">
+      <div className="hidden lg:flex relative gradient-brand overflow-hidden justify-center px-8 py-10 xl:p-12">
+          <div className="relative z-10 w-full text-white max-w-md">
             <Logo className="text-white [&_span]:!text-white" />
-            <h2 className="mt-12 text-4xl font-display font-bold leading-tight">
+            <Button asChild variant="ghost" className="mt-3 -ml-2 gap-2 rounded-xl px-2 text-white hover:bg-white/10 hover:text-white">
+              <Link to="/">
+                <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+                Quay lại trang chủ
+              </Link>
+            </Button>
+            <h2 className="mt-6 text-4xl font-display font-bold leading-tight">
               Chào mừng bạn quay lại hành trình tìm bạn cùng phòng.
             </h2>
-            <p className="mt-4 text-white/85">
-              Những người hợp với bạn đang chờ. Cuộc trò chuyện mới, cơ hội mới.
-            </p>
-            <div className="mt-12 grid grid-cols-3 gap-3">
+            <div className="mt-6 grid w-full max-w-[360px] grid-cols-3 gap-3">
               {["Linh", "Minh", "HaMy", "Khoa", "Trang", "Duy"].map((s, i) => (
                 <div
                   key={s}
@@ -42,6 +44,7 @@ export default function LoginPage() {
                   style={{ animationDelay: `${i * 0.3}s` }}
                 >
                   <img
+                    alt={`Ảnh đại diện minh họa ${s}`}
                     src={`https://api.dicebear.com/9.x/avataaars/svg?seed=${s}&backgroundColor=ffffff`}
                     className="w-3/4"
                   />
@@ -49,20 +52,19 @@ export default function LoginPage() {
               ))}
             </div>
           </div>
-        </div>
         <Heart className="absolute -bottom-20 -right-20 h-96 w-96 text-white/5" />
       </div>
 
       <div className="flex items-center justify-center p-6 sm:p-12">
         <Card className="w-full max-w-md p-8 rounded-3xl border-0 shadow-lg lg:shadow-none lg:border-0">
-          <Button asChild variant="ghost" className="mb-6 -ml-2 gap-2 rounded-xl px-2 text-navy hover:bg-mint/30">
-            <Link to="/">
-              <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-              Quay lại trang chủ
-            </Link>
-          </Button>
           <div className="lg:hidden mb-8">
             <Logo />
+            <Button asChild variant="ghost" className="mt-4 -ml-2 gap-2 rounded-xl px-2 text-navy hover:bg-mint/30">
+              <Link to="/">
+                <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+                Quay lại trang chủ
+              </Link>
+            </Button>
           </div>
           <h1 className="text-3xl font-display font-bold">Chào mừng trở lại 👋</h1>
           <p className="mt-2 text-muted-foreground text-sm">

@@ -75,18 +75,26 @@ export function AppShell({ children }: { children: ReactNode }) {
   const path = useLocation().pathname;
   const [open, setOpen] = useState(false);
   const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isInitialized = useAuthStore((s) => s.isInitialized);
+  const isMember = isInitialized && isAuthenticated && Boolean(user);
+  const showNavigation = path !== "/premium" || isMember;
+  const visibleNav = isMember ? nav : [
+    { to: "/", label: "Trang chủ", icon: Home },
+    ...nav.filter((item) => item.to === "/services" || item.to === "/premium"),
+  ];
   const initials = user?.name?.trim().slice(0, 2).toUpperCase() || "ME";
 
   return (
     <div className="min-h-screen bg-background">
       <a href="#main-content" className="skip-link">Đến nội dung chính</a>
-      <header className="sticky top-0 z-40 glass border-b border-border/60">
+      {showNavigation ? <header className="sticky top-0 z-40 glass border-b border-border/60">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
           <div className="flex items-center gap-6">
-            <Logo />
+            <Logo className="[&>span]:hidden sm:[&>span]:inline" />
             <nav aria-label="Điều hướng chính" className="hidden lg:flex items-center gap-1">
-              {nav.map((n) => {
-                const active = path.startsWith(n.to);
+              {visibleNav.map((n) => {
+                const active = n.to === "/" ? path === "/" : path.startsWith(n.to);
                 return (
                   <Link
                     key={n.to}
@@ -101,15 +109,20 @@ export function AppShell({ children }: { children: ReactNode }) {
             </nav>
           </div>
           <div className="flex items-center gap-2">
+            {isMember ? <>
             <NotificationBell />
             <Link to="/settings" aria-label="Cài đặt tài khoản" className="grid h-11 w-11 place-items-center rounded-full">
               <Avatar className="h-9 w-9 ring-2 ring-mint">
                 <AvatarImage
-                  src={user?.avatar ?? "https://api.dicebear.com/9.x/avataaars/svg?seed=Me"}
+                  src={user?.avatar}
                 />
                 <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
             </Link>
+            </> : <>
+              <Button asChild variant="ghost" size="sm"><Link to="/login">Đăng nhập</Link></Button>
+              <Button asChild size="sm"><Link to="/register">Đăng ký</Link></Button>
+            </>}
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Mở menu" className="lg:hidden">
@@ -120,37 +133,49 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <SheetTitle>Khám phá RoomieMatch</SheetTitle>
                 <SheetDescription>Hồ sơ, ghép đôi và cuộc sống ở chung.</SheetDescription>
                 <div className="mt-8 flex flex-col gap-1">
-                  {nav.map((n) => (
+                  {visibleNav.map((n) => (
                     <Link
                       key={n.to}
                       to={n.to}
-                      aria-current={path.startsWith(n.to) ? "page" : undefined}
+                      aria-current={(n.to === "/" ? path === "/" : path.startsWith(n.to)) ? "page" : undefined}
                       onClick={() => setOpen(false)}
                       className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-muted"
                     >
                       <n.icon className="h-4 w-4" /> {n.label}
                     </Link>
                   ))}
-                  <Link
+                  {isMember && <Link
                     to="/settings"
                     onClick={() => setOpen(false)}
                     className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-muted"
                   >
                     <Settings className="h-4 w-4" /> Cài đặt
-                  </Link>
+                  </Link>}
                 </div>
               </SheetContent>
             </Sheet>
           </div>
         </div>
-      </header>
+      </header> : <header className="sticky top-0 z-40 glass border-b border-border/50">
+        <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-2 sm:px-6">
+          <Logo className="[&>span]:hidden sm:[&>span]:inline" />
+          <nav aria-label="Điều hướng công khai" className="order-3 flex w-full justify-center gap-7 text-sm font-medium text-muted-foreground md:order-none md:w-auto">
+            <Link to="/" className="hover:text-foreground">Trang chủ</Link>
+            <Link to="/premium" aria-current="page" className="font-semibold text-navy">Premium</Link>
+          </nav>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="ghost" className="rounded-full"><Link to="/login">Đăng nhập</Link></Button>
+            <Button asChild className="rounded-full bg-navy text-white hover:bg-navy/90"><Link to="/register">Đăng ký</Link></Button>
+          </div>
+        </div>
+      </header>}
 
       <main id="main-content" tabIndex={-1} className="mx-auto max-w-7xl px-4 sm:px-6 pb-28 lg:pb-10 pt-8 sm:pt-10">{children}</main>
 
-      <nav aria-label="Điều hướng nhanh" className="lg:hidden fixed bottom-[max(.75rem,env(safe-area-inset-bottom))] inset-x-3 z-40 glass rounded-2xl shadow-lg border border-border/60">
-        <div className="grid grid-cols-5">
-          {nav.map((n) => {
-            const active = path.startsWith(n.to);
+      {showNavigation && <nav aria-label="Điều hướng nhanh" className="lg:hidden fixed bottom-[max(.75rem,env(safe-area-inset-bottom))] inset-x-3 z-40 glass rounded-2xl shadow-lg border border-border/60">
+        <div className={`grid ${isMember ? "grid-cols-5" : "grid-cols-3"}`}>
+          {visibleNav.map((n) => {
+            const active = n.to === "/" ? path === "/" : path.startsWith(n.to);
             return (
               <Link
                 key={n.to}
@@ -164,7 +189,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             );
           })}
         </div>
-      </nav>
+      </nav>}
     </div>
   );
 }

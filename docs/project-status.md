@@ -1,10 +1,10 @@
 # Trạng thái dự án RoomieMatch
 
-- Cập nhật: **2026-10-01**
+- Cập nhật: **2026-10-02**
 - Phiên bản tài liệu: **1.2**
-- Branch/commit kiểm tra: **Duy-feature/landing-page-fe / ecfc513**
+- Branch/commit kiểm tra: **Duy-feature/landing-page-fe / 5c2d37a**
 - Giai đoạn hiện tại: **MVP - nối frontend với backend và hoàn thiện các luồng cốt lõi**
-- Mức bao phủ kỹ thuật: **63%**
+- Mức bao phủ kỹ thuật: **64%**
 
 > Phần trăm tính theo bốn lớp backend, database, frontend và verification; done = 1, partial = 0.5, planned/blocked = 0, bỏ qua na. Đây không phải phần trăm thời gian hoặc ngân sách.
 
@@ -26,7 +26,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | CAP-01 | Hạ tầng Docker | Hoàn thành | Hoàn thành | Hoàn thành | Hoàn thành | Hoàn thành | Theo dõi CI và cấu hình production |
 | CAP-02 | Đăng ký và đăng nhập | Hoàn thành | Hoàn thành | Hoàn thành | Một phần | Một phần | Kiểm thử tương tác trình duyệt và nhiều tab; Google OAuth là luồng riêng chưa triển khai. |
-| CAP-03 | Hồ sơ cá nhân | Hoàn thành | Hoàn thành | Một phần | Một phần | Một phần | Nối lưu hồ sơ bổ sung, Profile page và Settings với profileApi. |
+| CAP-03 | Hồ sơ cá nhân | Hoàn thành | Hoàn thành | Một phần | Một phần | Một phần | Nối lưu hồ sơ bổ sung onboarding và Profile page với profileApi. |
 | CAP-04 | Sở thích lối sống | Hoàn thành | Hoàn thành | Một phần | Một phần | Một phần | Nối onboarding với lifestyleApi; kiểm thử lưu dữ liệu và khôi phục các lựa chọn. |
 | CAP-05 | Phòng | Hoàn thành | Hoàn thành | Một phần | Một phần | Một phần | Nối danh sách, chi tiết và form phòng với roomsApi. |
 | CAP-06 | Trắc nghiệm | Hoàn thành | Hoàn thành | Hoàn thành | Một phần | Một phần | Nối quiz UI với API và thêm kiểm thử chấm trait |
@@ -39,15 +39,15 @@
 | CAP-13 | Dịch vụ gần nhà | Hoàn thành | Hoàn thành | Một phần | Một phần | Một phần | Nối trang dịch vụ và lịch đặt với hyperlocalApi |
 | CAP-14 | eKYC | Một phần | Hoàn thành | Dự kiến | Dự kiến | Một phần | Tạo luồng submit/status và chốt nhà cung cấp, chính sách dữ liệu |
 | CAP-15 | Quản trị | Một phần | Hoàn thành | Một phần | Dự kiến | Một phần | Nối dashboard/moderation frontend và bổ sung quản lý tài khoản |
-| CAP-16 | Thông báo và cài đặt | Dự kiến | Hoàn thành | Một phần | Dự kiến | Một phần | Tạo preferences API và nối Settings page |
+| CAP-16 | Thông báo và cài đặt | Dự kiến | Hoàn thành | Một phần | Một phần | Một phần | Tạo preferences/notification API, nối tùy chọn Settings và hồ sơ đã lưu; nối chỉnh sửa chỗ ở với dữ liệu thật. |
 | CAP-17 | Trợ lý AI | Dự kiến | Dự kiến | Một phần | Dự kiến | Dự kiến | Chốt use case, model, dữ liệu và ngân sách |
 
 ## Bằng chứng kiểm tra
 
-- **CAP-01 - Hạ tầng Docker:** Compose chạy PostgreSQL, migration, .NET API gồm SignalR chat và web; build/smoke test đạt
-- **CAP-02 - Đăng ký và đăng nhập:** Form web gọi register/login thật, React Hook Form + Zod; lưu JWT/refresh token; khôi phục /me; refresh tự động có single-flight; logout và logout-all gọi backend; route thành viên có kiểm tra phiên. Lint/typecheck/build đạt; smoke API thật kiểm tra đăng ký, login sai/đúng, /me, refresh đồng thời, logout và logout-all; chưa kiểm thử UI trình duyệt.
-- **CAP-03 - Hồ sơ cá nhân:** GET/PUT profile có phân quyền; onboarding đã đọc GET me/profile và hiện họ tên, giới tính, thành phố đã đăng ký thành tóm tắt; chỉ hiện ô nhập thông tin thiếu. Validation từng bước có lỗi đỏ, tự focus; kiểm thử schema, UI bước 1/2, lint/typecheck/build đạt. Chưa lưu bổ sung onboarding lên server.
-- **CAP-04 - Sở thích lối sống:** GET/PUT lifestyle đã có; onboarding kiểm tra từng lựa chọn bắt buộc, đánh dấu đỏ và chặn sang bước tiếp theo khi thiếu; kiểm thử schema và UI bước 2 đạt. Onboarding chưa lưu lifestyle lên server.
+- **CAP-01 - Hạ tầng Docker:** Compose chạy PostgreSQL, migration, API/SignalR và web; build/smoke test đạt. Trang chủ giữ màu, phông chữ và nội dung; hướng dẫn cạnh thẻ ghép đôi, Premium căn đều, footer bốn cột; header ẩn/hiện theo hướng cuộn. Kiểm tra desktop/mobile, menu, anchor, FAQ; lint/typecheck/build đạt (6 cảnh báo lint cũ).
+- **CAP-02 - Đăng ký và đăng nhập:** Web gọi register/login/me/refresh/logout/logout-all thật; RHF/Zod, JWT/refresh token, single-flight refresh và bảo vệ route. Smoke API kiểm tra đăng ký, login sai/đúng, me, refresh đồng thời và logout; lint/typecheck/build đạt. Nút về trang chủ nằm dưới logo bên trái trên login desktop/mobile; điều hướng đã kiểm tra. Chưa kiểm thử UI xác thực và nhiều tab. Guard yêu cầu phiên và user hợp lệ; Premium được bảo vệ; header khách không hiện avatar/thông báo/Cài đặt. Khách chọn mua gói trả phí chuyển tới login; Settings vẫn được bảo vệ. Premium mở công khai với header khách: Trang chủ/Premium/Đăng nhập/Đăng ký; ẩn avatar/chuông/menu thành viên.
+- **CAP-03 - Hồ sơ cá nhân:** GET/PUT profile có phân quyền; onboarding đã đọc GET me/profile và hiện họ tên, giới tính, thành phố đã đăng ký thành tóm tắt; chỉ hiện ô nhập thông tin thiếu. Validation từng bước có lỗi đỏ, tự focus; kiểm thử schema, UI bước 1/2, lint/typecheck/build đạt. Chưa lưu bổ sung onboarding lên server. Settings đọc GET me/profile theo userId; dialog dùng dữ liệu thật, trường thiếu để trống; PUT profile lưu tên/ngày sinh/giới tính/nơi ở/nghề nghiệp/giới thiệu và cập nhật cache. Kiểm tra tài khoản mới chưa onboarding, validation tên trống, lưu/tải lại/đăng nhập lại bằng API thật; lint/typecheck/build đạt.
+- **CAP-04 - Sở thích lối sống:** GET/PUT lifestyle đã có; onboarding kiểm tra từng lựa chọn bắt buộc, đánh dấu đỏ và chặn sang bước tiếp theo khi thiếu; kiểm thử schema và UI bước 2 đạt. Onboarding chưa lưu lifestyle lên server. Settings đọc lifestyle thật; 404 hiện chưa cập nhật, không gán lựa chọn mẫu; lỗi tải có nút thử lại.
 - **CAP-05 - Phòng:** Rooms list/detail/CRUD có phân quyền và soft delete; onboarding đã validate cả hai nhánh chỗ ở, số dương/số nguyên, tiền thuê và ngày hợp lệ; kiểm thử schema đạt. Form chưa nối lưu phòng lên API.
 - **CAP-06 - Trắc nghiệm:** Quiz definition, GET/PUT kết quả và quiz_responses đã có; submit smoke test đạt
 - **CAP-07 - Ghép đôi:** Matching có điểm chi tiết, quota, filter và boost; list/usage đã smoke test
@@ -55,11 +55,11 @@
 - **CAP-09 - Chat realtime:** SignalR có JWT, nhóm user/conversation, REST history, read receipt và lưu PostgreSQL; REST start chat đã smoke test
 - **CAP-10 - An toàn cộng đồng:** Có bảng blocks/reports và API admin duyệt report; chưa có API thành viên gửi report/chặn
 - **CAP-11 - Thanh toán:** Checkout mock, lịch sử, callback idempotent và hoàn tiền 7 ngày đã có; smoke test paid/refunded đạt
-- **CAP-12 - Quyền Premium:** Backend đã enforce scan quota, advanced filters và Boost; usage endpoint đã smoke test
+- **CAP-12 - Quyền Premium:** Backend đã enforce scan quota, advanced filters và Boost; usage endpoint đã smoke test Trang Premium web yêu cầu đăng nhập; chưa nối checkout thật. Trang Premium mở công khai; khách có header logo/Trang chủ/Premium/Đăng nhập/Đăng ký; ẩn menu thành viên/chuông/avatar, CTA gói trả phí chuyển đăng nhập, miễn phí chuyển đăng ký. Kiểm tra UI khách và lint/typecheck/build đạt; checkout thành viên vẫn chưa nối.
 - **CAP-13 - Dịch vụ gần nhà:** List/detail/filter/CRUD và booking/cancel đã có; smoke test booking đạt
 - **CAP-14 - eKYC:** Có bảng verification và API admin duyệt; chưa có API người dùng nộp hồ sơ hoặc nhà cung cấp eKYC
 - **CAP-15 - Quản trị:** Có API stats, report queue, verification queue và CRUD dịch vụ; admin smoke test đạt
-- **CAP-16 - Thông báo và cài đặt:** Đã có bảng user_settings; notification/settings UI vẫn dùng fixtures và chưa có API
+- **CAP-16 - Thông báo và cài đặt:** Settings đã đọc/cập nhật hồ sơ cá nhân qua profileApi, đọc lifestyle và subscription thật; bỏ hồ sơ Nguyễn Linh, phòng mẫu và badge quiz giả. Kiểm tra tài khoản mới bỏ dở onboarding, lưu/tải lại/đăng nhập lại; lint/typecheck/build đạt. Tùy chọn thông báo/quyền riêng tư và ngôn ngữ chưa có API lưu; hồ sơ đã lưu còn localStorage/fixtures.
 - **CAP-17 - Trợ lý AI:** Mascot hoạt động nhưng reply theo từ khóa tại frontend
 
 ## Roadmap
@@ -74,6 +74,14 @@
 
 ## Lịch sử cập nhật
 
+- **2026-10-02 - v1.2:** Thay header ẩn trên Premium bằng header công khai theo ảnh: logo, Trang chủ, Premium, Đăng nhập và Đăng ký; không hiện avatar/chuông/menu thành viên. Kiểm tra gói trả phí tới login, miễn phí tới register; lint/typecheck/build đạt.
+- **2026-10-02 - v1.2:** Mở trang Premium cho khách và ẩn toàn bộ header cùng menu dưới khi chưa đăng nhập; CTA trả phí chuyển đăng nhập, gói miễn phí chuyển đăng ký. Giữ header thành viên và bảo vệ Settings; kiểm tra UI khách, lint/typecheck/build đạt.
+- **2026-10-02 - v1.2:** Sửa Settings hiển thị hồ sơ mẫu sau khi bỏ dở onboarding: lấy thông tin đăng ký từ API, để trống mục thiếu, bỏ phòng/badge quiz giả; form có validation và PUT lưu hồ sơ thật. Kiểm tra tài khoản mới, lưu/tải lại/đăng nhập lại và lint/typecheck/build.
+- **2026-10-02 - v1.2:** Thu gọn phần giới thiệu bên trái trang login: bỏ dòng mô tả nhỏ, giảm khoảng cách và giới hạn lưới avatar; dùng bố cục theo nội dung để tránh cắt avatar trên màn hình thấp. Kiểm tra 1440x720, lint/typecheck/build đạt.
+- **2026-10-02 - v1.2:** Sửa luồng khách: bảo vệ route Premium, guard kiểm tra user, ẩn avatar/thông báo/Cài đặt khi chưa đăng nhập; menu khách chỉ có trang chủ, dịch vụ và Premium. Thêm logo RoomieMatch cho favicon và apple-touch-icon; kiểm tra luồng khách, lint/typecheck/build.
+- **2026-10-02 - v1.2:** Cân lại mật độ trang chủ: ba bước hướng dẫn cạnh thẻ ghép đôi, Premium đồng bộ căn lề và CTA ở cuối, footer thêm điều hướng sẵn có và giảm khoảng cách. Chuyển nút quay lại login xuống dưới logo bên trái, hỗ trợ mobile. Giữ màu/phông chữ/nội dung; lint/typecheck/build đạt.
+- **2026-10-02 - v1.2:** Header trang chủ tự trượt ẩn khi cuộn xuống, hiện lại khi cuộn lên hoặc về đầu trang; hỗ trợ bàn phím/reduced-motion. Giữ phông chữ và cỡ chữ ban đầu theo yêu cầu; lint/typecheck/build đạt.
+- **2026-10-02 - v1.2:** Đổi bố cục trang chủ theo tham chiếu Tinder: header ngang, hero lớn ở giữa, thẻ tính năng cao, khối nội dung rộng và footer chữ lớn. Giữ palette và nội dung RoomieMatch; responsive desktop/mobile, menu tự đóng và FAQ được kiểm tra; không đổi mức hoàn thành API.
 - **2026-10-01 - v1.2:** Cập nhật giao diện onboarding: thông tin đăng ký hiện thành tóm tắt; chỉ nhập mục còn thiếu. Thêm validation bốn bước, lỗi đỏ từng mục và focus ô lỗi; đọc profile thật, kiểm thử schema/UI và lint/typecheck/build.
 - **2026-10-01 - v1.2:** Nối Auth web với register/login/me/refresh/logout/logout-all; loại bỏ phiên mock, thêm validation/loading/error và vô hiệu hóa nút Google chưa hỗ trợ. Kiểm tra API thật, lint, typecheck và build; còn kiểm thử UI trình duyệt.
 - **2026-09-30 - v1.2:** Đồng bộ tiến độ sau khi thêm quiz, SignalR chat, Premium enforcement, booking/refund, moderation và migration tự động.

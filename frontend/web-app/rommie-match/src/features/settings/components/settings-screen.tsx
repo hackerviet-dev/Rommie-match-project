@@ -1,7 +1,7 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { tokenStorage } from "@/services/token-storage";
 import { roommates } from "@/mocks/data/mock-data";
-import { getSaved, removeSaved } from "@/features/profile";
+import { getSaved, removeSaved, profileApi } from "@/features/profile";
 import { toast } from "sonner";
 import { Bookmark, MessageCircle, Search } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -9,8 +9,6 @@ import { AppShell } from "@/layouts/main-layout";
 import { authApi, useAuthStore } from "@/features/auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -25,7 +23,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   User,
@@ -38,71 +35,18 @@ import {
   MapPin,
   Briefcase,
   Calendar,
-  Wallet,
-  Home,
   CheckCircle2,
-  GraduationCap,
   Cake,
-  Users,
   Pencil,
-  X,
-  Save,
-  Plus,
   Trash2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useEffect, useState } from "react";
-
-// Mock dữ liệu hồ sơ đã tạo từ Onboarding
-const initialProfileData = {
-  name: "Nguyễn Linh",
-  age: 23,
-  gender: "Nữ",
-  occupation: "Nhà thiết kế UX",
-  school: "RMIT Việt Nam",
-  city: "TP. Hồ Chí Minh",
-  bio: "Nhà thiết kế UX & mê cà phê.",
-  avatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=Me",
-  sleep: "22h–0h",
-  cleanliness: 4,
-  smoke: "Không",
-  drink: "Có",
-  pets: "Không",
-  social: 60,
-  roomEnv: "Yên tĩnh",
-  hasRoom: true,
-  room: {
-    address: "123 Nguyễn Huệ",
-    district: "Quận 1, TP.HCM",
-    bedrooms: 2,
-    area: 45,
-    rent: "3.500.000",
-    needPeople: 1,
-    moveIn: "15/01/2026",
-    type: "Căn hộ",
-    amenities: ["Máy lạnh", "Máy giặt", "Wi-Fi", "Bếp", "Ban công"],
-  },
-  verified: true,
-  quizCompleted: true,
-  premium: false,
-};
-
-function calcCompletion(p: typeof initialProfileData) {
-  const checks = [
-    p.name,
-    p.age,
-    p.occupation,
-    p.city,
-    p.bio,
-    p.sleep,
-    p.roomEnv,
-    p.hasRoom,
-    p.quizCompleted,
-  ];
-  const done = checks.filter(Boolean).length;
-  return Math.round((done / checks.length) * 100);
-}
+import { lifestyleApi } from "@/features/lifestyle/services/lifestyle-api";
+import { billingApi } from "@/features/billing/services/billing-api";
+import { ApiError } from "@/services/api-error";
+import { SettingsProfileEditor } from "./settings-profile-editor";
 
 function Section({
   icon: Icon,
@@ -216,114 +160,37 @@ export function SettingsScreen() {
   });
   const handleLogout = () => signOut.mutate(true);
   const [dark, setDark] = useState(false);
-  const [p, setP] = useState(initialProfileData);
+  const userId = useAuthStore(state => state.user?.id);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
-  const [editRoomOpen, setEditRoomOpen] = useState(false);
-  const [newAmenity, setNewAmenity] = useState("");
-
-  const completion = calcCompletion(p);
-
-  // Form states
-  const [profileForm, setProfileForm] = useState({
-    name: p.name,
-    age: p.age,
-    gender: p.gender,
-    occupation: p.occupation,
-    school: p.school,
-    city: p.city,
-    bio: p.bio,
-    sleep: p.sleep,
-    cleanliness: p.cleanliness,
-    smoke: p.smoke,
-    drink: p.drink,
-    pets: p.pets,
-    social: p.social,
-    roomEnv: p.roomEnv,
+  const profile = useQuery({ queryKey: ["profile", "me", userId], queryFn: profileApi.getMine, enabled: Boolean(userId) });
+  const lifestyle = useQuery({
+    queryKey: ["lifestyle", "me", userId], enabled: Boolean(userId),
+    queryFn: async () => {
+      try { return await lifestyleApi.getMine(); }
+      catch (error) { if (error instanceof ApiError && error.status === 404) return null; throw error; }
+    },
   });
-
-  const [roomForm, setRoomForm] = useState({
-    hasRoom: p.hasRoom,
-    address: p.room.address,
-    district: p.room.district,
-    bedrooms: p.room.bedrooms,
-    area: p.room.area,
-    rent: p.room.rent,
-    needPeople: p.room.needPeople,
-    moveIn: p.room.moveIn,
-    type: p.room.type,
-    amenities: [...p.room.amenities],
-  });
-
-  const openEditProfile = () => {
-    setProfileForm({
-      name: p.name,
-      age: p.age,
-      gender: p.gender,
-      occupation: p.occupation,
-      school: p.school,
-      city: p.city,
-      bio: p.bio,
-      sleep: p.sleep,
-      cleanliness: p.cleanliness,
-      smoke: p.smoke,
-      drink: p.drink,
-      pets: p.pets,
-      social: p.social,
-      roomEnv: p.roomEnv,
-    });
-    setEditProfileOpen(true);
+  const subscription = useQuery({ queryKey: ["subscription", "me", userId], queryFn: billingApi.subscription, enabled: Boolean(userId) });
+  const openEditProfile = () => setEditProfileOpen(true);
+  if (profile.isPending) return <AppShell><p role="status">Đang tải hồ sơ…</p></AppShell>;
+  if (!profile.data) return <AppShell><p role="alert">{profile.error?.message ?? "Không thể tải hồ sơ."}</p><Button onClick={() => void profile.refetch()}>Thử lại</Button></AppShell>;
+  const actual = profile.data;
+  const missing = "Chưa cập nhật";
+  const birth = actual.birthDate ? new Date(`${actual.birthDate}T00:00:00`) : null;
+  const today = new Date();
+  const age = birth ? today.getFullYear() - birth.getFullYear() - (today.getMonth() < birth.getMonth() || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate()) ? 1 : 0) : null;
+  const life = lifestyle.data;
+  const p = {
+    name: actual.displayName, age: age === null ? missing : `${age} tuổi`,
+    gender: ({ male: "Nam", female: "Nữ", other: "Khác" } as Record<string, string>)[actual.gender ?? ""] ?? missing,
+    occupation: actual.occupation || missing, city: actual.city || missing, district: actual.district || missing,
+    bio: actual.bio || "Chưa có giới thiệu.", avatar: actual.avatarUrl ?? undefined, verified: actual.isVerified,
+    sleep: life?.sleepSchedule || missing, cleanliness: life ? `${life.cleanliness}/5` : missing,
+    smoke: life ? (life.smoking ? "Có" : "Không") : missing,
+    pets: life ? (life.petFriendly ? "Có" : "Không") : missing,
+    social: life?.socialStyle || missing,
   };
-
-  const openEditRoom = () => {
-    setRoomForm({
-      hasRoom: p.hasRoom,
-      address: p.room.address,
-      district: p.room.district,
-      bedrooms: p.room.bedrooms,
-      area: p.room.area,
-      rent: p.room.rent,
-      needPeople: p.room.needPeople,
-      moveIn: p.room.moveIn,
-      type: p.room.type,
-      amenities: [...p.room.amenities],
-    });
-    setEditRoomOpen(true);
-  };
-
-  const saveProfile = () => {
-    setP((prev) => ({ ...prev, ...profileForm }));
-    setEditProfileOpen(false);
-  };
-
-  const saveRoom = () => {
-    setP((prev) => ({
-      ...prev,
-      hasRoom: roomForm.hasRoom,
-      room: {
-        address: roomForm.address,
-        district: roomForm.district,
-        bedrooms: roomForm.bedrooms,
-        area: roomForm.area,
-        rent: roomForm.rent,
-        needPeople: roomForm.needPeople,
-        moveIn: roomForm.moveIn,
-        type: roomForm.type,
-        amenities: roomForm.amenities,
-      },
-    }));
-    setEditRoomOpen(false);
-  };
-
-  const addAmenity = () => {
-    if (newAmenity.trim() && !roomForm.amenities.includes(newAmenity.trim())) {
-      setRoomForm((prev) => ({ ...prev, amenities: [...prev.amenities, newAmenity.trim()] }));
-      setNewAmenity("");
-    }
-  };
-
-  const removeAmenity = (item: string) => {
-    setRoomForm((prev) => ({ ...prev, amenities: prev.amenities.filter((a) => a !== item) }));
-  };
+  const completion = actual.profileCompletion;
 
   return (
     <AppShell>
@@ -342,25 +209,14 @@ export function SettingsScreen() {
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="font-display font-bold text-xl">{p.name}</h2>
               <span className="text-sm text-muted-foreground">
-                · {p.age} tuổi · {p.gender}
+                · {p.age} · {p.gender}
               </span>
               {p.verified && (
                 <Badge className="rounded-full bg-mint/40 text-navy border-0 gap-1">
                   <CheckCircle2 className="h-3 w-3" /> Đã xác minh
                 </Badge>
               )}
-              {p.quizCompleted && (
-                <Badge className="rounded-full bg-teal/20 text-navy border-0">
-                  Đã làm trắc nghiệm
-                </Badge>
-              )}
-              {p.premium ? (
-                <Badge className="rounded-full bg-amber-100 text-amber-800 border-0">Premium</Badge>
-              ) : (
-                <Badge variant="outline" className="rounded-full">
-                  Miễn phí
-                </Badge>
-              )}
+              {subscription.data && <Badge variant="outline" className="rounded-full">{subscription.data.isPremium ? "Premium" : "Miễn phí"}</Badge>}
             </div>
             <p className="text-sm text-muted-foreground mt-1">{p.bio}</p>
             <div className="mt-3">
@@ -378,19 +234,19 @@ export function SettingsScreen() {
             <Briefcase className="h-4 w-4 text-navy" /> {p.occupation}
           </div>
           <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/40">
-            <GraduationCap className="h-4 w-4 text-navy" /> {p.school}
+            <MapPin className="h-4 w-4 text-navy" /> {p.district}
           </div>
           <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/40">
             <MapPin className="h-4 w-4 text-navy" /> {p.city}
           </div>
           <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/40">
-            <Cake className="h-4 w-4 text-navy" /> {p.age} tuổi
+            <Cake className="h-4 w-4 text-navy" /> {p.age}
           </div>
           <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/40">
             <Calendar className="h-4 w-4 text-navy" /> Ngủ: {p.sleep}
           </div>
           <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/40">
-            🧹 Sạch sẽ: {p.cleanliness}/5
+            🧹 Sạch sẽ: {p.cleanliness}
           </div>
         </div>
 
@@ -399,69 +255,13 @@ export function SettingsScreen() {
             Hút thuốc: {p.smoke}
           </Badge>
           <Badge variant="outline" className="rounded-full">
-            Uống bia rượu: {p.drink}
-          </Badge>
-          <Badge variant="outline" className="rounded-full">
             Thú cưng: {p.pets}
           </Badge>
-          <Badge variant="outline" className="rounded-full">
-            Không gian: {p.roomEnv}
-          </Badge>
-          <Badge variant="outline" className="rounded-full">
-            Hướng ngoại: {p.social}%
-          </Badge>
+          <Badge variant="outline" className="rounded-full">Phong cách xã hội: {p.social}</Badge>
         </div>
-
-        {/* Tình trạng chỗ ở */}
-        <div className="mt-6 p-4 rounded-2xl bg-gradient-to-br from-mint/20 to-teal/10 border border-mint/30">
-          <div className="flex items-center gap-2 mb-3">
-            <Home className="h-5 w-5 text-navy" />
-            <span className="font-display font-bold">
-              {p.hasRoom ? "Bạn đang có phòng" : "Bạn đang tìm phòng"}
-            </span>
-            <Badge className="rounded-full bg-navy text-white border-0 ml-auto">
-              {p.hasRoom ? "Tìm bạn cùng phòng" : "Tìm phòng & bạn cùng phòng"}
-            </Badge>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="rounded-lg h-8 px-2"
-              onClick={openEditRoom}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-          {p.hasRoom && (
-            <>
-              <div className="grid sm:grid-cols-2 gap-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" /> {p.room.address},{" "}
-                  {p.room.district}
-                </div>
-                <div className="flex items-center gap-2">
-                  🏷️ {p.room.type} · {p.room.bedrooms} PN · {p.room.area} m²
-                </div>
-                <div className="flex items-center gap-2">
-                  <Wallet className="h-4 w-4 text-muted-foreground" /> {p.room.rent} đ/người
-                </div>
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" /> Cần thêm {p.room.needPeople}{" "}
-                  người
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" /> Dọn vào {p.room.moveIn}
-                </div>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {p.room.amenities.map((a: string) => (
-                  <Badge key={a} variant="secondary" className="rounded-full text-xs">
-                    {a}
-                  </Badge>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+        {!life && <div className="mt-4 rounded-xl bg-muted/40 p-4 text-sm">
+          {lifestyle.isError ? <><p role="alert">Không thể tải thông tin lối sống.</p><Button variant="outline" onClick={() => void lifestyle.refetch()}>Thử lại</Button></> : lifestyle.isPending ? <p role="status">Đang tải thông tin lối sống…</p> : <><p>Bạn chưa cập nhật thông tin lối sống.</p><Link className="text-teal underline" to="/onboarding">Tiếp tục hoàn thiện hồ sơ</Link></>}
+        </div>}
 
         {/* Nút chỉnh sửa hồ sơ */}
         <div className="mt-4 flex gap-2">
@@ -477,404 +277,14 @@ export function SettingsScreen() {
           <DialogHeader>
             <DialogTitle className="font-display">Chỉnh sửa thông tin cá nhân</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 mt-2">
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div>
-                <Label>Tên hiển thị</Label>
-                <Input
-                  className="mt-1.5 h-10 rounded-xl"
-                  value={profileForm.name}
-                  onChange={(e) => setProfileForm((prev) => ({ ...prev, name: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label>Tuổi</Label>
-                <Input
-                  type="number"
-                  className="mt-1.5 h-10 rounded-xl"
-                  value={profileForm.age}
-                  onChange={(e) =>
-                    setProfileForm((prev) => ({ ...prev, age: Number(e.target.value) }))
-                  }
-                />
-              </div>
-              <div>
-                <Label>Giới tính</Label>
-                <Select
-                  value={profileForm.gender}
-                  onValueChange={(v) => setProfileForm((prev) => ({ ...prev, gender: v }))}
-                >
-                  <SelectTrigger className="mt-1.5 h-10 rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Nam">Nam</SelectItem>
-                    <SelectItem value="Nữ">Nữ</SelectItem>
-                    <SelectItem value="Khác">Khác</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Thành phố</Label>
-                <Input
-                  className="mt-1.5 h-10 rounded-xl"
-                  value={profileForm.city}
-                  onChange={(e) => setProfileForm((prev) => ({ ...prev, city: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label>Nghề nghiệp</Label>
-                <Input
-                  className="mt-1.5 h-10 rounded-xl"
-                  value={profileForm.occupation}
-                  onChange={(e) =>
-                    setProfileForm((prev) => ({ ...prev, occupation: e.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <Label>Trường học</Label>
-                <Input
-                  className="mt-1.5 h-10 rounded-xl"
-                  value={profileForm.school}
-                  onChange={(e) => setProfileForm((prev) => ({ ...prev, school: e.target.value }))}
-                />
-              </div>
-            </div>
-            <div>
-              <Label>Giới thiệu</Label>
-              <Input
-                className="mt-1.5 h-10 rounded-xl"
-                value={profileForm.bio}
-                onChange={(e) => setProfileForm((prev) => ({ ...prev, bio: e.target.value }))}
-              />
-            </div>
-
-            <div className="border-t pt-4 mt-2">
-              <div className="font-display font-bold text-sm mb-3">Lối sống</div>
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div>
-                  <Label>Giờ ngủ</Label>
-                  <Input
-                    className="mt-1.5 h-10 rounded-xl"
-                    value={profileForm.sleep}
-                    onChange={(e) => setProfileForm((prev) => ({ ...prev, sleep: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label>Sạch sẽ (1-5)</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={5}
-                    className="mt-1.5 h-10 rounded-xl"
-                    value={profileForm.cleanliness}
-                    onChange={(e) =>
-                      setProfileForm((prev) => ({ ...prev, cleanliness: Number(e.target.value) }))
-                    }
-                  />
-                </div>
-                <div>
-                  <Label>Hút thuốc</Label>
-                  <Select
-                    value={profileForm.smoke}
-                    onValueChange={(v) => setProfileForm((prev) => ({ ...prev, smoke: v }))}
-                  >
-                    <SelectTrigger className="mt-1.5 h-10 rounded-xl">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Có">Có</SelectItem>
-                      <SelectItem value="Không">Không</SelectItem>
-                      <SelectItem value="Thỉnh thoảng">Thỉnh thoảng</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Uống bia/rượu</Label>
-                  <Select
-                    value={profileForm.drink}
-                    onValueChange={(v) => setProfileForm((prev) => ({ ...prev, drink: v }))}
-                  >
-                    <SelectTrigger className="mt-1.5 h-10 rounded-xl">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Có">Có</SelectItem>
-                      <SelectItem value="Không">Không</SelectItem>
-                      <SelectItem value="Thỉnh thoảng">Thỉnh thoảng</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Thú cưng</Label>
-                  <Select
-                    value={profileForm.pets}
-                    onValueChange={(v) => setProfileForm((prev) => ({ ...prev, pets: v }))}
-                  >
-                    <SelectTrigger className="mt-1.5 h-10 rounded-xl">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Có">Có</SelectItem>
-                      <SelectItem value="Không">Không</SelectItem>
-                      <SelectItem value="Thích nhưng không nuôi">Thích nhưng không nuôi</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Không gian sống</Label>
-                  <Select
-                    value={profileForm.roomEnv}
-                    onValueChange={(v) => setProfileForm((prev) => ({ ...prev, roomEnv: v }))}
-                  >
-                    <SelectTrigger className="mt-1.5 h-10 rounded-xl">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Yên tĩnh">Yên tĩnh</SelectItem>
-                      <SelectItem value="Sôi động">Sôi động</SelectItem>
-                      <SelectItem value="Cân bằng">Cân bằng</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Hướng ngoại (%)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    className="mt-1.5 h-10 rounded-xl"
-                    value={profileForm.social}
-                    onChange={(e) =>
-                      setProfileForm((prev) => ({ ...prev, social: Number(e.target.value) }))
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-2 justify-end pt-2">
-              <Button
-                variant="outline"
-                className="rounded-xl gap-1"
-                onClick={() => setEditProfileOpen(false)}
-              >
-                <X className="h-4 w-4" /> Huỷ
-              </Button>
-              <Button
-                className="rounded-xl bg-navy hover:bg-navy/90 text-white gap-1"
-                onClick={saveProfile}
-              >
-                <Save className="h-4 w-4" /> Lưu
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog chỉnh sửa thông tin phòng */}
-      <Dialog open={editRoomOpen} onOpenChange={setEditRoomOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="font-display">Chỉnh sửa thông tin phòng</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 mt-2">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/40">
-              <div>
-                <div className="text-sm font-medium">Bạn đang có phòng?</div>
-                <div className="text-xs text-muted-foreground">
-                  Bật nếu bạn đã có phòng và cần tìm bạn cùng phòng
-                </div>
-              </div>
-              <Switch
-                checked={roomForm.hasRoom}
-                onCheckedChange={(v) => setRoomForm((prev) => ({ ...prev, hasRoom: v }))}
-              />
-            </div>
-
-            {roomForm.hasRoom && (
-              <>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <div>
-                    <Label>Địa chỉ</Label>
-                    <Input
-                      className="mt-1.5 h-10 rounded-xl"
-                      value={roomForm.address}
-                      onChange={(e) =>
-                        setRoomForm((prev) => ({ ...prev, address: e.target.value }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label>Quận/Huyện</Label>
-                    <Input
-                      className="mt-1.5 h-10 rounded-xl"
-                      value={roomForm.district}
-                      onChange={(e) =>
-                        setRoomForm((prev) => ({ ...prev, district: e.target.value }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label>Loại phòng</Label>
-                    <Select
-                      value={roomForm.type}
-                      onValueChange={(v) => setRoomForm((prev) => ({ ...prev, type: v }))}
-                    >
-                      <SelectTrigger className="mt-1.5 h-10 rounded-xl">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Căn hộ">Căn hộ</SelectItem>
-                        <SelectItem value="Phòng trọ">Phòng trọ</SelectItem>
-                        <SelectItem value="Nhà nguyên căn">Nhà nguyên căn</SelectItem>
-                        <SelectItem value="Chung cư mini">Chung cư mini</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Số phòng ngủ</Label>
-                    <Input
-                      type="number"
-                      className="mt-1.5 h-10 rounded-xl"
-                      value={roomForm.bedrooms}
-                      onChange={(e) =>
-                        setRoomForm((prev) => ({ ...prev, bedrooms: Number(e.target.value) }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label>Diện tích (m²)</Label>
-                    <Input
-                      type="number"
-                      className="mt-1.5 h-10 rounded-xl"
-                      value={roomForm.area}
-                      onChange={(e) =>
-                        setRoomForm((prev) => ({ ...prev, area: Number(e.target.value) }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label>Giá thuê/người (đ)</Label>
-                    <Input
-                      className="mt-1.5 h-10 rounded-xl"
-                      value={roomForm.rent}
-                      onChange={(e) => setRoomForm((prev) => ({ ...prev, rent: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <Label>Cần thêm (người)</Label>
-                    <Input
-                      type="number"
-                      className="mt-1.5 h-10 rounded-xl"
-                      value={roomForm.needPeople}
-                      onChange={(e) =>
-                        setRoomForm((prev) => ({ ...prev, needPeople: Number(e.target.value) }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label>Ngày dọn vào</Label>
-                    <Input
-                      className="mt-1.5 h-10 rounded-xl"
-                      value={roomForm.moveIn}
-                      onChange={(e) => setRoomForm((prev) => ({ ...prev, moveIn: e.target.value }))}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label>Tiện ích</Label>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {roomForm.amenities.map((a: string) => (
-                      <Badge
-                        key={a}
-                        variant="secondary"
-                        className="rounded-full text-xs gap-1 pr-1"
-                      >
-                        {a}
-                        <button onClick={() => removeAmenity(a)} className="hover:text-destructive">
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="flex gap-2 mt-2">
-                    <Input
-                      className="h-9 rounded-xl text-sm"
-                      placeholder="Thêm tiện ích..."
-                      value={newAmenity}
-                      onChange={(e) => setNewAmenity(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && addAmenity()}
-                    />
-                    <Button
-                      size="sm"
-                      className="rounded-xl h-9 px-3 bg-navy hover:bg-navy/90 text-white"
-                      onClick={addAmenity}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </>
-            )}
-
-            <div className="flex gap-2 justify-end pt-2">
-              <Button
-                variant="outline"
-                className="rounded-xl gap-1"
-                onClick={() => setEditRoomOpen(false)}
-              >
-                <X className="h-4 w-4" /> Huỷ
-              </Button>
-              <Button
-                className="rounded-xl bg-navy hover:bg-navy/90 text-white gap-1"
-                onClick={saveRoom}
-              >
-                <Save className="h-4 w-4" /> Lưu
-              </Button>
-            </div>
-          </div>
+          <SettingsProfileEditor profile={actual} onSaved={() => setEditProfileOpen(false)} />
         </DialogContent>
       </Dialog>
 
       <div className="mt-6 grid lg:grid-cols-2 gap-5">
         <Section icon={User} title="Chỉnh sửa hồ sơ" desc="Cách bạn hiển thị với những người khác.">
-          <div className="flex items-center gap-4 mb-5">
-            <Avatar className="h-16 w-16 ring-2 ring-mint">
-              <AvatarImage src={p.avatar} />
-              <AvatarFallback>ME</AvatarFallback>
-            </Avatar>
-            <Button variant="outline" className="rounded-xl">
-              Đổi ảnh
-            </Button>
-          </div>
-          <div className="space-y-3">
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div>
-                <Label>Tên hiển thị</Label>
-                <Input className="mt-1.5 h-10 rounded-xl" defaultValue={p.name} />
-              </div>
-              <div>
-                <Label>Tuổi</Label>
-                <Input type="number" className="mt-1.5 h-10 rounded-xl" defaultValue={p.age} />
-              </div>
-              <div>
-                <Label>Nghề nghiệp</Label>
-                <Input className="mt-1.5 h-10 rounded-xl" defaultValue={p.occupation} />
-              </div>
-              <div>
-                <Label>Thành phố</Label>
-                <Input className="mt-1.5 h-10 rounded-xl" defaultValue={p.city} />
-              </div>
-            </div>
-            <div>
-              <Label>Giới thiệu</Label>
-              <Input className="mt-1.5 h-10 rounded-xl" defaultValue={p.bio} />
-            </div>
-            <Button className="rounded-xl bg-navy hover:bg-navy/90 text-white">Lưu thay đổi</Button>
-          </div>
+          <p className="text-sm text-muted-foreground mb-4">Cập nhật tên, ngày sinh, giới tính, nơi ở và giới thiệu của bạn.</p>
+          <Button variant="outline" className="rounded-xl" onClick={openEditProfile}>Chỉnh sửa hồ sơ</Button>
         </Section>
 
         <Section icon={Bell} title="Thông báo" desc="Chọn nội dung muốn nhận.">

@@ -1,3 +1,5 @@
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/features/auth";
 import { AppShell } from "@/layouts/main-layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +20,11 @@ const features = [
 ];
 
 export default function PremiumPage() {
+  const navigate = useNavigate();
+  const isMember = useAuthStore(state => state.isInitialized && state.isAuthenticated && Boolean(state.user));
+  const requireLogin = () => {
+    if (!isMember) navigate("/login", { state: { from: "/premium" } });
+  };
   return (
     <AppShell>
       <div className="text-center max-w-2xl mx-auto">
@@ -31,7 +38,7 @@ export default function PremiumPage() {
           <div className="text-sm font-medium text-muted-foreground">Miễn phí</div>
           <div className="mt-2 flex items-baseline gap-2"><span className="text-4xl font-display font-extrabold">0₫</span><span className="text-muted-foreground">/mãi mãi</span></div>
           <p className="mt-2 text-sm text-muted-foreground">Mọi thứ để bắt đầu hành trình.</p>
-          <Button variant="outline" className="w-full mt-6 rounded-xl">Gói hiện tại</Button>
+          <Button variant="outline" className="w-full mt-6 rounded-xl" onClick={() => { if (!isMember) navigate("/register"); }}>{isMember ? "Gói hiện tại" : "Bắt đầu miễn phí"}</Button>
           <ul className="mt-6 space-y-3 text-sm">
             {["Ghép đôi cơ bản","Trò chuyện trong ứng dụng","5 lượt quét/tháng","Bộ lọc tiêu chuẩn"].map(f=>(
               <li key={f} className="flex gap-2"><Check className="h-4 w-4 text-mint mt-0.5" /> {f}</li>
@@ -46,7 +53,7 @@ export default function PremiumPage() {
           <div className="text-sm font-medium text-white/80">Premium</div>
           <div className="mt-2 flex items-baseline gap-2"><span className="text-4xl font-display font-extrabold">20.000₫</span><span className="text-white/80">/tháng</span></div>
           <p className="mt-2 text-sm text-white/80">Huỷ bất cứ lúc nào.</p>
-          <Button className="w-full mt-6 rounded-xl bg-white text-navy hover:bg-white/90 font-semibold">Nâng cấp ngay</Button>
+          <Button onClick={requireLogin} className="w-full mt-6 rounded-xl bg-white text-navy hover:bg-white/90 font-semibold">Nâng cấp ngay</Button>
           <ul className="mt-6 space-y-3 text-sm">
             {[
               { i: Sparkles, t: "Phân tích hợp nhau nâng cao" },
@@ -67,7 +74,7 @@ export default function PremiumPage() {
           <div className="text-sm font-medium text-muted-foreground">Premium năm</div>
           <div className="mt-2 flex items-baseline gap-2"><span className="text-4xl font-display font-extrabold">180.000đ</span><span className="text-muted-foreground">/năm</span></div>
           <p className="mt-2 text-sm text-muted-foreground">Tiết kiệm 60.000đ so với trả theo tháng.</p>
-          <Button className="w-full mt-6 rounded-xl bg-navy hover:bg-navy/90 text-white font-semibold">Chọn gói năm</Button>
+          <Button onClick={requireLogin} className="w-full mt-6 rounded-xl bg-navy hover:bg-navy/90 text-white font-semibold">Chọn gói năm</Button>
           <ul className="mt-6 space-y-3 text-sm">
             {[
               { i: Sparkles, t: "Tất cả tính năng Premium tháng" },
@@ -106,7 +113,7 @@ export default function PremiumPage() {
         </Card>
 
         <div className="mt-10 text-center">
-          <Button size="lg" className="rounded-full bg-navy hover:bg-navy/90 text-white px-10 h-14 text-base">Nâng cấp Premium — 20.000₫/tháng</Button>
+          <Button onClick={requireLogin} size="lg" className="rounded-full bg-navy hover:bg-navy/90 text-white px-10 h-14 text-base">Nâng cấp Premium — 20.000₫/tháng</Button>
           <p className="mt-3 text-xs text-muted-foreground">Thanh toán an toàn · Huỷ bất cứ lúc nào · Hoàn tiền trong 7 ngày</p>
         </div>
       </div>
