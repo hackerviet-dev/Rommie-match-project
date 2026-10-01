@@ -12,8 +12,8 @@ services:
     buildFilter:
       paths:
         - backend/**
-          - database/init/**
-          - database/migrations/**
+        - database/init/**
+        - database/migrations/**
         - render.yaml
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
@@ -27,10 +27,14 @@ services:
       - key: Jwt__Secret
         generateValue: true
       - key: Cors__AllowedOrigins__0
-        value: https://roomate-1.vercel.app
+        value: https://rommie-match.vercel.app
+      - key: Cors__AllowedOrigins__1
+        value: https://rommie-match-git-bao-branch-bingamer015-4219s-projects.vercel.app
       - key: ReverseProxy__TrustForwardedHeaders
         value: "true"
       - key: Billing__ReturnUrl
-        value: https://roomate-1.vercel.app/premium/result
+        value: https://rommie-match.vercel.app/premium/result
+      - key: Billing__PublicApiBaseUrl
+        value: https://roomiematch-api.onrender.com
       - key: Billing__Provider
         value: ""

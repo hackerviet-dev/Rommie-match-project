@@ -24,7 +24,11 @@ Create a Blueprint from `hackerviet-dev/Rommie-match-project`, branch `Bao-Branc
 using the root `render.yaml`. The Blueprint provisions only a Free Docker API;
 PostgreSQL is hosted by Neon. Render generates the JWT secret and asks for the Neon
 connection string. Keep the repository root as build context, because the Dockerfile
-copies both `backend/src` and `database/init`.
+copies `backend/src`, `database/init` and `database/migrations`.
+
+The configured service is `https://roomiematch-api.onrender.com`. The Vercel project
+linked to this repository serves `https://rommie-match.vercel.app` from `main`,
+with a `Bao-Branch` preview. Both origins are allowed explicitly; no wildcard CORS.
 
 Free Render does not provide a pre-deploy command. `Database__MigrateOnStartup=true`
 therefore runs the existing SQL migrations before the HTTP server starts. Migrations
