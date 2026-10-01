@@ -48,9 +48,10 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=${POSTGRES_DB:-roomiematch};Username=${POSTGRES_USER:-roomiematch};Password=${POSTGRES_PASSWORD:-roomiematch_dev}
       Jwt__Secret: ${JWT_SECRET:-roomiematch-local-dev-secret-change-me-in-production}
-      Billing__Provider: ${BILLING_PROVIDER:-mock}
-      Billing__PublicApiBaseUrl: http://localhost:${API_PORT:-5000}
-      Billing__ReturnUrl: http://localhost:${WEB_PORT:-3100}/premium/result
+      # No payment provider by default. Set BILLING_PROVIDER=mock only for local tests.
+      Billing__Provider: ${BILLING_PROVIDER:-}
+      Billing__PublicApiBaseUrl: ${BILLING_PUBLIC_API_URL:-http://localhost:5000}
+      Billing__ReturnUrl: ${BILLING_RETURN_URL:-http://localhost:3100/premium/result}
       # payOS merchant credentials. Left empty on purpose: put the real values in .env, never in
       # the repo. They only matter while Billing__Provider is payos.
       Billing__PayOs__ClientId: ${PAYOS_CLIENT_ID:-}

@@ -4,7 +4,7 @@
   "currentPhase": "MVP - nối frontend với backend và hoàn thiện các luồng cốt lõi",
   "baseline": {
     "branch": "Duy-feature/landing-page-fe",
-    "commit": "5c2d37a"
+    "commit": "41baa99"
   },
   "statusLabels": {
     "done": "Hoàn thành",
@@ -32,7 +32,7 @@
       "code": "P",
       "name": "Premium",
       "target": "Thanh toán và nhận quyền lợi Premium được backend thực thi",
-      "current": "Backend đã thực thi hạn mức quét, bộ lọc nâng cao và Boost; thanh toán vẫn dùng mock gateway",
+      "current": "Backend đã thực thi hạn mức, có payOS và frontend checkout/result; chưa bật thanh toán production",
       "status": "partial"
     },
     {
@@ -60,7 +60,7 @@
       "code": "PAY",
       "name": "Cổng thanh toán",
       "target": "Xử lý và đối soát thanh toán thật",
-      "current": "Đang dùng mock gateway có checkout và hoàn tiền 7 ngày; chưa tích hợp VNPay/MoMo",
+      "current": "Đã tích hợp payOS và webhook ký HMAC; chờ khóa production và kiểm thử giao dịch thật",
       "status": "blocked"
     }
   ],
@@ -74,8 +74,8 @@
       "frontend": "done",
       "verification": "done",
       "status": "done",
-      "evidence": "Compose chạy PostgreSQL, migration, API/SignalR và web; build/smoke test đạt. Trang chủ giữ màu, phông chữ và nội dung; hướng dẫn cạnh thẻ ghép đôi, Premium căn đều, footer bốn cột; header ẩn/hiện theo hướng cuộn. Kiểm tra desktop/mobile, menu, anchor, FAQ; lint/typecheck/build đạt (6 cảnh báo lint cũ).",
-      "nextAction": "Theo dõi CI và cấu hình production"
+      "evidence": "Compose chạy PostgreSQL, migration, API/SignalR và web; build/smoke test đạt. Trang chủ giữ màu, phông chữ và nội dung; hướng dẫn cạnh thẻ ghép đôi, Premium căn đều, footer bốn cột; header ẩn/hiện theo hướng cuộn. Kiểm tra desktop/mobile, menu, anchor, FAQ; lint/typecheck/build đạt (6 cảnh báo lint cũ). Render API Live với Neon, 10 migration production thành công; HTTPS health Healthy, 3 plans, CORS production/preview đạt; Vercel main/Bao-Branch redeploy Ready; Docker rerun không seed demo đạt",
+      "nextAction": "Theo dõi hạn mức Free; dùng instance luôn bật trước khi nhận thanh toán thật"
     },
     {
       "id": "CAP-02",
@@ -86,7 +86,7 @@
       "frontend": "done",
       "verification": "partial",
       "status": "partial",
-      "evidence": "Web gọi register/login/me/refresh/logout/logout-all thật; RHF/Zod, JWT/refresh token, single-flight refresh và bảo vệ route. Smoke API kiểm tra đăng ký, login sai/đúng, me, refresh đồng thời và logout; lint/typecheck/build đạt. Nút về trang chủ nằm dưới logo bên trái trên login desktop/mobile; điều hướng đã kiểm tra. Chưa kiểm thử UI xác thực và nhiều tab. Guard yêu cầu phiên và user hợp lệ; Premium được bảo vệ; header khách không hiện avatar/thông báo/Cài đặt. Khách chọn mua gói trả phí chuyển tới login; Settings vẫn được bảo vệ. Premium mở công khai với header khách: Trang chủ/Premium/Đăng nhập/Đăng ký; ẩn avatar/chuông/menu thành viên.",
+      "evidence": "Web dùng register/login/me/refresh/logout/logout-all thật với RHF/Zod; JWT/refresh token trong sessionStorage, single-flight refresh, logout event và guard phiên/user/role. Giữ giao diện login/register, nút quay lại, header khách Premium và returnTo nội bộ sau login. Smoke API trước merge: register, login sai/đúng, me, refresh đồng thời, logout. Sau merge: lint/typecheck/build, regression onboarding đạt; chưa chạy lại UI sau merge vì trình duyệt không kết nối được localhost; chưa kiểm thử auth HTTPS/nhiều tab.",
       "nextAction": "Kiểm thử tương tác trình duyệt và nhiều tab; Google OAuth là luồng riêng chưa triển khai."
     },
     {
@@ -194,8 +194,8 @@
       "frontend": "partial",
       "verification": "partial",
       "status": "partial",
-      "evidence": "Checkout mock, lịch sử, callback idempotent và hoàn tiền 7 ngày đã có; smoke test paid/refunded đạt",
-      "nextAction": "Nối Premium result/refund UI; sau đó chọn VNPay/MoMo"
+      "evidence": "Có payOS checkout/webhook HMAC, frontend checkout/result dùng billingApi; provider production mặc định tắt; chưa kiểm thử giao dịch thật Checkout web và trang kết quả đã gọi billingApi sau merge; chưa kiểm thử giao dịch payOS thật.",
+      "nextAction": "Kiểm thử checkout/webhook/kết quả thanh toán với khóa payOS mới và cấu hình HTTPS; không bật production trước khi kiểm tra."
     },
     {
       "id": "CAP-12",
@@ -206,7 +206,7 @@
       "frontend": "partial",
       "verification": "partial",
       "status": "partial",
-      "evidence": "Backend đã enforce scan quota, advanced filters và Boost; usage endpoint đã smoke test Trang Premium web yêu cầu đăng nhập; chưa nối checkout thật. Trang Premium mở công khai; khách có header logo/Trang chủ/Premium/Đăng nhập/Đăng ký; ẩn menu thành viên/chuông/avatar, CTA gói trả phí chuyển đăng nhập, miễn phí chuyển đăng ký. Kiểm tra UI khách và lint/typecheck/build đạt; checkout thành viên vẫn chưa nối.",
+      "evidence": "Backend enforce scan quota, advanced filters và Boost; usage đã smoke test. Premium công khai có header khách, gói miễn phí tới register và trả phí tới login. Thành viên gọi checkout theo gói tháng/năm, nhận paymentUrl; trang kết quả đọc trạng thái API. Checkout chỉ bật khi health provider payos/mock; chưa kiểm thử thanh toán thật.",
       "nextAction": "Nối entitlement UI và kiểm thử giới hạn Free/Premium"
     },
     {
@@ -306,6 +306,11 @@
     {
       "date": "2026-10-02",
       "version": "1.2",
+      "summary": "Giải quyết conflict Bao-Branch: giữ RHF/Zod và khôi phục/refresh/logout phiên thật; token sessionStorage; thêm returnTo login, checkout payOS và trang kết quả thanh toán. Giữ header khách Premium và sửa hồ sơ Settings; đồng bộ trạng thái cả hai nhánh. Lint/typecheck/build và regression onboarding đạt; chưa build backend tại máy do thiếu dotnet SDK."
+    },
+    {
+      "date": "2026-10-02",
+      "version": "1.2",
       "summary": "Thay header ẩn trên Premium bằng header công khai theo ảnh: logo, Trang chủ, Premium, Đăng nhập và Đăng ký; không hiện avatar/chuông/menu thành viên. Kiểm tra gói trả phí tới login, miễn phí tới register; lint/typecheck/build đạt."
     },
     {
@@ -352,6 +357,11 @@
       "date": "2026-10-01",
       "version": "1.2",
       "summary": "Nối Auth web với register/login/me/refresh/logout/logout-all; loại bỏ phiên mock, thêm validation/loading/error và vô hiệu hóa nút Google chưa hỗ trợ. Kiểm tra API thật, lint, typecheck và build; còn kiểm thử UI trình duyệt."
+    },
+    {
+      "date": "2026-10-01",
+      "version": "1.2",
+      "summary": "Hợp nhất Bao-Branch và main; Render/Neon Live, HTTPS health/CORS đạt, Vercel production/preview Ready; nối Auth/payOS frontend; chưa bật thanh toán thật."
     },
     {
       "date": "2026-09-30",

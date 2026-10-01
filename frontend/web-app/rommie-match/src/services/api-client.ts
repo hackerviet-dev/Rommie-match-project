@@ -1,7 +1,7 @@
 import { ApiError } from "./api-error";
 import { tokenStorage } from "./token-storage";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? "";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
 let refreshRequest: Promise<void> | null = null;
 async function refreshSession() {
@@ -66,5 +66,8 @@ export async function apiClient<T>(path: string, options: ApiOptions = {}): Prom
   }
 
   if (response.status === 204) return undefined as T;
+  if (!response.headers.get("Content-Type")?.includes("application/json")) {
+    throw new ApiError("Backend API chưa được cấu hình cho website này.", response.status);
+  }
   return response.json() as Promise<T>;
 }

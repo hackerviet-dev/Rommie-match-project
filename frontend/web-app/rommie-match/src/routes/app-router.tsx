@@ -14,6 +14,7 @@ import MatchesPage from "@/pages/matches-page";
 import NotFoundPage from "@/pages/not-found-page";
 import OnboardingPage from "@/pages/onboarding-page";
 import PremiumPage from "@/pages/premium-page";
+import PremiumResultPage from "@/pages/premium-result-page";
 import ProfilePage from "@/pages/profile-page";
 import QuizPage from "@/pages/quiz-page";
 import RegisterPage from "@/pages/register-page";
@@ -35,6 +36,7 @@ export function AppRouter() {
         <Route path={ROUTES.chat} element={<AuthGuard><ChatPage /></AuthGuard>} />
         <Route path={ROUTES.services} element={<ServicesPage />} />
         <Route path={ROUTES.premium} element={<PremiumPage />} />
+        <Route path="/premium/result" element={<PremiumResultPage />} />
         <Route path={ROUTES.communityGuidelines} element={<CommunityGuidelinesPage />} />
         <Route path={ROUTES.settings} element={<AuthGuard><SettingsPage /></AuthGuard>} />
         <Route path={ROUTES.admin} element={<AuthGuard staff><AdminPage /></AuthGuard>} />

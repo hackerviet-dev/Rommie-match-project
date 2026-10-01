@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Logo } from "@/layouts/main-layout";
 import { authApi, useAuthStore, loginSchema } from "@/features/auth";
 import { Button } from "@/components/ui/button";
@@ -13,13 +13,18 @@ import { ArrowLeft, Heart } from "lucide-react";
 export default function LoginPage() {
   const form = useForm({ resolver: zodResolver(loginSchema), defaultValues: { email: "", password: "" } });
   const nav = useNavigate();
+  const location = useLocation();
   const login = useAuthStore((s) => s.login);
 
   const health = useQuery({ queryKey: ["auth", "health"], queryFn: authApi.health, retry: false });
   const queryClient = useQueryClient();
   const signIn = useMutation({
     mutationFn: authApi.login,
-    onSuccess: (session) => { queryClient.clear(); login(session); nav("/dashboard"); },
+    onSuccess: (session) => {
+      queryClient.clear(); login(session);
+      const returnTo = (location.state as { returnTo?: string } | null)?.returnTo;
+      nav(returnTo?.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/dashboard");
+    },
   });
 
   return (

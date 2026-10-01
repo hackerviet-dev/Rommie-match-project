@@ -2,6 +2,7 @@ import { apiClient } from "@/services/api-client";
 import type { Checkout, Payment, Subscription } from "../types/billing-types";
 
 export const billingApi = {
+  health: () => apiClient<{ provider: string }>("/api/billing/health"),
   subscription: () =>
     apiClient<Subscription>("/api/billing/me/subscription", { authenticated: true }),
   checkout: (planCode: string) =>
