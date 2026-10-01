@@ -1,5 +1,10 @@
+import { useForm } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
+import { profileApi } from "@/features/profile";
+import { useAuthStore } from "@/features/auth";
+import { onboardingDefaults, validateOnboardingStep, profileToOnboarding, type OnboardingValues, type OnboardingErrors } from "../schemas/onboarding-schema";
 import { useNavigate } from "react-router-dom";
-import { useState, type ReactNode, type MouseEventHandler } from "react";
+import { useEffect, useState, type ReactNode, type MouseEventHandler } from "react";
 import { Logo } from "@/layouts/main-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 
 
 function Pill({ active, onClick, children }: { active: boolean; onClick: MouseEventHandler<HTMLButtonElement>; children: ReactNode }) {
@@ -15,40 +20,83 @@ function Pill({ active, onClick, children }: { active: boolean; onClick: MouseEv
     className={`px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${active ? "bg-navy text-white border-navy shadow-md" : "bg-card hover:bg-muted"}`}>{children}</button>;
 }
 
+function Field({ field, error, children, className = "" }: { field: string; error?: string; children: ReactNode; className?: string }) {
+  return <div data-field={field} tabIndex={-1} aria-invalid={Boolean(error)} aria-describedby={error ? `error-${field}` : undefined}
+    className={`${className} ${error ? "rounded-xl ring-1 ring-destructive p-2 [&_label]:text-destructive [&_input]:border-destructive [&_select]:border-destructive [&_button]:border-destructive" : ""}`}>
+    {children}
+    {error && <p id={`error-${field}`} role="alert" className="mt-1.5 text-xs text-destructive">{error}</p>}
+  </div>;
+}
+
 export function OnboardingFlow() {
   const [step, setStep] = useState(1);
+  const [hasAttempted, setHasAttempted] = useState(false);
+  const form = useForm<OnboardingValues>({ defaultValues: onboardingDefaults });
+  const values = form.watch();
+  const userId = useAuthStore(state => state.user?.id);
+  const profile = useQuery({ queryKey: ["profile", "me", userId], queryFn: profileApi.getMine, enabled: Boolean(userId), retry: false });
+  const [isPrefilled, setIsPrefilled] = useState(false);
+  const registeredInfo = profile.data ? profileToOnboarding(profile.data) : {};
+  useEffect(() => {
+    if (!profile.data || isPrefilled) return;
+    form.reset({ ...form.getValues(), ...profileToOnboarding(profile.data) });
+    setIsPrefilled(true);
+  }, [profile.data, isPrefilled, form]);
   // Step 1
-  const [name, setName] = useState("");
-  const [age, setAge] = useState("");
-  const [gender, setGender] = useState("");
-  const [employment, setEmployment] = useState(""); // Đang đi học | Đang đi làm | Cả hai | Khác
-  const [orgName, setOrgName] = useState(""); // school or workplace
-  const [hideOrg, setHideOrg] = useState(false);
-  const [city, setCity] = useState("");
-  const [bio, setBio] = useState("");
+  const name = values.name;
+  const setName = (value: OnboardingValues["name"]) => form.setValue("name", value, { shouldDirty: true });
+  const age = values.age;
+  const setAge = (value: OnboardingValues["age"]) => form.setValue("age", value, { shouldDirty: true });
+  const gender = values.gender;
+  const setGender = (value: OnboardingValues["gender"]) => form.setValue("gender", value, { shouldDirty: true });
+  const employment = values.employment;
+  const setEmployment = (value: OnboardingValues["employment"]) => form.setValue("employment", value, { shouldDirty: true });
+  const orgName = values.orgName;
+  const setOrgName = (value: OnboardingValues["orgName"]) => form.setValue("orgName", value, { shouldDirty: true });
+  const hideOrg = values.hideOrg;
+  const setHideOrg = (value: OnboardingValues["hideOrg"]) => form.setValue("hideOrg", value, { shouldDirty: true });
+  const city = values.city;
+  const setCity = (value: OnboardingValues["city"]) => form.setValue("city", value, { shouldDirty: true });
+  const bio = values.bio;
+  const setBio = (value: OnboardingValues["bio"]) => form.setValue("bio", value, { shouldDirty: true });
   // Step 2
-  const [sleep, setSleep] = useState("");
-  const [env, setEnv] = useState("");
-  const [yn, setYn] = useState<Record<string, string>>({});
+  const sleep = values.sleep;
+  const setSleep = (value: OnboardingValues["sleep"]) => form.setValue("sleep", value, { shouldDirty: true });
+  const env = values.env;
+  const setEnv = (value: OnboardingValues["env"]) => form.setValue("env", value, { shouldDirty: true });
+  const yn = values.yn;
+  const setYn = (value: OnboardingValues["yn"]) => form.setValue("yn", value, { shouldDirty: true });
   // Step 3
-  const [hasRoom, setHasRoom] = useState<string>("");
+  const hasRoom = values.hasRoom;
+  const setHasRoom = (value: OnboardingValues["hasRoom"]) => form.setValue("hasRoom", value, { shouldDirty: true });
   // Step 4 - has room
-  const [addr, setAddr] = useState("");
-  const [district, setDistrict] = useState("");
-  const [bedrooms, setBedrooms] = useState("");
-  const [area, setArea] = useState("");
-  const [rent, setRent] = useState("");
-  const [needed, setNeeded] = useState("");
-  const [moveIn, setMoveIn] = useState("");
-  const [houseType, setHouseType] = useState("");
+  const addr = values.addr;
+  const setAddr = (value: OnboardingValues["addr"]) => form.setValue("addr", value, { shouldDirty: true });
+  const district = values.district;
+  const setDistrict = (value: OnboardingValues["district"]) => form.setValue("district", value, { shouldDirty: true });
+  const bedrooms = values.bedrooms;
+  const setBedrooms = (value: OnboardingValues["bedrooms"]) => form.setValue("bedrooms", value, { shouldDirty: true });
+  const area = values.area;
+  const setArea = (value: OnboardingValues["area"]) => form.setValue("area", value, { shouldDirty: true });
+  const rent = values.rent;
+  const setRent = (value: OnboardingValues["rent"]) => form.setValue("rent", value, { shouldDirty: true });
+  const needed = values.needed;
+  const setNeeded = (value: OnboardingValues["needed"]) => form.setValue("needed", value, { shouldDirty: true });
+  const moveIn = values.moveIn;
+  const setMoveIn = (value: OnboardingValues["moveIn"]) => form.setValue("moveIn", value, { shouldDirty: true });
+  const houseType = values.houseType;
+  const setHouseType = (value: OnboardingValues["houseType"]) => form.setValue("houseType", value, { shouldDirty: true });
   const DEFAULT_AMENITIES = ["Máy lạnh", "Máy giặt", "Wi-Fi", "Bếp", "Ban công", "Bảo vệ 24/7", "Thang máy", "Chỗ để xe"];
   const [amenityOptions, setAmenityOptions] = useState<string[]>(DEFAULT_AMENITIES);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [newAmenity, setNewAmenity] = useState("");
   // Step 4 - no room
-  const [distance, setDistance] = useState("");
-  const [roomType, setRoomType] = useState("");
-  const [moveInDate, setMoveInDate] = useState("");
+  const distance = values.distance;
+  const setDistance = (value: OnboardingValues["distance"]) => form.setValue("distance", value, { shouldDirty: true });
+  const roomType = values.roomType;
+  const setRoomType = (value: OnboardingValues["roomType"]) => form.setValue("roomType", value, { shouldDirty: true });
+  const moveInDate = values.moveInDate;
+  const setMoveInDate = (value: OnboardingValues["moveInDate"]) => form.setValue("moveInDate", value, { shouldDirty: true });
 
   const nav = useNavigate();
   const total = 4;
@@ -56,20 +104,23 @@ export function OnboardingFlow() {
   const orgLabel = employment === "Đang đi học" ? "Trường học" : employment === "Đang đi làm" ? "Nơi làm việc" : employment === "Cả hai" ? "Trường / Nơi làm việc" : "Tổ chức (tuỳ chọn)";
   const orgRequired = employment === "Đang đi học" || employment === "Đang đi làm" || employment === "Cả hai";
 
-  const canNext = (() => {
-    if (step === 1) {
-      if (!(name && age && gender && employment && city)) return false;
-      if (orgRequired && !orgName) return false;
-      return true;
+  const errors = hasAttempted ? validateOnboardingStep(step, values) : {};
+  const hasErrors = Object.keys(errors).length > 0;
+  function handleNext() {
+    const nextErrors = validateOnboardingStep(step, values);
+    if (Object.keys(nextErrors).length) {
+      setHasAttempted(true);
+      requestAnimationFrame(() => {
+        const first = document.querySelector<HTMLElement>(`[data-field="${Object.keys(nextErrors)[0]}"]`);
+        first?.scrollIntoView({ behavior: "smooth", block: "center" });
+        (first?.querySelector<HTMLElement>("input, select, button") ?? first)?.focus();
+      });
+      return;
     }
-    if (step === 2) return sleep && env && yn.smoke && yn.drink && yn.pets;
-    if (step === 3) return !!hasRoom;
-    if (step === 4) {
-      if (hasRoom === "yes") return addr && district && bedrooms && area && rent && needed && moveIn && houseType;
-      return distance && roomType && moveInDate;
-    }
-    return false;
-  })();
+    setHasAttempted(false);
+    if (step < total) setStep(current => current + 1);
+    else nav("/quiz");
+  }
 
   const toggleAmenity = (a: string) =>
     setSelectedAmenities(s => s.includes(a) ? s.filter(x => x !== a) : [...s, a]);
@@ -92,23 +143,42 @@ export function OnboardingFlow() {
         <Progress value={(step/total)*100} className="h-2 mb-8" />
 
         <Card className="p-8 sm:p-10 rounded-3xl border-0 shadow-lg">
-          {step === 1 && (
+          {!isPrefilled && (
+            <div role="status" className="py-8 text-center">
+              {profile.isError ? <><p className="text-destructive">Không tải được thông tin đăng ký. Vui lòng thử lại.</p><Button variant="outline" onClick={() => profile.refetch()} className="mt-4">Thử lại</Button></> : "Đang lấy thông tin đăng ký…"}
+            </div>
+          )}
+          {isPrefilled && step === 1 && (
             <>
-              <h2 className="text-2xl font-display font-bold">Hãy giới thiệu bản thân</h2>
-              <p className="text-muted-foreground text-sm mt-1">Vài thông tin để thiết lập hồ sơ.</p>
-              <div className="mt-8 grid sm:grid-cols-2 gap-4">
-                <div><Label>Họ và tên <span className="text-destructive">*</span></Label><Input value={name} onChange={e=>setName(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="Nguyễn Linh" /></div>
-                <div><Label>Tuổi <span className="text-destructive">*</span></Label><Input value={age} onChange={e=>setAge(e.target.value)} type="number" className="mt-1.5 h-11 rounded-xl" placeholder="22" /></div>
-                <div><Label>Giới tính <span className="text-destructive">*</span></Label><Input value={gender} onChange={e=>setGender(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="Nữ" /></div>
-                <div><Label>Thành phố <span className="text-destructive">*</span></Label><Input value={city} onChange={e=>setCity(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="TP. Hồ Chí Minh" /></div>
-                <div className="sm:col-span-2">
+              <h2 className="text-2xl font-display font-bold">Bổ sung hồ sơ của bạn</h2>
+              <p className="text-muted-foreground text-sm mt-1">Chỉ cần thêm vài thông tin để tìm bạn cùng phòng phù hợp.</p>
+              <section aria-label="Thông tin đã đăng ký" className="mt-6 rounded-2xl border border-teal/20 bg-mint/20 p-4 sm:p-5">
+                <div className="flex items-center gap-2 text-sm font-semibold text-navy">
+                  <CheckCircle2 className="h-4 w-4 text-teal" aria-hidden="true" />
+                  Thông tin đã đăng ký
+                </div>
+                <dl className="mt-4 grid gap-4 sm:grid-cols-3">
+                  {[["Họ và tên", registeredInfo.name], ["Giới tính", registeredInfo.gender], ["Thành phố", registeredInfo.city], ...(registeredInfo.age ? [["Tuổi", registeredInfo.age]] : [])].filter(([, value]) => value).map(([label, value]) => (
+                    <div key={label} className="min-w-0">
+                      <dt className="text-xs text-muted-foreground">{label}</dt>
+                      <dd className="mt-1 break-words text-sm font-medium text-navy">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+              <div className="mt-6 grid sm:grid-cols-2 gap-4">
+                {(!registeredInfo.name || errors.name) && <Field field="name" error={errors.name}><Label>Họ và tên <span className="text-destructive">*</span></Label><Input value={name} onChange={e=>setName(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="Nguyễn Linh" /></Field>}
+                {!registeredInfo.age && <Field field="age" error={errors.age}><Label htmlFor="onboarding-age">Tuổi <span className="text-destructive">*</span></Label><Input id="onboarding-age" aria-invalid={Boolean(errors.age)} aria-describedby={errors.age ? "error-age" : undefined} value={age} onChange={e=>setAge(e.target.value)} type="number" className="mt-1.5 h-11 rounded-xl" placeholder="Nhập tuổi của bạn" /></Field>}
+                {(!registeredInfo.gender || errors.gender) && <Field field="gender" error={errors.gender}><Label>Giới tính <span className="text-destructive">*</span></Label><select aria-label="Giới tính" value={gender} onChange={e=>setGender(e.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-input bg-card px-3 text-sm"><option value="">Chọn giới tính</option>{["Nam", "Nữ", "Khác", "Không muốn tiết lộ"].map(value => <option key={value} value={value}>{value}</option>)}</select></Field>}
+                {(!registeredInfo.city || errors.city) && <Field field="city" error={errors.city}><Label>Thành phố <span className="text-destructive">*</span></Label><Input value={city} onChange={e=>setCity(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="TP. Hồ Chí Minh" /></Field>}
+                <Field field="employment" error={errors.employment} className="sm:col-span-2">
                   <Label>Tình trạng hiện tại <span className="text-destructive">*</span></Label>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {["Đang đi học","Đang đi làm","Cả hai","Khác"].map(o => <Pill key={o} active={employment===o} onClick={()=>{ setEmployment(o); setOrgName(""); }}>{o}</Pill>)}
                   </div>
-                </div>
+                </Field>
                 {employment && employment !== "Khác" && (
-                  <div className="sm:col-span-2">
+                  <Field field="orgName" error={errors.orgName} className="sm:col-span-2">
                     <div className="flex items-center justify-between">
                       <Label>{orgLabel} {orgRequired && <span className="text-destructive">*</span>}</Label>
                       <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
@@ -118,7 +188,7 @@ export function OnboardingFlow() {
                     </div>
                     <Input value={orgName} onChange={e=>setOrgName(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder={employment === "Đang đi học" ? "VD: RMIT Việt Nam" : "VD: Công ty ABC"} />
                     {hideOrg && <p className="mt-1 text-xs text-muted-foreground">Thông tin này sẽ không hiển thị công khai trên hồ sơ.</p>}
-                  </div>
+                  </Field>
                 )}
                 <div className="sm:col-span-2">
                   <Label>Giới thiệu bản thân <span className="text-muted-foreground font-normal">(tuỳ chọn)</span></Label>
@@ -139,36 +209,36 @@ export function OnboardingFlow() {
               <h2 className="text-2xl font-display font-bold">Sở thích lối sống</h2>
               <p className="text-muted-foreground text-sm mt-1">Đây là nền tảng cho điểm hợp nhau của bạn.</p>
               <div className="mt-8 space-y-7">
-                <div>
+                <Field field="sleep" error={errors.sleep}>
                   <Label>Bạn thường đi ngủ lúc mấy giờ? <span className="text-destructive">*</span></Label>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {["Trước 22h","22h–0h","Sau 0h"].map(o => <Pill key={o} active={sleep===o} onClick={()=>setSleep(o)}>{o}</Pill>)}
                   </div>
-                </div>
+                </Field>
                 <div>
                   <Label>Bạn sạch sẽ ở mức nào? <span className="text-muted-foreground font-normal">(1 bừa → 5 sạch tinh)</span></Label>
                   <Slider defaultValue={[4]} max={5} min={1} step={1} className="mt-4" />
                 </div>
                 <div className="grid sm:grid-cols-3 gap-4">
                   {[["smoke","Có hút thuốc?"],["drink","Có uống rượu bia?"],["pets","Có nuôi thú cưng?"]].map(([k,l]) => (
-                    <div key={k}>
+                    <Field key={k} field={k} error={errors[k as keyof OnboardingErrors]}>
                       <Label>{l} <span className="text-destructive">*</span></Label>
                       <div className="mt-2 flex gap-2">
                         {["Có","Không"].map(v => <Pill key={v} active={yn[k]===v} onClick={()=>setYn({...yn,[k]:v})}>{v}</Pill>)}
                       </div>
-                    </div>
+                    </Field>
                   ))}
                 </div>
                 <div>
                   <Label>Hướng nội ←→ Hướng ngoại</Label>
                   <Slider defaultValue={[60]} max={100} step={5} className="mt-4" />
                 </div>
-                <div>
+                <Field field="env" error={errors.env}>
                   <Label>Không gian phòng ưa thích <span className="text-destructive">*</span></Label>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {["Yên tĩnh","Vừa phải","Sôi nổi"].map(o => <Pill key={o} active={env===o} onClick={()=>setEnv(o)}>{o}</Pill>)}
                   </div>
-                </div>
+                </Field>
               </div>
             </>
           )}
@@ -177,7 +247,7 @@ export function OnboardingFlow() {
             <>
               <h2 className="text-2xl font-display font-bold">Tình trạng chỗ ở</h2>
               <p className="text-muted-foreground text-sm mt-1">Bạn đã có phòng hay đang cần tìm phòng?</p>
-              <div className="mt-8 grid sm:grid-cols-2 gap-4">
+              <Field field="hasRoom" error={errors.hasRoom} className="mt-8 grid sm:grid-cols-2 gap-4">
                 <button type="button" onClick={()=>setHasRoom("yes")}
                   className={`text-left p-5 rounded-2xl border-2 transition-all ${hasRoom==="yes" ? "border-navy bg-navy/5 shadow-md" : "border-border hover:border-navy/40"}`}>
                   <div className="text-3xl">🏠</div>
@@ -190,7 +260,7 @@ export function OnboardingFlow() {
                   <div className="mt-2 font-semibold">Mình đang tìm phòng</div>
                   <div className="text-sm text-muted-foreground mt-1">Tìm cả phòng lẫn bạn cùng phòng.</div>
                 </button>
-              </div>
+              </Field>
             </>
           )}
 
@@ -200,19 +270,19 @@ export function OnboardingFlow() {
               <p className="text-muted-foreground text-sm mt-1">Giúp bạn cùng phòng tương lai hiểu rõ về chỗ ở của bạn.</p>
               <div className="mt-8 space-y-6">
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <div><Label>Địa chỉ <span className="text-destructive">*</span></Label><Input value={addr} onChange={e=>setAddr(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="123 Nguyễn Huệ" /></div>
-                  <div><Label>Quận / Khu vực <span className="text-destructive">*</span></Label><Input value={district} onChange={e=>setDistrict(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="Quận 1, TP.HCM" /></div>
-                  <div><Label>Số phòng ngủ <span className="text-destructive">*</span></Label><Input value={bedrooms} onChange={e=>setBedrooms(e.target.value)} type="number" className="mt-1.5 h-11 rounded-xl" placeholder="2" /></div>
-                  <div><Label>Diện tích (m²) <span className="text-destructive">*</span></Label><Input value={area} onChange={e=>setArea(e.target.value)} type="number" className="mt-1.5 h-11 rounded-xl" placeholder="45" /></div>
-                  <div><Label>Tiền thuê chia mỗi người (VND) <span className="text-destructive">*</span></Label><Input value={rent} onChange={e=>setRent(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="3.500.000" /></div>
-                  <div><Label>Số người cần thêm <span className="text-destructive">*</span></Label><Input value={needed} onChange={e=>setNeeded(e.target.value)} type="number" className="mt-1.5 h-11 rounded-xl" placeholder="1" /></div>
-                  <div><Label>Ngày có thể dọn vào <span className="text-destructive">*</span></Label><Input value={moveIn} onChange={e=>setMoveIn(e.target.value)} type="date" className="mt-1.5 h-11 rounded-xl" /></div>
-                  <div>
+                  <Field field="addr" error={errors.addr}><Label>Địa chỉ <span className="text-destructive">*</span></Label><Input value={addr} onChange={e=>setAddr(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="123 Nguyễn Huệ" /></Field>
+                  <Field field="district" error={errors.district}><Label>Quận / Khu vực <span className="text-destructive">*</span></Label><Input value={district} onChange={e=>setDistrict(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="Quận 1, TP.HCM" /></Field>
+                  <Field field="bedrooms" error={errors.bedrooms}><Label>Số phòng ngủ <span className="text-destructive">*</span></Label><Input value={bedrooms} onChange={e=>setBedrooms(e.target.value)} type="number" className="mt-1.5 h-11 rounded-xl" placeholder="2" /></Field>
+                  <Field field="area" error={errors.area}><Label>Diện tích (m²) <span className="text-destructive">*</span></Label><Input value={area} onChange={e=>setArea(e.target.value)} type="number" className="mt-1.5 h-11 rounded-xl" placeholder="45" /></Field>
+                  <Field field="rent" error={errors.rent}><Label>Tiền thuê chia mỗi người (VND) <span className="text-destructive">*</span></Label><Input value={rent} onChange={e=>setRent(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="3.500.000" /></Field>
+                  <Field field="needed" error={errors.needed}><Label>Số người cần thêm <span className="text-destructive">*</span></Label><Input value={needed} onChange={e=>setNeeded(e.target.value)} type="number" className="mt-1.5 h-11 rounded-xl" placeholder="1" /></Field>
+                  <Field field="moveIn" error={errors.moveIn}><Label>Ngày có thể dọn vào <span className="text-destructive">*</span></Label><Input value={moveIn} onChange={e=>setMoveIn(e.target.value)} type="date" className="mt-1.5 h-11 rounded-xl" /></Field>
+                  <Field field="houseType" error={errors.houseType}>
                     <Label>Loại nhà <span className="text-destructive">*</span></Label>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {["Căn hộ","Nhà nguyên căn","Studio","Ký túc xá"].map(o => <Pill key={o} active={houseType===o} onClick={()=>setHouseType(o)}>{o}</Pill>)}
                     </div>
-                  </div>
+                  </Field>
                 </div>
                 <div>
                   <Label>Tiện nghi có sẵn <span className="text-muted-foreground font-normal">(chọn hoặc thêm mới)</span></Label>
@@ -259,33 +329,33 @@ export function OnboardingFlow() {
                   <Slider defaultValue={[3,7]} max={15} min={1} step={1} className="mt-4" />
                   <div className="flex justify-between text-xs text-muted-foreground mt-2"><span>3 triệu</span><span>7 triệu</span></div>
                 </div>
-                <div>
+                <Field field="distance" error={errors.distance}>
                   <Label>Khoảng cách mong muốn <span className="text-destructive">*</span></Label>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {["< 2 km","2–5 km","5–10 km","Bất kỳ đâu trong thành phố"].map(o => <Pill key={o} active={distance===o} onClick={()=>setDistance(o)}>{o}</Pill>)}
                   </div>
-                </div>
-                <div>
+                </Field>
+                <Field field="roomType" error={errors.roomType}>
                   <Label>Loại phòng <span className="text-destructive">*</span></Label>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {["Phòng riêng","Phòng chung","Studio","Cả căn hộ"].map(o => <Pill key={o} active={roomType===o} onClick={()=>setRoomType(o)}>{o}</Pill>)}
                   </div>
-                </div>
-                <div>
+                </Field>
+                <Field field="moveInDate" error={errors.moveInDate}>
                   <Label>Ngày dọn vào <span className="text-destructive">*</span></Label>
                   <Input value={moveInDate} onChange={e=>setMoveInDate(e.target.value)} type="date" className="mt-1.5 h-11 rounded-xl" />
-                </div>
+                </Field>
               </div>
             </>
           )}
 
-          {!canNext && (
-            <p className="mt-6 text-xs text-muted-foreground text-right">Vui lòng hoàn tất các mục bắt buộc (*) để tiếp tục.</p>
+          {hasErrors && (
+            <p role="alert" className="mt-6 text-sm text-destructive">Vui lòng kiểm tra các mục được đánh dấu đỏ trước khi tiếp tục.</p>
           )}
 
           <div className="mt-4 flex justify-between gap-3">
-            <Button variant="ghost" disabled={step===1} onClick={()=>setStep(s=>s-1)} className="rounded-xl"><ArrowLeft className="h-4 w-4 mr-2" /> Quay lại</Button>
-            <Button onClick={()=> step<total ? setStep(s=>s+1) : nav("/quiz")} disabled={!canNext} className="rounded-xl bg-navy hover:bg-navy/90 text-white px-6 disabled:opacity-50 disabled:cursor-not-allowed">
+            <Button variant="ghost" disabled={step===1} onClick={()=>{ setHasAttempted(false); setStep(s=>s-1); }} className="rounded-xl"><ArrowLeft className="h-4 w-4 mr-2" /> Quay lại</Button>
+            <Button onClick={handleNext} disabled={!isPrefilled} className="rounded-xl bg-navy hover:bg-navy/90 text-white px-6 disabled:opacity-50 disabled:cursor-not-allowed">
               {step < total ? "Tiếp tục" : "Làm trắc nghiệm"} <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
           </div>

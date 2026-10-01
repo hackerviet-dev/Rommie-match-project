@@ -2,9 +2,9 @@
 
 - Cập nhật: **2026-10-01**
 - Phiên bản tài liệu: **1.2**
-- Branch/commit kiểm tra: **Duy-feature/landing-page-fe / 816fa43**
+- Branch/commit kiểm tra: **Duy-feature/landing-page-fe / ecfc513**
 - Giai đoạn hiện tại: **MVP - nối frontend với backend và hoàn thiện các luồng cốt lõi**
-- Mức bao phủ kỹ thuật: **62%**
+- Mức bao phủ kỹ thuật: **63%**
 
 > Phần trăm tính theo bốn lớp backend, database, frontend và verification; done = 1, partial = 0.5, planned/blocked = 0, bỏ qua na. Đây không phải phần trăm thời gian hoặc ngân sách.
 
@@ -26,9 +26,9 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | CAP-01 | Hạ tầng Docker | Hoàn thành | Hoàn thành | Hoàn thành | Hoàn thành | Hoàn thành | Theo dõi CI và cấu hình production |
 | CAP-02 | Đăng ký và đăng nhập | Hoàn thành | Hoàn thành | Hoàn thành | Một phần | Một phần | Kiểm thử tương tác trình duyệt và nhiều tab; Google OAuth là luồng riêng chưa triển khai. |
-| CAP-03 | Hồ sơ cá nhân | Hoàn thành | Hoàn thành | Một phần | Một phần | Một phần | Nối Profile page và Settings với profileApi |
-| CAP-04 | Sở thích lối sống | Hoàn thành | Hoàn thành | Một phần | Dự kiến | Một phần | Nối onboarding với lifestyleApi và thêm kiểm thử lưu dữ liệu |
-| CAP-05 | Phòng | Hoàn thành | Hoàn thành | Một phần | Một phần | Một phần | Nối danh sách, chi tiết và form phòng với roomsApi |
+| CAP-03 | Hồ sơ cá nhân | Hoàn thành | Hoàn thành | Một phần | Một phần | Một phần | Nối lưu hồ sơ bổ sung, Profile page và Settings với profileApi. |
+| CAP-04 | Sở thích lối sống | Hoàn thành | Hoàn thành | Một phần | Một phần | Một phần | Nối onboarding với lifestyleApi; kiểm thử lưu dữ liệu và khôi phục các lựa chọn. |
+| CAP-05 | Phòng | Hoàn thành | Hoàn thành | Một phần | Một phần | Một phần | Nối danh sách, chi tiết và form phòng với roomsApi. |
 | CAP-06 | Trắc nghiệm | Hoàn thành | Hoàn thành | Hoàn thành | Một phần | Một phần | Nối quiz UI với API và thêm kiểm thử chấm trait |
 | CAP-07 | Ghép đôi | Hoàn thành | Hoàn thành | Một phần | Một phần | Một phần | Nối matchingApi và kiểm thử công thức/xếp hạng |
 | CAP-08 | Lưu hồ sơ | Dự kiến | Hoàn thành | Một phần | Dự kiến | Một phần | Tạo REST API lưu/bỏ lưu và thay localStorage |
@@ -46,9 +46,9 @@
 
 - **CAP-01 - Hạ tầng Docker:** Compose chạy PostgreSQL, migration, .NET API gồm SignalR chat và web; build/smoke test đạt
 - **CAP-02 - Đăng ký và đăng nhập:** Form web gọi register/login thật, React Hook Form + Zod; lưu JWT/refresh token; khôi phục /me; refresh tự động có single-flight; logout và logout-all gọi backend; route thành viên có kiểm tra phiên. Lint/typecheck/build đạt; smoke API thật kiểm tra đăng ký, login sai/đúng, /me, refresh đồng thời, logout và logout-all; chưa kiểm thử UI trình duyệt.
-- **CAP-03 - Hồ sơ cá nhân:** GET/PUT profile và profile list có phân quyền; smoke test hồ sơ đạt
-- **CAP-04 - Sở thích lối sống:** GET/PUT lifestyle đã có; onboarding chưa lưu server
-- **CAP-05 - Phòng:** Rooms list/detail/CRUD, bộ lọc và soft delete đã có; API danh sách đã smoke test
+- **CAP-03 - Hồ sơ cá nhân:** GET/PUT profile có phân quyền; onboarding đã đọc GET me/profile và hiện họ tên, giới tính, thành phố đã đăng ký thành tóm tắt; chỉ hiện ô nhập thông tin thiếu. Validation từng bước có lỗi đỏ, tự focus; kiểm thử schema, UI bước 1/2, lint/typecheck/build đạt. Chưa lưu bổ sung onboarding lên server.
+- **CAP-04 - Sở thích lối sống:** GET/PUT lifestyle đã có; onboarding kiểm tra từng lựa chọn bắt buộc, đánh dấu đỏ và chặn sang bước tiếp theo khi thiếu; kiểm thử schema và UI bước 2 đạt. Onboarding chưa lưu lifestyle lên server.
+- **CAP-05 - Phòng:** Rooms list/detail/CRUD có phân quyền và soft delete; onboarding đã validate cả hai nhánh chỗ ở, số dương/số nguyên, tiền thuê và ngày hợp lệ; kiểm thử schema đạt. Form chưa nối lưu phòng lên API.
 - **CAP-06 - Trắc nghiệm:** Quiz definition, GET/PUT kết quả và quiz_responses đã có; submit smoke test đạt
 - **CAP-07 - Ghép đôi:** Matching có điểm chi tiết, quota, filter và boost; list/usage đã smoke test
 - **CAP-08 - Lưu hồ sơ:** Đã có bảng saved_profiles; frontend vẫn dùng localStorage và chưa có REST API
@@ -74,6 +74,7 @@
 
 ## Lịch sử cập nhật
 
+- **2026-10-01 - v1.2:** Cập nhật giao diện onboarding: thông tin đăng ký hiện thành tóm tắt; chỉ nhập mục còn thiếu. Thêm validation bốn bước, lỗi đỏ từng mục và focus ô lỗi; đọc profile thật, kiểm thử schema/UI và lint/typecheck/build.
 - **2026-10-01 - v1.2:** Nối Auth web với register/login/me/refresh/logout/logout-all; loại bỏ phiên mock, thêm validation/loading/error và vô hiệu hóa nút Google chưa hỗ trợ. Kiểm tra API thật, lint, typecheck và build; còn kiểm thử UI trình duyệt.
 - **2026-09-30 - v1.2:** Đồng bộ tiến độ sau khi thêm quiz, SignalR chat, Premium enforcement, booking/refund, moderation và migration tự động.
 - **2026-09-29 - v1.2:** Tạo dashboard tiến độ, ma trận 17 năng lực, roadmap và quy tắc cập nhật tài liệu sống.
