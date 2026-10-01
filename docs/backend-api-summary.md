@@ -7,6 +7,7 @@ Cập nhật: 2026-09-29
 - **Swagger UI:** `http://localhost:5000/swagger` (khi chạy qua Docker) — có nút **Authorize** để nhập Bearer token test trực tiếp.
 - **OpenAPI spec:** `http://localhost:5000/openapi/v1.json` (OpenAPI 3.0 — tương thích tốt với các tool mock/codegen như orval, Prism, openapi-generator, msw).
 - REST chat (`/api/chat`) có trong Swagger; hub SignalR `/hubs/chat` thì không (không phải REST) — xem mục 7.
+- Mỗi module có `GET /api/<module>/health` (public) trả tên module và danh sách tính năng — chỉ để kiểm tra, frontend không cần gọi.
 
 ## 2. Auth — `api/auth`
 
@@ -15,6 +16,7 @@ Cập nhật: 2026-09-29
 - `POST /api/auth/login` — `{Email, Password}` → `AuthSessionDto`
 - `POST /api/auth/refresh` — `{refreshToken}` → `AuthSessionDto` mới; refresh token cũ bị vô hiệu ngay (rotation). Dùng lại token đã rotate sẽ bị coi là bị đánh cắp và **thu hồi toàn bộ session** của user đó.
 - `POST /api/auth/logout` — `{refreshToken}` → 204
+- `POST /api/auth/logout-all` [Auth] → 204 — thu hồi mọi session của user; có hiệu lực ngay, cả access token đang dùng cũng bị từ chối
 - `GET /api/auth/me` [Auth] → `AuthenticatedUserDto`
 
 **`AuthSessionDto` shape:**
@@ -106,6 +108,17 @@ Hiện dùng **cổng thanh toán giả lập (mock)** — không trừ tiền t
 5. Nếu `paid` → gọi `GET /api/billing/me/subscription` để cập nhật UI Premium.
 
 Mua thêm khi đang Premium sẽ **cộng dồn** vào ngày hết hạn hiện tại, không mất ngày đã trả.
+
+**payOS — nhận tiền thật (chuyển khoản/QR)**
+
+Đặt `Billing:Provider=payos` để dùng cổng payOS. Endpoint, `PaymentDto` và luồng xác nhận không đổi; chỉ khác nguồn tiền và cách xác nhận.
+
+- Cấu hình: `Billing__PayOs__ClientId`, `Billing__PayOs__ApiKey`, `Billing__PayOs__ChecksumKey` (biến môi trường / `.env`; repo chỉ để giá trị rỗng). Kênh thanh toán và checksum key tạo tại https://my.payos.vn. Thiếu cấu hình thì `POST /api/billing/checkout` trả **502** ngay, không tạo đơn.
+- `paymentUrl` trả về là trang thanh toán của payOS (khách quét VietQR / chuyển khoản Napas 247).
+- payOS trả khách về `Billing:ReturnUrl` kèm thêm query param **của payOS** (`code`, `id`, `cancel`, `status`, `orderCode`). Server tự gắn `paymentId` vào cả `returnUrl` lẫn `cancelUrl` **trước khi ký**, nên frontend đọc thẳng `paymentId` trên URL rồi gọi `GET /api/billing/payments/{paymentId}` để lấy trạng thái thật như bước 4 (không cần nhớ `paymentId` từ response checkout nữa).
+- `POST /api/billing/payos/webhook` (public, payOS gọi) — kiểm tra chữ ký `HMAC_SHA256` bằng checksum key rồi xác nhận đơn qua đúng luồng `ConfirmPaymentAsync`, nên vẫn idempotent. Số tiền webhook gửi lên được đối chiếu với `payments.amount`: lệch thì **không** kích hoạt Premium (đơn giữ nguyên trạng thái) nhưng vẫn trả 2XX. Tương tự, đơn đã ở trạng thái `failed`/`expired`/`refunded` mà payOS báo đã trả cũng **không** kích hoạt Premium. Hai trường hợp này server ghi log cảnh báo (chỉ order code + trạng thái, không log body/chữ ký/key). Body lớn hơn 16 KB bị từ chối với **413**. Khai báo webhook URL trên my.payos.vn là `{PublicApiBaseUrl}/api/billing/payos/webhook`; endpoint trả 2XX cho mọi payload đúng chữ ký, kể cả order code lạ (payOS gửi mẫu như vậy lúc đăng ký webhook).
+- Hoàn tiền: payOS không có API hoàn tiền cho đơn đã thanh toán (chỉ huỷ được link chưa thanh toán), nên `POST /api/billing/payments/{paymentId}/refund` trả **502 `refund_rejected`** với đơn payOS — phải hoàn tiền thủ công.
+- Số tiền và gói vẫn lấy 100% từ server (`Plans`); webhook không bao giờ tự đặt số tiền hay gói.
 
 ## 7. Chat — `api/chat` (REST) + `/hubs/chat` (SignalR)
 

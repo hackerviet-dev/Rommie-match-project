@@ -53,6 +53,9 @@ public sealed class BillingController(IBillingService billingService) : Controll
             CheckoutError.UnknownPlan => Problem(
                 "Gói không tồn tại hoặc không thể mua.",
                 statusCode: StatusCodes.Status400BadRequest),
+            CheckoutError.GatewayFailed => Problem(
+                "Chưa tạo được liên kết thanh toán. Vui lòng thử lại sau.",
+                statusCode: StatusCodes.Status502BadGateway),
             _ => Problem(
                 "Hệ thống thanh toán chưa được cấu hình.",
                 statusCode: StatusCodes.Status503ServiceUnavailable)
@@ -110,6 +113,9 @@ public sealed class BillingController(IBillingService billingService) : Controll
                 StatusCodes.Status409Conflict, "payment_not_refundable", "Chỉ hoàn tiền được đơn đã thanh toán."),
             RefundError.WindowExpired => CodedProblem(
                 StatusCodes.Status409Conflict, "refund_window_expired", "Đã quá thời hạn hoàn tiền của đơn này."),
+            RefundError.GatewayRejected => CodedProblem(
+                StatusCodes.Status502BadGateway, "refund_rejected",
+                "Cổng thanh toán không hỗ trợ hoàn tiền tự động cho đơn này. Vui lòng liên hệ hỗ trợ."),
             _ => CodedProblem(
                 StatusCodes.Status503ServiceUnavailable, "gateway_unavailable",
                 "Cổng thanh toán của đơn này hiện không khả dụng.")
