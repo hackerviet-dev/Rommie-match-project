@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -12,10 +13,15 @@ namespace RoomieMatch.Modules.Hyperlocal.Controllers;
 [Route("api/hyperlocal")]
 public sealed class ServiceBookingsController(IServiceBookingService bookingService) : ControllerBase
 {
+    [EndpointSummary("Đặt lịch sử dụng dịch vụ")]
+    [EndpointDescription("Cần đăng nhập. Gửi scheduledAt, address, contactPhone và note tùy chọn. Lịch phải sau hiện tại ít nhất 30 phút và tối đa 60 ngày. 201 trả ServiceBookingDto ở trạng thái pending; 400: dữ liệu sai; 404: dịch vụ không có/đã xóa. Chưa có API staff xác nhận hoặc hoàn thành lịch.")]
+    [ProducesResponseType(400, Description = "Dữ liệu đầu vào không hợp lệ; xem chi tiết lỗi và các trường trong response.")]
+    [ProducesResponseType(404, Description = "Không tìm thấy dữ liệu hoặc không được phép xem dữ liệu này.")]
+    [ProducesResponseType(typeof(ServiceBookingDto), 201, Description = "Thành công; dữ liệu trả về theo schema bên dưới.")]
     [HttpPost("services/{serviceId:guid}/bookings")]
     public async Task<ActionResult<ServiceBookingDto>> Create(
-        Guid serviceId,
-        CreateServiceBookingRequest request,
+        [Description("UUID dịch vụ, lấy từ id trong danh sách dịch vụ.")] Guid serviceId,
+        [Description("JSON theo schema bên dưới; tên trường dùng camelCase.")] CreateServiceBookingRequest request,
         CancellationToken cancellationToken)
     {
         if (User.GetUserId() is not { } userId)
@@ -32,6 +38,9 @@ public sealed class ServiceBookingsController(IServiceBookingService bookingServ
         return CreatedAtAction(nameof(GetMine), new { bookingId = booking.Id }, booking);
     }
 
+    [EndpointSummary("Lấy lịch dịch vụ của tôi")]
+    [EndpointDescription("Cần đăng nhập. 200 trả PagedResult<ServiceBookingDto>, mới nhất trước; chỉ gồm lịch của chính tài khoản.")]
+    [ProducesResponseType(typeof(PagedResult<ServiceBookingDto>), 200, Description = "Thành công; dữ liệu trả về theo schema bên dưới.")]
     [HttpGet("me/bookings")]
     public async Task<ActionResult<PagedResult<ServiceBookingDto>>> GetMyBookings(
         [FromQuery] PageQuery paging,
@@ -45,8 +54,12 @@ public sealed class ServiceBookingsController(IServiceBookingService bookingServ
         return Ok(await bookingService.GetMineAsync(userId, paging, cancellationToken));
     }
 
+    [EndpointSummary("Xem chi tiết lịch dịch vụ của tôi")]
+    [EndpointDescription("Cần đăng nhập. 200 trả ServiceBookingDto; 404: lịch không có hoặc thuộc người khác.")]
+    [ProducesResponseType(404, Description = "Không tìm thấy dữ liệu hoặc không được phép xem dữ liệu này.")]
+    [ProducesResponseType(typeof(ServiceBookingDto), 200, Description = "Thành công; dữ liệu trả về theo schema bên dưới.")]
     [HttpGet("me/bookings/{bookingId:guid}")]
-    public async Task<ActionResult<ServiceBookingDto>> GetMine(Guid bookingId, CancellationToken cancellationToken)
+    public async Task<ActionResult<ServiceBookingDto>> GetMine([Description("UUID lịch hẹn của tôi, lấy từ id trong danh sách lịch.")] Guid bookingId, CancellationToken cancellationToken)
     {
         if (User.GetUserId() is not { } userId)
         {
@@ -57,8 +70,13 @@ public sealed class ServiceBookingsController(IServiceBookingService bookingServ
         return booking is null ? NotFound() : Ok(booking);
     }
 
+    [EndpointSummary("Hủy lịch dịch vụ của tôi")]
+    [EndpointDescription("Cần đăng nhập; không có body. Chỉ hủy pending/confirmed chưa đến giờ. 200 trả lịch đã hủy; 404: lịch không có/thuộc người khác; 409 code booking_not_cancellable: không thể hủy.")]
+    [ProducesResponseType(404, Description = "Không tìm thấy dữ liệu hoặc không được phép xem dữ liệu này.")]
+    [ProducesResponseType(409, Description = "Xung đột trạng thái; xem mô tả endpoint và code lỗi nếu có.")]
+    [ProducesResponseType(typeof(ServiceBookingDto), 200, Description = "Thành công; dữ liệu trả về theo schema bên dưới.")]
     [HttpPost("me/bookings/{bookingId:guid}/cancel")]
-    public async Task<ActionResult<ServiceBookingDto>> Cancel(Guid bookingId, CancellationToken cancellationToken)
+    public async Task<ActionResult<ServiceBookingDto>> Cancel([Description("UUID lịch hẹn của tôi, lấy từ id trong danh sách lịch.")] Guid bookingId, CancellationToken cancellationToken)
     {
         if (User.GetUserId() is not { } userId)
         {

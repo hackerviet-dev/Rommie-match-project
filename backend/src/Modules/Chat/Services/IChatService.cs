@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using RoomieMatch.Shared.Paging;
 
@@ -98,15 +99,17 @@ public sealed class MessagePageQuery
     public const int DefaultLimit = 30;
     public const int MaxLimit = 50;
 
+    [Description("UUID tin cũ nhất đang có để tải tin cũ hơn; bỏ trống khi tải lần đầu.")]
     public Guid? BeforeId { get; init; }
 
     [Range(1, MaxLimit)]
+    [Description("Số tin mỗi lần tải; mặc định 30, từ 1 đến 50.")]
     public int Limit { get; init; } = DefaultLimit;
 }
 
-public sealed record StartConversationRequest([Required] Guid? UserId);
+public sealed record StartConversationRequest([Required] [property: Description("UUID thành viên muốn bắt đầu trò chuyện; không phải id chính mình.")] Guid? UserId);
 
-public sealed record SendMessageRequest([Required, StringLength(MessageRules.MaxLength)] string Content);
+public sealed record SendMessageRequest([Required, StringLength(MessageRules.MaxLength)] [property: Description("Nội dung tin nhắn, 1-4000 ký tự sau khi bỏ khoảng trắng hai đầu.")] string Content);
 
 public static class MessageRules
 {

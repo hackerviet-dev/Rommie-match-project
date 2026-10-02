@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 namespace RoomieMatch.Modules.Billing.Services;
@@ -91,7 +92,7 @@ public sealed record RefundResult(RefundError Error, PaymentDto? Payment)
 }
 
 public sealed record RefundRequest(
-    [StringLength(1000)] string? Reason);
+    [StringLength(1000)] [property: Description("Lý do hoàn tiền tùy chọn, tối đa 1000 ký tự.")] string? Reason);
 
 public enum CheckoutError
 {
@@ -110,7 +111,7 @@ public sealed record CheckoutResult(CheckoutError Error, CheckoutResponse? Check
 }
 
 public sealed record CheckoutRequest(
-    [Required, StringLength(40)] string PlanCode);
+    [Required, StringLength(40)] [property: Description("Mã gói có thể mua từ GET /api/billing/plans, ví dụ premium_monthly hoặc premium_yearly.")] string PlanCode);
 
 public sealed record CheckoutResponse(
     Guid PaymentId,

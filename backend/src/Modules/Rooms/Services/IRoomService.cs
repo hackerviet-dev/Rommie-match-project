@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using RoomieMatch.Shared.Paging;
 
@@ -85,26 +86,26 @@ public static class RoomPropertyTypes
 }
 
 public sealed record SaveRoomRequest(
-    [Required, StringLength(180, MinimumLength = 4)] string Title,
-    [StringLength(4000)] string? Description,
-    [Required, StringLength(500, MinimumLength = 4)] string Address,
-    [Required, StringLength(100)] string District,
-    [Required, StringLength(100)] string City,
-    [Required, Range(0, 1_000_000_000)] int? MonthlyRent,
-    [Range(0, 1_000_000_000)] int Deposit,
-    [Required] DateOnly? AvailableFrom,
-    [Range(1, 20)] int MaxOccupants,
-    string? PropertyType,
-    [Range(1, 50)] int? Bedrooms,
+    [Required, StringLength(180, MinimumLength = 4)] [property: Description("Tiêu đề tin phòng, 4-180 ký tự.")] string Title,
+    [StringLength(4000)] [property: Description("Mô tả; phòng tối đa 4000 ký tự, dịch vụ tối đa 2000 ký tự.")] string? Description,
+    [Required, StringLength(500, MinimumLength = 4)] [property: Description("Địa chỉ, 4-500 ký tự.")] string Address,
+    [Required, StringLength(100)] [property: Description("Tên quận/huyện, tối đa 100 ký tự.")] string District,
+    [Required, StringLength(100)] [property: Description("Tên thành phố, ví dụ TP.HCM, tối đa 100 ký tự.")] string City,
+    [Required, Range(0, 1_000_000_000)] [property: Description("Giá thuê mỗi tháng, đơn vị VND, 0-1000000000.")] int? MonthlyRent,
+    [Range(0, 1_000_000_000)] [property: Description("Tiền đặt cọc, đơn vị VND, 0-1000000000.")] int Deposit,
+    [Required] [property: Description("Ngày phòng bắt đầu sẵn sàng, dạng yyyy-MM-dd.")] DateOnly? AvailableFrom,
+    [Range(1, 20)] [property: Description("Số người ở tối đa, từ 1 đến 20 (bao gồm người đăng).")] int MaxOccupants,
+    [property: Description("Loại nhà: apartment, house, studio hoặc dormitory; có thể null.")] string? PropertyType,
+    [Range(1, 50)] [property: Description("Số phòng ngủ, 1-50; có thể null.")] int? Bedrooms,
     [Range(typeof(decimal), "1", "99999.9", ParseLimitsInInvariantCulture = true)]
-    decimal? AreaM2,
-    [Range(1, 20)] int? RoommatesNeeded,
-    string[]? Amenities,
+    [property: Description("Diện tích m², 1-99999.9; có thể null.")] decimal? AreaM2,
+    [Range(1, 20)] [property: Description("Số bạn cùng phòng cần tìm, 1-20 và nhỏ hơn maxOccupants; có thể null.")] int? RoommatesNeeded,
+    [property: Description("Danh sách tiện ích, tối đa 30 mục, mỗi mục tối đa 60 ký tự.")] string[]? Amenities,
     [Range(typeof(decimal), "-90", "90", ParseLimitsInInvariantCulture = true)]
-    decimal? Latitude,
+    [property: Description("Vĩ độ -90 đến 90; phải gửi cùng longitude hoặc bỏ cả hai.")] decimal? Latitude,
     [Range(typeof(decimal), "-180", "180", ParseLimitsInInvariantCulture = true)]
-    decimal? Longitude,
-    bool? IsActive) : IValidatableObject
+    [property: Description("Kinh độ -180 đến 180; phải gửi cùng latitude hoặc bỏ cả hai.")] decimal? Longitude,
+    [property: Description("Có hiển thị tin phòng hay không; null dùng mặc định của server.")] bool? IsActive) : IValidatableObject
 {
     public const int MaxAmenities = 30;
     public const int MaxAmenityLength = 60;

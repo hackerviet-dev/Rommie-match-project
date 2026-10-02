@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using RoomieMatch.Shared.Paging;
 
@@ -63,14 +64,14 @@ public sealed record ProfileDetailDto(
     DateTimeOffset UpdatedAt);
 
 public sealed record UpdateProfileRequest(
-    [Required, StringLength(120, MinimumLength = 2)] string DisplayName,
-    DateOnly? BirthDate,
-    [StringLength(30), Gender] string? Gender,
-    [StringLength(120)] string? Occupation,
-    [StringLength(2000)] string? Bio,
-    [Required, StringLength(100)] string City,
-    [StringLength(100)] string? District,
-    [StringLength(500), Url] string? AvatarUrl);
+    [Required, StringLength(120, MinimumLength = 2)] [property: Description("Tên hiển thị, 2-120 ký tự.")] string DisplayName,
+    [property: Description("Ngày sinh dạng yyyy-MM-dd; có thể null.")] DateOnly? BirthDate,
+    [StringLength(30), Gender] [property: Description("Giới tính: male, female hoặc other; có thể null.")] string? Gender,
+    [StringLength(120)] [property: Description("Nghề nghiệp, tối đa 120 ký tự.")] string? Occupation,
+    [StringLength(2000)] [property: Description("Giới thiệu bản thân, tối đa 2000 ký tự.")] string? Bio,
+    [Required, StringLength(100)] [property: Description("Tên thành phố, ví dụ TP.HCM, tối đa 100 ký tự.")] string City,
+    [StringLength(100)] [property: Description("Tên quận/huyện, tối đa 100 ký tự.")] string? District,
+    [StringLength(500), Url] [property: Description("URL ảnh đại diện hợp lệ; API không nhận file upload.")] string? AvatarUrl);
 
 public sealed record LifestylePreferencesDto(
     Guid UserId,
@@ -88,18 +89,18 @@ public sealed record LifestylePreferencesDto(
     DateTimeOffset UpdatedAt);
 
 public sealed record SaveLifestylePreferencesRequest(
-    [Required, StringLength(40)] string SleepSchedule,
-    [Range(1, 5)] int Cleanliness,
-    [Required, StringLength(40)] string SocialStyle,
-    bool Smoking,
-    bool PetFriendly,
-    [StringLength(40)] string? CookingFrequency,
+    [Required, StringLength(40)] [property: Description("Thói quen giờ ngủ; dùng giá trị thống nhất với dữ liệu ứng dụng, tối đa 40 ký tự.")] string SleepSchedule,
+    [Range(1, 5)] [property: Description("Mức độ sạch sẽ từ 1 đến 5.")] int Cleanliness,
+    [Required, StringLength(40)] [property: Description("Phong cách giao tiếp/sinh hoạt, tối đa 40 ký tự.")] string SocialStyle,
+    [property: Description("true nếu có hút thuốc.")] bool Smoking,
+    [property: Description("true nếu chấp nhận sống cùng thú cưng.")] bool PetFriendly,
+    [StringLength(40)] [property: Description("Tần suất nấu ăn, tối đa 40 ký tự; có thể null.")] string? CookingFrequency,
     // "Chịu ồn": quiet, moderate or lively. Null leaves the score to the quiz answers.
-    [AllowedValues("quiet", "moderate", "lively", null)] string? RoomEnvironment,
-    [Range(0, 1_000_000_000)] int BudgetMin,
-    [Range(0, 1_000_000_000)] int BudgetMax,
-    DateOnly? MoveInDate,
-    string[]? Interests) : IValidatableObject
+    [AllowedValues("quiet", "moderate", "lively", null)] [property: Description("Môi trường phòng: quiet, moderate hoặc lively; null để dùng kết quả quiz khi tính chịu ồn.")] string? RoomEnvironment,
+    [Range(0, 1_000_000_000)] [property: Description("Ngân sách tối thiểu mỗi tháng, đơn vị VND, 0-1000000000.")] int BudgetMin,
+    [Range(0, 1_000_000_000)] [property: Description("Ngân sách tối đa mỗi tháng, đơn vị VND; phải >= budgetMin.")] int BudgetMax,
+    [property: Description("Ngày dự kiến dọn vào, dạng yyyy-MM-dd; có thể null.")] DateOnly? MoveInDate,
+    [property: Description("Danh sách sở thích, tối đa 20 mục, mỗi mục tối đa 40 ký tự.")] string[]? Interests) : IValidatableObject
 {
     public const int MaxInterests = 20;
     public const int MaxInterestLength = 40;
