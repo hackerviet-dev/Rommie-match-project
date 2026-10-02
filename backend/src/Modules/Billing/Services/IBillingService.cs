@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using RoomieMatch.Shared.Paging;
 
 namespace RoomieMatch.Modules.Billing.Services;
 
@@ -37,11 +38,34 @@ public interface IBillingService
         CancellationToken cancellationToken);
 
     // Refunds a paid order of the caller within the refund window and takes the
-    // order's months back off the subscription.
+    // order's months back off the subscription. When the order's provider cannot refund
+    // through its API (payOS), files a refund request for an admin instead and changes nothing
+    // else; the result then has Requested set.
     Task<RefundResult> RefundAsync(
         Guid userId,
         Guid paymentId,
         RefundRequest request,
+        CancellationToken cancellationToken);
+
+    // The admin queue of manual refunds, newest first. status null means every request.
+    Task<PagedResult<AdminRefundRequestDto>> GetRefundRequestsAsync(
+        string? status,
+        PageQuery paging,
+        CancellationToken cancellationToken);
+
+    // Approving records the bank transfer that sent the money back, marks the payment refunded
+    // and takes its months off the subscription, all in one transaction. Rejecting only closes
+    // the request.
+    Task<ResolveRefundResult> ApproveRefundRequestAsync(
+        Guid requestId,
+        Guid adminId,
+        ApproveRefundRequest request,
+        CancellationToken cancellationToken);
+
+    Task<ResolveRefundResult> RejectRefundRequestAsync(
+        Guid requestId,
+        Guid adminId,
+        RejectRefundRequest request,
         CancellationToken cancellationToken);
 }
 
@@ -52,6 +76,13 @@ public static class PaymentStatus
     public const string Failed = "failed";
     public const string Expired = "expired";
     public const string Refunded = "refunded";
+}
+
+public static class RefundRequestStatus
+{
+    public const string Pending = "pending";
+    public const string Approved = "approved";
+    public const string Rejected = "rejected";
 }
 
 // What a confirm attempt decided. Anything but Applied means Premium was NOT granted and the
@@ -80,16 +111,75 @@ public enum RefundError
     AlreadyRefunded,
     WindowExpired,
     GatewayNotConfigured,
-    // The provider itself refused the refund (payOS only refunds by hand).
-    GatewayRejected
+    // The provider itself refused the refund.
+    GatewayRejected,
+    // A manual refund request for this order is already waiting for an admin.
+    RefundPending
 }
 
-public sealed record RefundResult(RefundError Error, PaymentDto? Payment)
+// Requested: no money moved yet; a manual refund request now waits for an admin.
+public sealed record RefundResult(RefundError Error, PaymentDto? Payment, bool Requested = false)
 {
     public static RefundResult Success(PaymentDto payment) => new(RefundError.None, payment);
 
+    public static RefundResult Filed(PaymentDto payment) => new(RefundError.None, payment, true);
+
     public static RefundResult Failure(RefundError error) => new(error, null);
 }
+
+public enum ResolveRefundError
+{
+    None,
+    // No pending request carries this id.
+    NotFound,
+    // The order is no longer paid (refunded some other way), so it cannot be approved.
+    PaymentNotPaid
+}
+
+public sealed record ResolveRefundResult(ResolveRefundError Error, AdminRefundRequestDto? Request)
+{
+    public static ResolveRefundResult Success(AdminRefundRequestDto request) => new(ResolveRefundError.None, request);
+
+    public static ResolveRefundResult Failure(ResolveRefundError error) => new(error, null);
+}
+
+public sealed record ApproveRefundRequest(
+    [Required, StringLength(200, MinimumLength = 1)] [property: Description("Mã giao dịch chuyển khoản đã hoàn tiền cho người mua, tối đa 200 ký tự.")] string TransferReference,
+    [StringLength(2000)] [property: Description("Ghi chú nội bộ tùy chọn, tối đa 2000 ký tự.")] string? Note);
+
+public sealed record RejectRefundRequest(
+    [Required, StringLength(2000, MinimumLength = 1)] [property: Description("Lý do từ chối gửi cho người mua, bắt buộc, tối đa 2000 ký tự.")] string Note);
+
+// The latest manual refund request of an order, as its buyer sees it.
+public sealed record RefundRequestDto(
+    Guid Id,
+    [property: Description("pending, approved hoặc rejected.")] string Status,
+    string? Reason,
+    [property: Description("Ghi chú của admin khi duyệt hoặc lý do từ chối.")] string? ResolutionNote,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? ResolvedAt);
+
+public sealed record AdminRefundRequestDto(
+    Guid Id,
+    Guid PaymentId,
+    Guid UserId,
+    string UserEmail,
+    string UserName,
+    string PlanCode,
+    int Amount,
+    string Currency,
+    string Provider,
+    long? ProviderOrderCode,
+    string? ProviderTransactionId,
+    DateTimeOffset? PaidAt,
+    string PaymentStatus,
+    string? Reason,
+    string Status,
+    string? TransferReference,
+    string? ResolutionNote,
+    Guid? ResolvedBy,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? ResolvedAt);
 
 public sealed record RefundRequest(
     [StringLength(1000)] [property: Description("Lý do hoàn tiền tùy chọn, tối đa 1000 ký tự.")] string? Reason);
@@ -132,8 +222,11 @@ public sealed record PaymentDto(
     DateTimeOffset ExpiresAt,
     DateTimeOffset? PaidAt,
     DateTimeOffset? RefundedAt,
-    // Set only while the order is paid and still inside the refund window.
-    DateTimeOffset? RefundableUntil);
+    // Set only while the order is paid, still inside the refund window and has no refund
+    // request waiting for an admin.
+    DateTimeOffset? RefundableUntil,
+    // The latest manual refund request (payOS orders); null when none was filed.
+    RefundRequestDto? RefundRequest);
 
 public sealed record SubscriptionDto(
     string Tier,

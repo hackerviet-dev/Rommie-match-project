@@ -23,6 +23,11 @@ public interface IPaymentGateway
         DateTimeOffset expiresAt,
         CancellationToken cancellationToken);
 
+    // False when the provider cannot send money back through its API (payOS): a refund of such an
+    // order is filed as a request that an admin carries out by bank transfer, and RefundAsync is
+    // never called for it.
+    bool SupportsAutomaticRefund { get; }
+
     // Returns the provider's refund id. Throws when the provider refuses the refund.
     Task<string> RefundAsync(
         Guid paymentId,

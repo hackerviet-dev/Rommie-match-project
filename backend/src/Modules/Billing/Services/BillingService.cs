@@ -2,6 +2,7 @@ using System.Data.Common;
 using Microsoft.Extensions.Options;
 using RoomieMatch.Modules.Billing.Gateways;
 using RoomieMatch.Shared.Data;
+using RoomieMatch.Shared.Paging;
 
 namespace RoomieMatch.Modules.Billing.Services;
 
@@ -10,9 +11,33 @@ public sealed class BillingService(
     IEnumerable<IPaymentGateway> gateways,
     IOptions<BillingOptions> options) : IBillingService
 {
-    private const string PaymentColumns = """
-        id, plan_code, amount, currency, provider, status, created_at, expires_at, paid_at,
-        refunded_at
+    // A payment together with its latest manual refund request, if any.
+    private const string PaymentSelect = """
+        SELECT p.id, p.plan_code, p.amount, p.currency, p.provider, p.status, p.created_at,
+               p.expires_at, p.paid_at, p.refunded_at,
+               r.id, r.status, r.reason, r.resolution_note, r.created_at, r.resolved_at
+        FROM payments p
+        LEFT JOIN LATERAL (
+            SELECT id, status, reason, resolution_note, created_at, resolved_at
+            FROM payment_refund_requests
+            WHERE payment_id = p.id
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+        ) r ON true
+        """;
+
+    private const string AdminRefundSelect = """
+        SELECT r.id, r.payment_id, r.user_id, u.email, COALESCE(pr.display_name, ''),
+               p.plan_code, p.amount, p.currency, p.provider, p.provider_order_code,
+               p.provider_transaction_id, p.paid_at, p.status, r.reason, r.status,
+               r.transfer_reference, r.resolution_note, r.resolved_by, r.created_at, r.resolved_at
+        """;
+
+    private const string AdminRefundFrom = """
+        FROM payment_refund_requests r
+        JOIN payments p ON p.id = r.payment_id
+        JOIN users u ON u.id = r.user_id
+        LEFT JOIN profiles pr ON pr.user_id = r.user_id
         """;
 
     internal const string ActiveSubscriptionSql = """
@@ -29,7 +54,7 @@ public sealed class BillingService(
         {
             module = "Billing",
             provider = string.IsNullOrEmpty(options.Value.Provider) ? "none" : options.Value.Provider,
-            features = new[] { "plans", "checkout", "subscriptions", "payment-history", "refunds" }
+            features = new[] { "plans", "checkout", "subscriptions", "payment-history", "refunds", "manual-refunds" }
         };
     }
 
@@ -126,8 +151,8 @@ public sealed class BillingService(
         Guid? ownerUserId,
         CancellationToken cancellationToken)
     {
-        var sql = $"SELECT {PaymentColumns} FROM payments WHERE id = @id"
-            + (ownerUserId is null ? string.Empty : " AND user_id = @user_id");
+        var sql = $"{PaymentSelect} WHERE p.id = @id"
+            + (ownerUserId is null ? string.Empty : " AND p.user_id = @user_id");
 
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
@@ -144,7 +169,7 @@ public sealed class BillingService(
 
     public async Task<IReadOnlyList<PaymentDto>> GetPaymentsAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var sql = $"SELECT {PaymentColumns} FROM payments WHERE user_id = @user_id ORDER BY created_at DESC LIMIT 50";
+        var sql = $"{PaymentSelect} WHERE p.user_id = @user_id ORDER BY p.created_at DESC, p.id DESC LIMIT 50";
 
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
@@ -352,6 +377,19 @@ public sealed class BillingService(
                 return RefundResult.Failure(RefundError.NotPaid);
             }
 
+            // Checked before the window: a request filed in time stays valid while it waits.
+            await using (var pending = CreateCommand(
+                connection,
+                transaction,
+                "SELECT EXISTS (SELECT 1 FROM payment_refund_requests WHERE payment_id = @id AND status = 'pending')"))
+            {
+                pending.AddParameter("id", paymentId);
+                if (await pending.ExecuteScalarAsync(cancellationToken) is true)
+                {
+                    return RefundResult.Failure(RefundError.RefundPending);
+                }
+            }
+
             if (RefundDeadline(paidAt.Value) <= DateTimeOffset.UtcNow)
             {
                 return RefundResult.Failure(RefundError.WindowExpired);
@@ -363,6 +401,28 @@ public sealed class BillingService(
             if (gateway is null)
             {
                 return RefundResult.Failure(RefundError.GatewayNotConfigured);
+            }
+
+            // payOS cannot send the money back through its API: file the request for an admin.
+            // The payment stays paid, and Premium untouched, until the admin approves it.
+            if (!gateway.SupportsAutomaticRefund)
+            {
+                await using (var file = CreateCommand(
+                    connection,
+                    transaction,
+                    """
+                    INSERT INTO payment_refund_requests (payment_id, user_id, reason)
+                    VALUES (@payment_id, @user_id, @reason)
+                    """))
+                {
+                    file.AddParameter("payment_id", paymentId);
+                    file.AddParameter("user_id", userId);
+                    file.AddParameter("reason", NormalizeText(request.Reason));
+                    await file.ExecuteNonQueryAsync(cancellationToken);
+                }
+
+                await transaction.CommitAsync(cancellationToken);
+                return RefundResult.Filed((await GetPaymentAsync(paymentId, userId, cancellationToken))!);
             }
 
             // Called while the row is locked so a concurrent request cannot slip in
@@ -389,9 +449,7 @@ public sealed class BillingService(
             await using (var refund = CreateCommand(connection, transaction, refundSql))
             {
                 refund.AddParameter("id", paymentId);
-                refund.AddParameter(
-                    "refund_reason",
-                    string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim());
+                refund.AddParameter("refund_reason", NormalizeText(request.Reason));
                 refund.AddParameter("provider_refund_id", providerRefundId);
                 await refund.ExecuteNonQueryAsync(cancellationToken);
             }
@@ -407,6 +465,206 @@ public sealed class BillingService(
         }
 
         return RefundResult.Success((await GetPaymentAsync(paymentId, userId, cancellationToken))!);
+    }
+
+    public async Task<PagedResult<AdminRefundRequestDto>> GetRefundRequestsAsync(
+        string? status,
+        PageQuery paging,
+        CancellationToken cancellationToken)
+    {
+        const string where = "WHERE (CAST(@status AS text) IS NULL OR r.status = @status)";
+
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        int totalCount;
+        await using (var count = connection.CreateCommand())
+        {
+            count.CommandText = $"SELECT count(*) FROM payment_refund_requests r {where}";
+            count.AddParameter("status", status);
+            totalCount = checked((int)(long)(await count.ExecuteScalarAsync(cancellationToken))!);
+        }
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"{AdminRefundSelect} {AdminRefundFrom} {where} "
+            + "ORDER BY r.created_at DESC, r.id DESC LIMIT @limit OFFSET @offset";
+        command.AddParameter("status", status);
+        command.AddParameter("limit", paging.PageSize);
+        command.AddParameter("offset", paging.Offset);
+
+        var items = new List<AdminRefundRequestDto>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            items.Add(ReadAdminRefundRequest(reader));
+        }
+
+        return new PagedResult<AdminRefundRequestDto>(items, paging.Page, paging.PageSize, totalCount);
+    }
+
+    public async Task<ResolveRefundResult> ApproveRefundRequestAsync(
+        Guid requestId,
+        Guid adminId,
+        ApproveRefundRequest request,
+        CancellationToken cancellationToken)
+    {
+        await using (var connection = await connectionFactory.OpenConnectionAsync(cancellationToken))
+        await using (var transaction = await connection.BeginTransactionAsync(cancellationToken))
+        {
+            // Locks the request so two admins approving at once cannot both refund.
+            Guid paymentId;
+            Guid userId;
+            string? reason;
+            await using (var select = CreateCommand(
+                connection,
+                transaction,
+                """
+                SELECT payment_id, user_id, reason
+                FROM payment_refund_requests
+                WHERE id = @id AND status = 'pending'
+                FOR UPDATE
+                """))
+            {
+                select.AddParameter("id", requestId);
+                await using var reader = await select.ExecuteReaderAsync(cancellationToken);
+                if (!await reader.ReadAsync(cancellationToken))
+                {
+                    return ResolveRefundResult.Failure(ResolveRefundError.NotFound);
+                }
+
+                paymentId = reader.GetGuid(0);
+                userId = reader.GetGuid(1);
+                reason = reader.IsDBNull(2) ? null : reader.GetString(2);
+            }
+
+            string planCode;
+            Guid? subscriptionId;
+            await using (var payment = CreateCommand(
+                connection,
+                transaction,
+                "SELECT plan_code, status, subscription_id FROM payments WHERE id = @id FOR UPDATE"))
+            {
+                payment.AddParameter("id", paymentId);
+                await using var reader = await payment.ExecuteReaderAsync(cancellationToken);
+                await reader.ReadAsync(cancellationToken);
+                if (reader.GetString(1) != PaymentStatus.Paid)
+                {
+                    return ResolveRefundResult.Failure(ResolveRefundError.PaymentNotPaid);
+                }
+
+                planCode = reader.GetString(0);
+                subscriptionId = reader.IsDBNull(2) ? null : reader.GetGuid(2);
+            }
+
+            var transferReference = request.TransferReference.Trim();
+            await using (var refund = CreateCommand(
+                connection,
+                transaction,
+                """
+                UPDATE payments
+                SET status = 'refunded', refunded_at = now(),
+                    refund_reason = @refund_reason, provider_refund_id = @provider_refund_id
+                WHERE id = @id
+                """))
+            {
+                refund.AddParameter("id", paymentId);
+                refund.AddParameter("refund_reason", reason);
+                refund.AddParameter("provider_refund_id", transferReference);
+                await refund.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            if (subscriptionId is { } id)
+            {
+                var plan = Plans.All.First(p => p.Code == planCode);
+                await ShortenSubscriptionAsync(
+                    connection, transaction, userId, id, plan.DurationMonths, cancellationToken);
+            }
+
+            await using (var approve = CreateCommand(
+                connection,
+                transaction,
+                """
+                UPDATE payment_refund_requests
+                SET status = 'approved', transfer_reference = @transfer_reference,
+                    resolution_note = @note, resolved_by = @admin_id, resolved_at = now()
+                WHERE id = @id
+                """))
+            {
+                approve.AddParameter("id", requestId);
+                approve.AddParameter("transfer_reference", transferReference);
+                approve.AddParameter("note", NormalizeText(request.Note));
+                approve.AddParameter("admin_id", adminId);
+                await approve.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+
+        return ResolveRefundResult.Success((await GetRefundRequestAsync(requestId, cancellationToken))!);
+    }
+
+    public async Task<ResolveRefundResult> RejectRefundRequestAsync(
+        Guid requestId,
+        Guid adminId,
+        RejectRefundRequest request,
+        CancellationToken cancellationToken)
+    {
+        await using (var connection = await connectionFactory.OpenConnectionAsync(cancellationToken))
+        await using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                UPDATE payment_refund_requests
+                SET status = 'rejected', resolution_note = @note, resolved_by = @admin_id, resolved_at = now()
+                WHERE id = @id AND status = 'pending'
+                """;
+            command.AddParameter("id", requestId);
+            command.AddParameter("note", request.Note.Trim());
+            command.AddParameter("admin_id", adminId);
+            if (await command.ExecuteNonQueryAsync(cancellationToken) == 0)
+            {
+                return ResolveRefundResult.Failure(ResolveRefundError.NotFound);
+            }
+        }
+
+        return ResolveRefundResult.Success((await GetRefundRequestAsync(requestId, cancellationToken))!);
+    }
+
+    private async Task<AdminRefundRequestDto?> GetRefundRequestAsync(Guid requestId, CancellationToken cancellationToken)
+    {
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"{AdminRefundSelect} {AdminRefundFrom} WHERE r.id = @id";
+        command.AddParameter("id", requestId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? ReadAdminRefundRequest(reader) : null;
+    }
+
+    private static AdminRefundRequestDto ReadAdminRefundRequest(DbDataReader reader)
+    {
+        return new AdminRefundRequestDto(
+            reader.GetGuid(0),
+            reader.GetGuid(1),
+            reader.GetGuid(2),
+            reader.GetString(3),
+            reader.GetString(4),
+            reader.GetString(5),
+            reader.GetInt32(6),
+            reader.GetString(7),
+            reader.GetString(8),
+            reader.IsDBNull(9) ? null : reader.GetInt64(9),
+            reader.IsDBNull(10) ? null : reader.GetString(10),
+            reader.IsDBNull(11) ? null : reader.GetFieldValue<DateTimeOffset>(11),
+            reader.GetString(12),
+            reader.IsDBNull(13) ? null : reader.GetString(13),
+            reader.GetString(14),
+            reader.IsDBNull(15) ? null : reader.GetString(15),
+            reader.IsDBNull(16) ? null : reader.GetString(16),
+            reader.IsDBNull(17) ? null : reader.GetGuid(17),
+            reader.GetFieldValue<DateTimeOffset>(18),
+            reader.IsDBNull(19) ? null : reader.GetFieldValue<DateTimeOffset>(19));
+    }
+
+    private static string? NormalizeText(string? text)
+    {
+        return string.IsNullOrWhiteSpace(text) ? null : text.Trim();
     }
 
     // The mirror of ExtendSubscriptionAsync: only the refunded order's months come off,
@@ -557,8 +815,22 @@ public sealed class BillingService(
             status = PaymentStatus.Expired;
         }
 
+        RefundRequestDto? refundRequest = reader.IsDBNull(10)
+            ? null
+            : new RefundRequestDto(
+                reader.GetGuid(10),
+                reader.GetString(11),
+                reader.IsDBNull(12) ? null : reader.GetString(12),
+                reader.IsDBNull(13) ? null : reader.GetString(13),
+                reader.GetFieldValue<DateTimeOffset>(14),
+                reader.IsDBNull(15) ? null : reader.GetFieldValue<DateTimeOffset>(15));
+
+        // No refund is offered while a request already waits for an admin.
         DateTimeOffset? refundableUntil = null;
-        if (status == PaymentStatus.Paid && paidAt is { } paid && RefundDeadline(paid) > now)
+        if (status == PaymentStatus.Paid
+            && paidAt is { } paid
+            && RefundDeadline(paid) > now
+            && refundRequest?.Status != RefundRequestStatus.Pending)
         {
             refundableUntil = RefundDeadline(paid);
         }
@@ -574,6 +846,7 @@ public sealed class BillingService(
             expiresAt,
             paidAt,
             reader.IsDBNull(9) ? null : reader.GetFieldValue<DateTimeOffset>(9),
-            refundableUntil);
+            refundableUntil,
+            refundRequest);
     }
 }
