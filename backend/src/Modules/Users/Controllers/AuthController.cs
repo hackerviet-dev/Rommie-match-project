@@ -40,7 +40,7 @@ public sealed class AuthController(IAuthService authService, IUserService userSe
 
     [EnableRateLimiting(RateLimitPolicies.Credentials)]
     [EndpointSummary("Đăng nhập bằng email và mật khẩu")]
-    [EndpointDescription("Dùng cho form đăng nhập. 200 trả phiên đăng nhập; lưu cả accessToken và refreshToken. 401: sai thông tin; 403: tài khoản bị vô hiệu; 429: quá nhiều yêu cầu.")]
+    [EndpointDescription("Dùng cho form đăng nhập. Body bắt buộc: email (đúng định dạng email, tối đa 320 ký tự) và password (không được rỗng). 200 trả AuthSessionDto gồm accessToken (Bearer, hết hạn sau 60 phút; gửi ở header Authorization), tokenType, expiresAt, refreshToken (hết hạn sau 30 ngày), refreshTokenExpiresAt và user (AuthenticatedUserDto: id, email, role, displayName, avatarUrl, city, district, profileCompletion); frontend phải lưu cả accessToken và refreshToken. 400: thiếu email/password hoặc sai định dạng; 401: sai email/mật khẩu; 403: tài khoản đã bị vô hiệu hóa (problem details tiếng Việt, không có trường code); 429: quá nhiều yêu cầu, chờ rồi thử lại.")]
     [ProducesResponseType(400, Description = "Dữ liệu đầu vào không hợp lệ; xem chi tiết lỗi và các trường trong response.")]
     [ProducesResponseType(401, Description = "Thông tin đăng nhập/token không hợp lệ hoặc đã hết hạn.")]
     [ProducesResponseType(403, Description = "Không đủ quyền hoặc không thỏa điều kiện; xem mô tả endpoint và code lỗi nếu có.")]

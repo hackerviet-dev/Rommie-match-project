@@ -34,6 +34,16 @@ public interface IUserService
         Guid userId,
         SaveLifestylePreferencesRequest request,
         CancellationToken cancellationToken);
+
+    /// Returns the caller's own onboarding housing needs, or null when the profile is missing.
+    /// "Chưa khai" fields come back as null, not as false.
+    Task<HousingNeedsDto?> GetHousingNeedsAsync(Guid userId, CancellationToken cancellationToken);
+
+    /// Full-replace upsert of the caller's own housing needs; also null when the profile is missing.
+    Task<HousingNeedsDto?> SaveHousingNeedsAsync(
+        Guid userId,
+        SaveHousingNeedsRequest request,
+        CancellationToken cancellationToken);
 }
 
 // Email is deliberately absent: it identifies an account, not a profile, and the
@@ -64,43 +74,43 @@ public sealed record ProfileDetailDto(
     DateTimeOffset UpdatedAt);
 
 public sealed record UpdateProfileRequest(
-    [Required, StringLength(120, MinimumLength = 2)] [property: Description("Tên hiển thị, 2-120 ký tự.")] string DisplayName,
-    [property: Description("Ngày sinh dạng yyyy-MM-dd; có thể null.")] DateOnly? BirthDate,
-    [StringLength(30), Gender] [property: Description("Giới tính: male, female hoặc other; có thể null.")] string? Gender,
-    [StringLength(120)] [property: Description("Nghề nghiệp, tối đa 120 ký tự.")] string? Occupation,
-    [StringLength(2000)] [property: Description("Giới thiệu bản thân, tối đa 2000 ký tự.")] string? Bio,
-    [Required, StringLength(100)] [property: Description("Tên thành phố, ví dụ TP.HCM, tối đa 100 ký tự.")] string City,
-    [StringLength(100)] [property: Description("Tên quận/huyện, tối đa 100 ký tự.")] string? District,
-    [StringLength(500), Url] [property: Description("URL ảnh đại diện hợp lệ; API không nhận file upload.")] string? AvatarUrl);
+    [Required, StringLength(120, MinimumLength = 2)] [property: Description("Tên hiển thị, bắt buộc, 2-120 ký tự.")] string DisplayName,
+    [property: Description("Ngày sinh dạng yyyy-MM-dd (ví dụ 2004-10-02), KHÔNG gửi tuổi/age; null để xóa. Tuổi hiển thị do backend suy ra từ trường này.")] DateOnly? BirthDate,
+    [StringLength(30), Gender] [property: Description("Giới tính: male, female hoặc other; null nếu không muốn tiết lộ. Nhãn cũ nam/nữ/khác vẫn được chấp nhận và tự quy về mã.")] string? Gender,
+    [StringLength(120)] [property: Description("Nghề nghiệp, tối đa 120 ký tự; null để xóa giá trị cũ.")] string? Occupation,
+    [StringLength(2000)] [property: Description("Giới thiệu bản thân, tối đa 2000 ký tự; null để xóa giá trị cũ.")] string? Bio,
+    [Required, StringLength(100)] [property: Description("Tên thành phố, bắt buộc, tối đa 100 ký tự (ví dụ TP.HCM); dùng cho tiêu chí khu vực khi ghép đôi.")] string City,
+    [StringLength(100)] [property: Description("Quận/huyện, tối đa 100 ký tự; null để xóa, khi đó điểm khu vực chỉ so thành phố.")] string? District,
+    [StringLength(500), Url] [property: Description("URL ảnh đại diện; null để xóa ảnh hiện có. API không nhận file upload.")] string? AvatarUrl);
 
 public sealed record LifestylePreferencesDto(
-    Guid UserId,
-    string SleepSchedule,
-    int Cleanliness,
-    string SocialStyle,
-    bool Smoking,
-    bool PetFriendly,
-    string? CookingFrequency,
-    string? RoomEnvironment,
-    int BudgetMin,
-    int BudgetMax,
-    DateOnly? MoveInDate,
-    IReadOnlyList<string> Interests,
-    DateTimeOffset UpdatedAt);
-
-public sealed record SaveLifestylePreferencesRequest(
-    [Required, StringLength(40)] [property: Description("Thói quen giờ ngủ; dùng giá trị thống nhất với dữ liệu ứng dụng, tối đa 40 ký tự.")] string SleepSchedule,
-    [Range(1, 5)] [property: Description("Mức độ sạch sẽ từ 1 đến 5.")] int Cleanliness,
-    [Required, StringLength(40)] [property: Description("Phong cách giao tiếp/sinh hoạt, tối đa 40 ký tự.")] string SocialStyle,
+    [property: Description("UUID chủ sở hữu; luôn là user trong access token, không nhận từ client.")] Guid UserId,
+    [property: Description("Giờ ngủ đã lưu; bộ tính điểm hiểu đúng định dạng \"HH:mm–HH:mm\".")] string SleepSchedule,
+    [property: Description("Mức độ sạch sẽ từ 1 đến 5.")] int Cleanliness,
+    [property: Description("Phong cách giao tiếp đã lưu; bộ tính điểm hiểu ngoại hướng/extrovert, hướng nội/introvert, cân bằng/balanced.")] string SocialStyle,
     [property: Description("true nếu có hút thuốc.")] bool Smoking,
     [property: Description("true nếu chấp nhận sống cùng thú cưng.")] bool PetFriendly,
-    [StringLength(40)] [property: Description("Tần suất nấu ăn, tối đa 40 ký tự; có thể null.")] string? CookingFrequency,
+    [property: Description("Tần suất nấu ăn; chỉ để lưu/hiển thị, không tham gia tính điểm ghép đôi.")] string? CookingFrequency,
+    [property: Description("Môi trường phòng: quiet, moderate hoặc lively; null khi chưa chọn, khi đó điểm \"Chịu ồn\" lấy từ trắc nghiệm.")] string? RoomEnvironment,
+    [property: Description("Ngân sách tối thiểu mỗi tháng, đơn vị VND (đồng).")] int BudgetMin,
+    [property: Description("Ngân sách tối đa mỗi tháng, đơn vị VND (đồng); luôn >= budgetMin.")] int BudgetMax,
+    [property: Description("Ngày dự kiến dọn vào dạng yyyy-MM-dd; null nghĩa là linh hoạt.")] DateOnly? MoveInDate,
+    [property: Description("Sở thích đã lưu; đã gộp các mục trùng nhau.")] IReadOnlyList<string> Interests,
+    [property: Description("Thời điểm lưu gần nhất, ISO 8601.")] DateTimeOffset UpdatedAt);
+
+public sealed record SaveLifestylePreferencesRequest(
+    [Required, StringLength(40)] [property: Description("Giờ ngủ dạng \"HH:mm–HH:mm\" (ví dụ 23:00–07:00). Bộ tính điểm tách 2 mốc giờ (dấu –, — hoặc - đều được) và so lệch tối đa 180 phút; giá trị khác định dạng này chỉ được so khớp nguyên văn nên dễ mất điểm.")] string SleepSchedule,
+    [Range(1, 5)] [property: Description("Mức độ sạch sẽ, số nguyên từ 1 đến 5 (lệch 1 mức trừ 25 điểm ghép đôi).")] int Cleanliness,
+    [Required, StringLength(40)] [property: Description("Phong cách giao tiếp: ngoại hướng/extrovert, hướng nội/introvert hoặc cân bằng/balanced (khớp theo từ khóa, không phân biệt hoa thường); giá trị khác bị coi là \"không xác định\".")] string SocialStyle,
+    [property: Description("true nếu có hút thuốc. Kiểu boolean và PUT ghi đè toàn bộ nên bỏ trống trường này sẽ lưu false.")] bool Smoking,
+    [property: Description("true nếu chấp nhận sống cùng thú cưng. Bỏ trống sẽ lưu false.")] bool PetFriendly,
+    [StringLength(40)] [property: Description("Tần suất nấu ăn, tối đa 40 ký tự; gửi null hoặc bỏ trống để lưu null. Chỉ để hiển thị, không tham gia tính điểm.")] string? CookingFrequency,
     // "Chịu ồn": quiet, moderate or lively. Null leaves the score to the quiz answers.
-    [AllowedValues("quiet", "moderate", "lively", null)] [property: Description("Môi trường phòng: quiet, moderate hoặc lively; null để dùng kết quả quiz khi tính chịu ồn.")] string? RoomEnvironment,
-    [Range(0, 1_000_000_000)] [property: Description("Ngân sách tối thiểu mỗi tháng, đơn vị VND, 0-1000000000.")] int BudgetMin,
-    [Range(0, 1_000_000_000)] [property: Description("Ngân sách tối đa mỗi tháng, đơn vị VND; phải >= budgetMin.")] int BudgetMax,
-    [property: Description("Ngày dự kiến dọn vào, dạng yyyy-MM-dd; có thể null.")] DateOnly? MoveInDate,
-    [property: Description("Danh sách sở thích, tối đa 20 mục, mỗi mục tối đa 40 ký tự.")] string[]? Interests) : IValidatableObject
+    [AllowedValues("quiet", "moderate", "lively", null)] [property: Description("Môi trường phòng: quiet (15 điểm chịu ồn), moderate (50) hoặc lively (85); gửi null hoặc bỏ trống để xóa, khi đó điểm lấy từ trắc nghiệm và cả hai đều trống thì tính 50.")] string? RoomEnvironment,
+    [Range(0, 1_000_000_000)] [property: Description("Ngân sách tối thiểu mỗi tháng, đơn vị VND (đồng), số nguyên 0-1000000000. PUT ghi đè toàn bộ nên bỏ trống sẽ lưu 0.")] int BudgetMin,
+    [Range(0, 1_000_000_000)] [property: Description("Ngân sách tối đa mỗi tháng, đơn vị VND (đồng), số nguyên 0-1000000000 và bắt buộc >= budgetMin; vi phạm trả 400. PUT ghi đè toàn bộ nên bỏ trống sẽ lưu 0.")] int BudgetMax,
+    [property: Description("Ngày dự kiến dọn vào dạng yyyy-MM-dd; gửi null hoặc bỏ trống để lưu null (linh hoạt, tính 50 điểm thời điểm).")] DateOnly? MoveInDate,
+    [property: Description("Danh sách sở thích: tối đa 20 mục, mỗi mục tối đa 40 ký tự; phần tử null hoặc chỉ có khoảng trắng bị từ chối với 400. Gửi null hoặc bỏ trống để lưu mảng rỗng; mục trùng nhau được gộp.")] string[]? Interests) : IValidatableObject
 {
     public const int MaxInterests = 20;
     public const int MaxInterestLength = 40;
@@ -121,11 +131,52 @@ public sealed record SaveLifestylePreferencesRequest(
                 [nameof(Interests)]);
         }
 
-        if (Interests?.Any(interest => interest.Length > MaxInterestLength) == true)
+        // A JSON array can carry null elements (System.Text.Json maps them to null) or blank
+        // strings. Left unchecked they would reach string operations and turn a bad request
+        // into a 500, so every element must carry content.
+        if (Interests?.Any(interest => string.IsNullOrWhiteSpace(interest) || interest.Length > MaxInterestLength) == true)
         {
             yield return new ValidationResult(
-                $"Mỗi sở thích tối đa {MaxInterestLength} ký tự.",
+                $"Mỗi sở thích phải có nội dung và tối đa {MaxInterestLength} ký tự.",
                 [nameof(Interests)]);
+        }
+    }
+}
+
+// Onboarding "housing needs" that had no write path before phase 3. The four circumstance
+// fields already live on profiles and the three preference fields on lifestyle_preferences;
+// this DTO joins them behind one /me endpoint instead of duplicating storage. All of it is
+// private: the discovery list and GET /api/users/{id}/profile never return it.
+public sealed record HousingNeedsDto(
+    [property: Description("UUID chủ sở hữu; luôn là user trong access token, không nhận từ client.")] Guid UserId,
+    [property: Description("Đã có phòng hay đang tìm phòng: true = đã có phòng, false = đang tìm phòng, null = chưa khai (khác hẳn false).")] bool? HasRoom,
+    [property: Description("Tình trạng hiện tại: student (đang đi học), employed (đang đi làm), both (cả hai), other (khác) hoặc null nếu chưa khai.")] string? OccupationStatus,
+    [property: Description("Tên trường học hoặc nơi làm việc, tối đa 160 ký tự; null khi chưa khai. Không suy ra từ occupation.")] string? OrganizationName,
+    [property: Description("true = ẩn tên tổ chức khi hiển thị công khai; false = cho phép hiển thị. Đây là công tắc nên luôn là boolean, không có trạng thái chưa khai.")] bool HideOrganization,
+    [property: Description("Có uống rượu bia: true = có, false = không, null = chưa khai.")] bool? Drinking,
+    [property: Description("Khoảng cách mong muốn tới nơi học/làm: lt_2km (< 2 km), 2_5km (2–5 km), 5_10km (5–10 km), anywhere (bất kỳ đâu trong thành phố) hoặc null nếu chưa khai.")] string? PreferredDistance,
+    [property: Description("Loại phòng muốn tìm: private (phòng riêng), shared (phòng chung), studio, whole_apartment (cả căn hộ) hoặc null nếu chưa khai.")] string? PreferredRoomType);
+
+public sealed record SaveHousingNeedsRequest(
+    [property: Description("true = đã có phòng, false = đang tìm phòng, null = chưa khai. Bỏ trống sẽ lưu null, KHÔNG mặc định false.")] bool? HasRoom,
+    [StringLength(20), AllowedValues("student", "employed", "both", "other", null)] [property: Description("Tình trạng hiện tại: student, employed, both, other; hoặc null để xóa. Giá trị khác trả 400.")] string? OccupationStatus,
+    [StringLength(160)] [property: Description("Tên trường học hoặc nơi làm việc, tối đa 160 ký tự; gửi null hoặc bỏ trống để lưu null. Không suy ra từ occupation và không bắt buộc theo occupationStatus.")] string? OrganizationName,
+    [property: Description("true để ẩn tên tổ chức khi hiển thị công khai; bỏ trống lưu false. Không phụ thuộc organizationName.")] bool HideOrganization,
+    [property: Description("true = có uống rượu bia, false = không, null = chưa khai; bỏ trống sẽ lưu null (khác hẳn false).")] bool? Drinking,
+    [StringLength(20), AllowedValues("lt_2km", "2_5km", "5_10km", "anywhere", null)] [property: Description("Khoảng cách mong muốn: lt_2km, 2_5km, 5_10km, anywhere; hoặc null. Bắt buộc là null khi hasRoom = true, nếu không trả 400.")] string? PreferredDistance,
+    [StringLength(20), AllowedValues("private", "shared", "studio", "whole_apartment", null)] [property: Description("Loại phòng muốn tìm: private, shared, studio, whole_apartment; hoặc null. Bắt buộc là null khi hasRoom = true, nếu không trả 400.")] string? PreferredRoomType) : IValidatableObject
+{
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        // "Đã có phòng" và "đang tìm phòng" loại trừ nhau: một người đã có phòng không còn
+        // khoảng cách hay loại phòng để tìm, nên không cho lưu cả hai nhóm cùng lúc. PUT ghi
+        // đè toàn bộ nên chuyển trạng thái (có phòng <-> tìm phòng) luôn thay thế dữ liệu cũ
+        // và không để lại dữ liệu tìm phòng mâu thuẫn.
+        if (HasRoom == true && (PreferredDistance is not null || PreferredRoomType is not null))
+        {
+            yield return new ValidationResult(
+                "Khi đã có phòng (hasRoom = true) thì preferredDistance và preferredRoomType phải là null.",
+                [nameof(PreferredDistance), nameof(PreferredRoomType)]);
         }
     }
 }

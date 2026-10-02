@@ -53,12 +53,17 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 CREATE TABLE IF NOT EXISTS lifestyle_preferences (
     user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    sleep_schedule varchar(40) NOT NULL,
-    cleanliness smallint NOT NULL CHECK (cleanliness BETWEEN 1 AND 5),
-    social_style varchar(40) NOT NULL,
-    smoking boolean NOT NULL DEFAULT false,
-    pet_friendly boolean NOT NULL DEFAULT false,
-    drinking boolean NOT NULL DEFAULT false,
+    -- Every preference column is optional: NULL means "chưa khai" (not answered yet), which
+    -- is different from a false/negative answer. A row counts as a real lifestyle submission
+    -- only when sleep_schedule IS NOT NULL; before that it can carry just the onboarding
+    -- housing-need fields (drinking, preferred_distance, preferred_room_type) written by
+    -- PUT /api/users/me/housing-needs. See database/migrations/012_housing_needs.sql.
+    sleep_schedule varchar(40),
+    cleanliness smallint CHECK (cleanliness BETWEEN 1 AND 5),
+    social_style varchar(40),
+    smoking boolean,
+    pet_friendly boolean,
+    drinking boolean,
     -- Feeds the "Chịu ồn" (noise tolerance) score.
     room_environment varchar(20) CHECK (room_environment IN ('quiet', 'moderate', 'lively')),
     extroversion smallint CHECK (extroversion BETWEEN 0 AND 100),
@@ -66,8 +71,8 @@ CREATE TABLE IF NOT EXISTS lifestyle_preferences (
     preferred_room_type varchar(20)
         CHECK (preferred_room_type IN ('private', 'shared', 'studio', 'whole_apartment')),
     cooking_frequency varchar(40),
-    budget_min integer NOT NULL CHECK (budget_min >= 0),
-    budget_max integer NOT NULL CHECK (budget_max >= budget_min),
+    budget_min integer CHECK (budget_min >= 0),
+    budget_max integer CHECK (budget_max >= budget_min),
     move_in_date date,
     interests text[] NOT NULL DEFAULT '{}',
     updated_at timestamptz NOT NULL DEFAULT now()

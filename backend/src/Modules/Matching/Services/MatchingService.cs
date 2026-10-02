@@ -334,6 +334,11 @@ public sealed class MatchingService(
             INNER JOIN profiles p ON p.user_id = lp.user_id
             LEFT JOIN quiz_responses qr ON qr.user_id = lp.user_id AND qr.quiz_code = @quiz_code
             WHERE u.is_active = true
+              -- A lifestyle_preferences row may carry only the onboarding housing-need fields
+              -- (drinking, preferred_distance, preferred_room_type) with sleep_schedule NULL.
+              -- Those rows are not a submitted lifestyle questionnaire, so they stay out of
+              -- matching exactly as if the row did not exist.
+              AND lp.sleep_schedule IS NOT NULL
               AND {(onlyCandidateId is null
                   ? "(lp.user_id = @user_id OR u.role = 'member')"
                   : "lp.user_id IN (@user_id, @candidate_id)")}
