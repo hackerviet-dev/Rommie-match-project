@@ -65,9 +65,9 @@ public sealed class MatchingController(IMatchingService matchingService) : Contr
 
     [Authorize]
     [EndpointSummary("Quét và tính lại danh sách ghép đôi")]
-    [EndpointDescription("Cần đăng nhập; không có body. 200 trả candidatesScored và matches (trang đầu). Free có 5 lượt/tháng theo giờ Việt Nam, Premium không giới hạn. 409 lifestyle_required: cần lưu lifestyle; 403 scan_quota_exceeded: hết lượt, có resetsAt.")]
-    [ProducesResponseType(403, Description = "Không đủ quyền hoặc không thỏa điều kiện; xem mô tả endpoint và code lỗi nếu có.")]
-    [ProducesResponseType(409, Description = "Xung đột trạng thái; xem mô tả endpoint và code lỗi nếu có.")]
+    [EndpointDescription("Cần đăng nhập; KHÔNG có body và không có parameter (gửi body cũng bị bỏ qua). User lấy từ access token nên không nhận userId. 200 trả MatchRecalculationResult { candidatesScored: số ứng viên vừa được chấm điểm; matches: trang đầu của danh sách ghép đôi, lấy thêm trang bằng GET /api/matching/me/matches }. Giới hạn lượt quét đọc từ GET /api/matching/me/usage (scansLimit; null nghĩa là không giới hạn); Free bị giới hạn theo tháng dương lịch giờ Việt Nam còn Premium không giới hạn. Một lần quét không tìm thấy ứng viên nào thì KHÔNG tiêu hao lượt. 403 scan_quota_exceeded: đã hết lượt, problem details kèm resetsAt là thời điểm làm mới hạn mức. 409 lifestyle_required: tài khoản chưa lưu sở thích lối sống nên chưa đủ dữ liệu để tính. Lưu profile, lifestyle hoặc quiz KHÔNG tự gọi API này: chỉ gọi khi người dùng chủ động cập nhật danh sách ghép đôi vì mỗi lần gọi có thể tiêu hao lượt quét.")]
+    [ProducesResponseType(403, Description = "scan_quota_exceeded: đã dùng hết lượt quét miễn phí của tháng; problem details có code=scan_quota_exceeded và resetsAt (thời điểm làm mới hạn mức).")]
+    [ProducesResponseType(409, Description = "lifestyle_required: tài khoản chưa lưu sở thích lối sống; problem details có code=lifestyle_required.")]
     [ProducesResponseType(typeof(MatchRecalculationResult), 200, Description = "Thành công; dữ liệu trả về theo schema bên dưới.")]
     [HttpPost("me/recalculate")]
     public async Task<ActionResult<MatchRecalculationResult>> Recalculate(CancellationToken cancellationToken)
