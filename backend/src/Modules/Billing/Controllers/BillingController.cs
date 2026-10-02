@@ -113,13 +113,14 @@ public sealed class BillingController(IBillingService billingService) : Controll
     // The body is optional; a refund without a reason is still a refund.
     [Authorize]
     [EndpointSummary("Yêu cầu hoàn tiền một đơn")]
-    [EndpointDescription("Cần đăng nhập. Body tùy chọn {reason}. Chỉ hoàn đơn paid trong 7 ngày từ paidAt. 200 trả PaymentDto và trừ thời hạn Premium tương ứng. 404: đơn không có/thuộc người khác; 409: already_refunded/payment_not_refundable/refund_window_expired; 502 refund_rejected (payOS cần hoàn thủ công); 503 gateway_unavailable.")]
+    [EndpointDescription("Cần đăng nhập. Body tùy chọn {reason}. Chỉ hoàn đơn paid trong 7 ngày từ paidAt. 200: đã hoàn tự động, trả PaymentDto status=refunded và trừ thời hạn Premium tương ứng. 202: cổng (payOS) không hoàn tự động được nên đã tạo yêu cầu chờ admin chuyển khoản hoàn; trả PaymentDto vẫn paid, refundRequest.status=pending, Premium giữ nguyên tới khi admin duyệt. 404: đơn không có/thuộc người khác; 409: already_refunded/payment_not_refundable/refund_window_expired/refund_pending; 502 refund_rejected; 503 gateway_unavailable.")]
     [ProducesResponseType(400, Description = "Body JSON không hợp lệ hoặc reason dài quá 1000 ký tự.")]
     [ProducesResponseType(404, Description = "Không tìm thấy dữ liệu hoặc không được phép xem dữ liệu này.")]
     [ProducesResponseType(409, Description = "Xung đột trạng thái; xem mô tả endpoint và code lỗi nếu có.")]
     [ProducesResponseType(502, Description = "Cổng thanh toán từ chối hoặc gặp lỗi; xem mô tả endpoint.")]
     [ProducesResponseType(503, Description = "Dịch vụ phụ thuộc/cổng thanh toán chưa khả dụng.")]
     [ProducesResponseType(typeof(PaymentDto), 200, Description = "Thành công; dữ liệu trả về theo schema bên dưới.")]
+    [ProducesResponseType(typeof(PaymentDto), 202, Description = "Đã ghi nhận yêu cầu hoàn tiền thủ công; chờ admin xử lý.")]
     [HttpPost("payments/{paymentId:guid}/refund")]
     public async Task<ActionResult<PaymentDto>> Refund(
         [Description("UUID đơn thanh toán, lấy từ paymentId của checkout hoặc id trong lịch sử.")] Guid paymentId,
@@ -136,6 +137,7 @@ public sealed class BillingController(IBillingService billingService) : Controll
 
         return result.Error switch
         {
+            RefundError.None when result.Requested => Accepted(result.Payment),
             RefundError.None => Ok(result.Payment),
             RefundError.NotFound => NotFound(),
             RefundError.AlreadyRefunded => CodedProblem(
@@ -144,6 +146,8 @@ public sealed class BillingController(IBillingService billingService) : Controll
                 StatusCodes.Status409Conflict, "payment_not_refundable", "Chỉ hoàn tiền được đơn đã thanh toán."),
             RefundError.WindowExpired => CodedProblem(
                 StatusCodes.Status409Conflict, "refund_window_expired", "Đã quá thời hạn hoàn tiền của đơn này."),
+            RefundError.RefundPending => CodedProblem(
+                StatusCodes.Status409Conflict, "refund_pending", "Yêu cầu hoàn tiền của đơn này đang chờ xử lý."),
             RefundError.GatewayRejected => CodedProblem(
                 StatusCodes.Status502BadGateway, "refund_rejected",
                 "Cổng thanh toán không hỗ trợ hoàn tiền tự động cho đơn này. Vui lòng liên hệ hỗ trợ."),

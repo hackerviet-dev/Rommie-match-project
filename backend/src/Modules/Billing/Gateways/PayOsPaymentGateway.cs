@@ -81,7 +81,10 @@ public sealed class PayOsPaymentGateway(
     }
 
     // payOS has no refund API for a link that has already been paid — only "cancel", which
-    // works while the link is still unpaid — so the money has to go back by hand.
+    // works while the link is still unpaid — so the money has to go back by hand: billing files a
+    // refund request for an admin instead of calling RefundAsync.
+    public bool SupportsAutomaticRefund => false;
+
     public Task<string> RefundAsync(
         Guid paymentId,
         string? providerTransactionId,
