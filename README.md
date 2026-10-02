@@ -227,6 +227,11 @@ from `docker compose up -d`); CI does not run them:
 minute between the scripts that create accounts or they stop on a documented `429` with
 `Retry-After: 60`.
 
+Not covered yet: room CRUD happy paths, chat REST + SignalR realtime, payOS checkout/refund, the
+matching boost happy path, and the admin review happy path (204). They need seeded rows, a Premium
+plan or a payment provider that the local stack does not have, so today only their documented error
+statuses are exercised.
+
 ## CI/CD
 
 GitHub Actions validates every pull request and every relevant push to `main`:
