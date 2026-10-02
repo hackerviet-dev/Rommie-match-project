@@ -47,7 +47,7 @@ public sealed record SaveLocalServiceRequest(
     [Required, StringLength(80, MinimumLength = 2)] [property: Description("Loại dịch vụ, 2-80 ký tự; ví dụ Giặt ủi hoặc Giao nước.")] string Category,
     [Required, StringLength(160, MinimumLength = 2)] [property: Description("Tên dịch vụ, 2-160 ký tự.")] string Name,
     [StringLength(2000)] [property: Description("Mô tả; phòng tối đa 4000 ký tự, dịch vụ tối đa 2000 ký tự.")] string? Description,
-    [Phone, StringLength(30)] [property: Description("Số điện thoại dịch vụ hợp lệ, tối đa 30 ký tự.")] string? Phone,
+    [OptionalPhone, StringLength(30)] [property: Description("Số điện thoại dịch vụ hợp lệ, tối đa 30 ký tự; null, chuỗi rỗng hoặc khoảng trắng để bỏ trống.")] string? Phone,
     [Required, StringLength(100)] [property: Description("Tên quận/huyện, tối đa 100 ký tự.")] string District,
     [Required, StringLength(100)] [property: Description("Tên thành phố, ví dụ TP.HCM, tối đa 100 ký tự.")] string City,
     [Required, Range(typeof(decimal), "0", "999.99", ParseLimitsInInvariantCulture = true)]

@@ -201,6 +201,41 @@ passwords and `JWT_SECRET` before deploying outside a developer machine.
 `JWT_SECRET` signs the API's access tokens and must be at least
 32 bytes; the API refuses to start otherwise.
 
+## Backend regression tests
+
+`dotnet test` currently has nothing to run: the solution holds no test project, so the release
+build (`dotnet build backend/src/RoomieMatch.slnx --configuration Release`) is the only .NET gate
+in CI. Behaviour is covered by scripts that need a running API plus PostgreSQL (the Docker stack
+from `docker compose up -d`); CI does not run them:
+
+| Script | What it proves |
+| --- | --- |
+| `node scripts/openapi-contract-check.mjs http://localhost:5000` | every documented operation answers a documented HTTP status, and 200 payloads stay inside the OpenAPI schemas |
+| `node scripts/auth-smoke.mjs` | register/login/me, single-flight refresh, logout, logout-all through the bundled web client |
+| `node scripts/onboarding-api-test.mjs http://localhost:5000` | profile + lifestyle round-trip, validation and per-account isolation |
+| `node scripts/housing-needs-api-test.mjs http://localhost:5000` | housing-needs round-trip, transitions and privacy |
+| `node scripts/quiz-api-test.mjs http://localhost:5000` | quiz contract, traits and retakes |
+| `node scripts/matching-flow-api-test.mjs http://localhost:5000` | profile -> lifestyle -> quiz -> matching flow and scan quota |
+| `node scripts/hyperlocal-services-api-test.mjs http://localhost:5000` | curated services CRUD, staff-only writes and soft delete |
+| `node scripts/admin-moderation-api-test.mjs http://localhost:5000` | admin stats vs the DB, report/verification review happy path + validation, role gating and staff-only service CRUD |
+| `node scripts/onboarding-validation-test.mjs` | onboarding form schema (no API needed) |
+| `python scripts/test-openapi-docs.py http://localhost:5000` | Swagger summaries, descriptions and documented status codes |
+
+`openapi-contract-check.mjs`, `hyperlocal-services-api-test.mjs` and
+`admin-moderation-api-test.mjs` promote a probe account to `admin`/`moderator` with `psql` inside the
+local PostgreSQL container (override the container with `POSTGRES_CONTAINER`, default
+`roomiematch-postgres-1`). The admin moderation script also seeds its report and verification fixtures
+straight into `user_reports`/`identity_verifications`, because there is still no member-facing API to
+file a report or submit a verification. `POST /api/auth/register`,
+`POST /api/auth/login` and `POST /api/auth/refresh` allow 10 requests per 60s per IP, so leave a
+minute between the scripts that create accounts or they stop on a documented `429` with
+`Retry-After: 60`.
+
+Not covered yet: room CRUD happy paths, chat REST + SignalR realtime, payOS checkout/refund, and the
+matching boost happy path. They need seeded rows, a Premium plan or a payment provider that the local
+stack does not have, so today only their documented error statuses are exercised. The admin review
+happy path (204) is now covered by `admin-moderation-api-test.mjs`, which seeds the review queues.
+
 ## CI/CD
 
 GitHub Actions validates every pull request and every relevant push to `main`:
