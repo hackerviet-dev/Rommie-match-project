@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using RoomieMatch.Shared.Paging;
 
@@ -35,36 +36,48 @@ public sealed class MatchFilterQuery : IValidatableObject
 {
     // Name or interest, case-insensitive substring.
     [StringLength(60)]
+    [Description("Tìm theo tên hoặc sở thích, không phân biệt hoa/thường, tối đa 60 ký tự.")]
     public string? Q { get; init; }
 
     [Range(0, 100)]
+    [Description("Điểm phù hợp tối thiểu, 0-100; bỏ trống để không lọc.")]
     public int? MinScore { get; init; }
 
+    [Description("true để chỉ lấy ứng viên cùng thành phố với tôi; mặc định false.")]
     public bool SameCity { get; init; }
 
+    [Description("true để chỉ lấy người chấp nhận thú cưng; mặc định false.")]
     public bool PetFriendly { get; init; }
 
+    [Description("true để chỉ lấy người không hút thuốc; mặc định false.")]
     public bool NonSmoking { get; init; }
 
     // Candidates moving in on or before this date; those without a date are left out.
+    [Description("Ngày dọn vào muộn nhất yyyy-MM-dd; loại ứng viên chưa khai ngày.")]
     public DateOnly? MoveInBy { get; init; }
 
     // Premium: candidates whose budget range overlaps [BudgetMin, BudgetMax].
     [Range(0, 1_000_000_000)]
+    [Description("Premium: ngân sách tối thiểu VND; lấy ứng viên có khoảng ngân sách giao với bộ lọc.")]
     public int? BudgetMin { get; init; }
 
     [Range(0, 1_000_000_000)]
+    [Description("Premium: ngân sách tối đa VND, phải >= budgetMin.")]
     public int? BudgetMax { get; init; }
 
     [StringLength(100)]
+    [Description("Premium: lọc quận/huyện, tối đa 100 ký tự.")]
     public string? District { get; init; }
 
     [AllowedValues("quiet", "moderate", "lively", null)]
+    [Description("Premium: quiet, moderate hoặc lively; bỏ trống để không lọc.")]
     public string? RoomEnvironment { get; init; }
 
     [Range(1, 5)]
+    [Description("Premium: mức sạch sẽ tối thiểu, từ 1 đến 5.")]
     public int? MinCleanliness { get; init; }
 
+    [Description("Premium: true để chỉ lấy hồ sơ đã xác minh; mặc định false.")]
     public bool VerifiedOnly { get; init; }
 
     public bool HasAdvancedFilters()

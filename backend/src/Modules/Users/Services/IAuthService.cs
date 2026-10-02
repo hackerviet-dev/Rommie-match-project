@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 namespace RoomieMatch.Modules.Users.Services;
@@ -31,21 +32,21 @@ public sealed record AuthResult(AuthError Error, AuthSessionDto? Session)
 }
 
 public sealed record RegisterRequest(
-    [Required, EmailAddress, StringLength(320)] string Email,
-    [Required, StringLength(200, MinimumLength = 8)] string Password,
-    [Required, StringLength(120, MinimumLength = 2)] string DisplayName,
-    [Required, StringLength(100)] string City,
-    [StringLength(100)] string? District,
-    DateOnly? BirthDate,
-    [StringLength(30), Gender] string? Gender,
-    [StringLength(120)] string? Occupation);
+    [Required, EmailAddress, StringLength(320)] [property: Description("Email đăng nhập hợp lệ, tối đa 320 ký tự.")] string Email,
+    [Required, StringLength(200, MinimumLength = 8)] [property: Description("Mật khẩu; khi đăng ký phải có 8-200 ký tự.")] string Password,
+    [Required, StringLength(120, MinimumLength = 2)] [property: Description("Tên hiển thị, 2-120 ký tự.")] string DisplayName,
+    [Required, StringLength(100)] [property: Description("Tên thành phố, ví dụ TP.HCM, tối đa 100 ký tự.")] string City,
+    [StringLength(100)] [property: Description("Tên quận/huyện, tối đa 100 ký tự.")] string? District,
+    [property: Description("Ngày sinh dạng yyyy-MM-dd; có thể null.")] DateOnly? BirthDate,
+    [StringLength(30), Gender] [property: Description("Giới tính: male, female hoặc other; có thể null.")] string? Gender,
+    [StringLength(120)] [property: Description("Nghề nghiệp, tối đa 120 ký tự.")] string? Occupation);
 
 public sealed record LoginRequest(
-    [Required, EmailAddress, StringLength(320)] string Email,
-    [Required] string Password);
+    [Required, EmailAddress, StringLength(320)] [property: Description("Email đăng nhập hợp lệ, tối đa 320 ký tự.")] string Email,
+    [Required] [property: Description("Mật khẩu; khi đăng ký phải có 8-200 ký tự.")] string Password);
 
 public sealed record RefreshRequest(
-    [Required, StringLength(500)] string RefreshToken);
+    [Required, StringLength(500)] [property: Description("Refresh token từ phiên đăng nhập; khi refresh thành công phải thay bằng token mới.")] string RefreshToken);
 
 public sealed record AuthSessionDto(
     string AccessToken,

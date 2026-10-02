@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 namespace RoomieMatch.Modules.Matching.Services;
@@ -26,7 +27,7 @@ public sealed record QuizQuestionDto(
 public sealed record QuizOptionDto(string Id, string Text);
 
 // Answers maps question id -> option id, e.g. {"late_dishes": "wash_now"}.
-public sealed record SubmitQuizRequest([Required] Dictionary<string, string> Answers);
+public sealed record SubmitQuizRequest([Required] [property: Description("Object ánh xạ questionId sang optionId; lấy id hợp lệ từ GET /api/matching/quiz và trả lời đủ câu hỏi.")] Dictionary<string, string> Answers);
 
 // Each trait is 0-100. NoiseTolerance feeds the "Chịu ồn" score when the member has not
 // picked a room environment in their lifestyle preferences.

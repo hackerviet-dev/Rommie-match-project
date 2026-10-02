@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Data.Common;
 using RoomieMatch.Shared.Data;
 using RoomieMatch.Shared.Paging;
@@ -93,5 +94,5 @@ public sealed class AdminService(IDbConnectionFactory factory)
 public sealed record AdminStatsDto(long ActiveUsers, long OpenReports, long PendingVerifications, long VerifiedProfiles, long NewUsersLast30Days);
 public sealed record AdminReportDto(Guid Id, Guid ReporterId, Guid ReportedUserId, string Reason, string? Details, string Status, string? ResolutionNote, DateTimeOffset CreatedAt, DateTimeOffset? ReviewedAt, string ReporterName, string ReportedUserName);
 public sealed record AdminVerificationDto(Guid Id, Guid UserId, string DocumentType, string DocumentNumberLast4, string FrontImageUrl, string BackImageUrl, string? SelfieImageUrl, string Status, string? RejectionReason, DateTimeOffset CreatedAt, DateTimeOffset? ReviewedAt, string UserName);
-public sealed record ReviewReportRequest(string Status, string? ResolutionNote);
-public sealed record ReviewVerificationRequest(string Status, string? RejectionReason);
+public sealed record ReviewReportRequest([property: Description("resolved hoặc dismissed.")] string Status, [property: Description("Ghi chú xử lý báo cáo, tối đa 2000 ký tự; có thể null.")] string? ResolutionNote);
+public sealed record ReviewVerificationRequest([property: Description("approved hoặc rejected.")] string Status, [property: Description("Lý do từ chối, tối đa 2000 ký tự; bắt buộc khi status=rejected.")] string? RejectionReason);

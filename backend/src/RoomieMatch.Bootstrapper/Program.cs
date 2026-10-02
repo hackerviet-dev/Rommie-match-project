@@ -60,6 +60,13 @@ builder.Services.AddOpenApi(options =>
         return Task.CompletedTask;
     });
     options.AddOperationTransformer<AuthorizeRequirementTransformer>();
+    options.AddSchemaTransformer<RequestRequiredFieldsTransformer>();
+    options.AddOperationTransformer((operation, _, _) =>
+    {
+        // Offset is computed from page/pageSize, not an input for frontend callers.
+        operation.Parameters = operation.Parameters?.Where(p => p.Name != "Offset").ToList();
+        return Task.CompletedTask;
+    });
 });
 
 var app = builder.Build();
@@ -83,13 +90,17 @@ app.MapGet("/", () => Results.Ok(new
 {
     service = "RoomieMatch API",
     status = "ready"
-}));
+}))
+.WithSummary("Thông tin API RoomieMatch")
+.WithDescription("API công khai, không có parameter/body. Trả tên dịch vụ và trạng thái ready; không kiểm tra database.");
 
 app.MapControllers();
 app.MapChatModule();
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
     Predicate = _ => true
-});
+})
+.WithSummary("Kiểm tra sức khỏe API và PostgreSQL")
+.WithDescription("API công khai, không có parameter/body. 200 với text Healthy khi database truy cập được; 503 khi kiểm tra thất bại. Dùng cho giám sát hạ tầng.");
 
 app.Run();

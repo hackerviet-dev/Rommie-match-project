@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 namespace RoomieMatch.Shared.Paging;
@@ -10,9 +11,11 @@ public sealed class PageQuery
     public const int MaxPageSize = 50;
 
     [Range(1, 100_000)]
+    [Description("Trang cần lấy, bắt đầu từ 1; mặc định 1, tối đa 100000.")]
     public int Page { get; init; } = 1;
 
     [Range(1, MaxPageSize)]
+    [Description("Số phần tử mỗi trang; mặc định 20, từ 1 đến 50.")]
     public int PageSize { get; init; } = DefaultPageSize;
 
     public int Offset => (Page - 1) * PageSize;
