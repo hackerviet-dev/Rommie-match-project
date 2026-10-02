@@ -31,6 +31,12 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
         PageQuery paging,
         CancellationToken cancellationToken)
     {
+        // BR-07 ("loại tài khoản không hoạt động hoặc bị chặn theo chính sách") applies to the
+        // discovery list too: a one-way block hides both members from each other, exactly like
+        // the matching list, the room search, chat and GET /api/users/{userId}/profile. It reuses
+        // the existing user_blocks table and the viewer id from the token; no block/report member
+        // API is introduced here. The clause is folded into the shared FROM/WHERE, so the count
+        // and the page always agree on totalCount.
         const string fromWhere = """
             FROM users u
             INNER JOIN profiles p ON p.user_id = u.id
@@ -38,6 +44,11 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
               AND u.role = 'member'
               AND p.is_public = true
               AND u.id <> @viewer_id
+              AND NOT EXISTS (
+                  SELECT 1 FROM user_blocks b
+                  WHERE b.deleted_at IS NULL
+                    AND ((b.blocker_id = @viewer_id AND b.blocked_id = u.id)
+                      OR (b.blocker_id = u.id AND b.blocked_id = @viewer_id)))
             """;
 
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
@@ -91,8 +102,18 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
     {
         // A private profile answers 404 to others, the same as a missing one, so its
         // existence is not revealed. Its owner still sees it.
+        // A block is hidden too: every other read path (the matching list, the room search and
+        // chat) already treats two members who blocked each other as invisible to each other,
+        // and GET /api/users/{userId}/profile documents "bị chặn" as a 404. The owner flag keeps
+        // the viewer's own profile readable no matter what.
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
-        return await ReadProfileAsync(connection, userId, cancellationToken, publicOnly: viewerId != userId);
+        var isOwner = viewerId == userId;
+        return await ReadProfileAsync(
+            connection,
+            userId,
+            cancellationToken,
+            publicOnly: !isOwner,
+            viewerId: isOwner ? null : viewerId);
     }
 
     public async Task<ProfileDetailDto?> UpdateProfileAsync(
@@ -308,19 +329,35 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
         DbConnection connection,
         Guid userId,
         CancellationToken cancellationToken,
-        bool publicOnly = false)
+        bool publicOnly = false,
+        Guid? viewerId = null)
     {
+        // publicOnly hides a profile from other members; viewerId additionally hides it while
+        // either member has blocked the other. Both are off by default, so the owner's own reads
+        // (GET /me/profile, the read-back after PUT) never change behaviour.
+        var blockClause = viewerId is null
+            ? string.Empty
+            : "AND NOT EXISTS (SELECT 1 FROM user_blocks b "
+              + "WHERE b.deleted_at IS NULL "
+              + "AND ((b.blocker_id = @viewer_id AND b.blocked_id = p.user_id) "
+              + "OR (b.blocker_id = p.user_id AND b.blocked_id = @viewer_id)))";
+
         var sql = $"""
             SELECT {ProfileDetailColumns}
             FROM profiles p
             INNER JOIN users u ON u.id = p.user_id
             WHERE p.user_id = @user_id AND u.is_active = true
             {(publicOnly ? "AND p.is_public = true" : "")}
+            {blockClause}
             """;
 
         await using var command = connection.CreateCommand();
         command.CommandText = sql;
         command.AddParameter("user_id", userId);
+        if (viewerId is { } viewer)
+        {
+            command.AddParameter("viewer_id", viewer);
+        }
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         if (!await reader.ReadAsync(cancellationToken))

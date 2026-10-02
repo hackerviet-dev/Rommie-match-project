@@ -7,10 +7,22 @@
 // (never 500), two accounts never read or write each other's data, hasRoom transitions leave
 // no stale search fields, a housing-only save neither fabricates a lifestyle record nor feeds
 // matching, and the fields never appear in the public profile.
+// Needs the local PostgreSQL container to remove its own fixtures at the end (override it with
+// POSTGRES_CONTAINER, default roomiematch-postgres-1); deleting the users cascades their profile
+// and lifestyle rows, so a later run starts clean.
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 
 const baseUrl = (process.argv[2] ?? process.env.API_URL ?? 'http://localhost:5000').replace(/\/+$/, '');
+const container = process.env.POSTGRES_CONTAINER ?? 'roomiematch-postgres-1';
 const password = 'RoomieTest123!';
+
+function sql(query) {
+  return execFileSync('docker', [
+    'exec', container,
+    'psql', '-U', 'roomiematch', '-d', 'roomiematch', '-t', '-A', '-c', query,
+  ]).toString().trim();
+}
 
 async function call(method, path, { token, body } = {}) {
   const response = await fetch(baseUrl + path, {
@@ -59,6 +71,7 @@ const health = await call('GET', '/health');
 assert.equal(health.status, 200, `API ${baseUrl} is not healthy (${health.status})`);
 
 const stamp = Date.now();
+const createdEmails = [];
 
 async function register(label) {
   const body = {
@@ -69,8 +82,26 @@ async function register(label) {
   };
   const { status, json } = await call('POST', '/api/auth/register', { body });
   assert.equal(status, 200, `register ${label} returned ${status}: ${JSON.stringify(json)}`);
+  createdEmails.push(body.email);
   return { token: json.accessToken, userId: json.user.id };
 }
+
+// Runs on success and on a failed assertion alike, so a broken run never leaves fixtures behind.
+function cleanup() {
+  if (createdEmails.length === 0) {
+    return;
+  }
+  const emails = createdEmails.map((email) => `'${email}'`).join(',');
+  sql(`DELETE FROM users WHERE email IN (${emails})`);
+}
+
+process.on('exit', () => {
+  try {
+    cleanup();
+  } catch (error) {
+    console.error(`cleanup failed: ${error.message}`);
+  }
+});
 
 // 1. Without a token nothing can be read or written.
 for (const [method, path, body] of [

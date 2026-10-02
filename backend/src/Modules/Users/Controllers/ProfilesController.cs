@@ -16,7 +16,7 @@ public sealed class ProfilesController(IUserService userService) : ControllerBas
     // anonymous scrapers.
     [Authorize]
     [EndpointSummary("Danh sách hồ sơ để khám phá")]
-    [EndpointDescription("Cần đăng nhập. 200 trả PagedResult<UserProfileDto> gồm items, page, pageSize, totalCount, hasNextPage; không có email. Chỉ trả hồ sơ người dùng được phép xem.")]
+    [EndpointDescription("Cần đăng nhập. 200 trả PagedResult<UserProfileDto> gồm items, page, pageSize, totalCount, hasNextPage; không có email. Chỉ trả hồ sơ người dùng được phép xem: thành viên đang hoạt động, hồ sơ công khai và không bị chặn — chặn một chiều theo BR-07 ẩn cả hai bên khỏi danh sách của nhau.")]
     [ProducesResponseType(typeof(PagedResult<UserProfileDto>), 200, Description = "Thành công; dữ liệu trả về theo schema bên dưới.")]
     [HttpGet("profiles")]
     public async Task<ActionResult<PagedResult<UserProfileDto>>> GetProfiles(

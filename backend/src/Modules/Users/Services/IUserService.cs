@@ -15,7 +15,8 @@ public interface IUserService
 
     Task<ProfileDetailDto?> GetProfileAsync(Guid userId, CancellationToken cancellationToken);
 
-    /// Returns null when the profile is missing, disabled, or private to this viewer.
+    /// Returns null when the profile is missing, disabled, private to this viewer, or hidden
+    /// because either member has blocked the other (the owner always sees its own profile).
     Task<ProfileDetailDto?> GetVisibleProfileAsync(
         Guid viewerId,
         Guid userId,

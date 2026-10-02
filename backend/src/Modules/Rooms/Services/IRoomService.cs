@@ -100,7 +100,7 @@ public sealed record SaveRoomRequest(
     [Range(typeof(decimal), "1", "99999.9", ParseLimitsInInvariantCulture = true)]
     [property: Description("Diện tích m², 1-99999.9; có thể null.")] decimal? AreaM2,
     [Range(1, 20)] [property: Description("Số bạn cùng phòng cần tìm, 1-20 và nhỏ hơn maxOccupants; có thể null.")] int? RoommatesNeeded,
-    [property: Description("Danh sách tiện ích, tối đa 30 mục, mỗi mục tối đa 60 ký tự.")] string[]? Amenities,
+    [property: Description("Danh sách tiện ích: tối đa 30 mục, mỗi mục tối đa 60 ký tự; phần tử null bị từ chối với 400 (mục trùng nhau được gộp, mục rỗng bị bỏ qua).")] string[]? Amenities,
     [Range(typeof(decimal), "-90", "90", ParseLimitsInInvariantCulture = true)]
     [property: Description("Vĩ độ -90 đến 90; phải gửi cùng longitude hoặc bỏ cả hai.")] decimal? Latitude,
     [Range(typeof(decimal), "-180", "180", ParseLimitsInInvariantCulture = true)]
@@ -141,10 +141,14 @@ public sealed record SaveRoomRequest(
                 [nameof(Amenities)]);
         }
 
-        if (Amenities?.Any(amenity => amenity.Length > MaxAmenityLength) == true)
+        // A JSON array can carry null elements (System.Text.Json maps them to null). Left
+        // unchecked they reach string operations here and in NormalizeAmenities and turn a bad
+        // request into a 500, so a null element is rejected. Blank entries keep the previous
+        // behaviour: NormalizeAmenities trims them away.
+        if (Amenities?.Any(amenity => amenity is null || amenity.Length > MaxAmenityLength) == true)
         {
             yield return new ValidationResult(
-                $"Mỗi tiện ích tối đa {MaxAmenityLength} ký tự.",
+                $"Mỗi tiện ích không được để null và tối đa {MaxAmenityLength} ký tự.",
                 [nameof(Amenities)]);
         }
     }
