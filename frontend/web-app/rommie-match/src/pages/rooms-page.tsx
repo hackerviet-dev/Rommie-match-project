@@ -1,30 +1,129 @@
-import { useState } from "react";
-import { House, MapPin, Search, SlidersHorizontal } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
-
+import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/layouts/main-layout";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-
+import { QueryState, Pagination } from "@/components/common/query-state";
+import { roomsApi } from "@/features/rooms/services/rooms-api";
+import { useAuthStore } from "@/features/auth";
 export default function RoomsPage() {
-  const [params, setParams] = useSearchParams();
-  const area = params.get("q") ?? "";
-  const setArea = (value: string) => setParams(previous => { const next = new URLSearchParams(previous); if (value) next.set("q", value); else next.delete("q"); return next; }, { replace: true });
-  const [budget, setBudget] = useState("all");
-  return <AppShell>
-    <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="mb-2 text-sm font-medium text-teal">Một nơi ở, nhiều kết nối</p><h1 className="text-3xl font-display font-bold sm:text-4xl">Tìm căn phòng phù hợp với bạn</h1><p className="mt-3 text-muted-foreground">Chọn khu vực và ngân sách để bắt đầu hành trình ở ghép.</p></div><Button asChild variant="outline"><Link to="/settings?section=rooms"><House className="h-4 w-4" />Phòng của tôi</Link></Button></div>
-    {params.get("city") && <p className="mt-4 flex items-center gap-2 text-sm text-teal"><MapPin className="h-4 w-4" />Khu vực đã chọn: {params.get("city")}</p>}
-    <Card className="mt-8 rounded-2xl border-mint/40 p-5 sm:p-6">
-      <div className="grid items-end gap-4 sm:grid-cols-[minmax(0,1fr)_200px_auto]">
-        <div><Label htmlFor="room-area">Khu vực mong muốn</Label><div className="relative mt-2"><MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input id="room-area" value={area} onChange={event => setArea(event.target.value)} placeholder="Thành phố, quận hoặc khu vực" className="pl-9" /></div></div>
-        <div><Label htmlFor="room-budget">Ngân sách mỗi tháng</Label><select id="room-budget" value={budget} onChange={event => setBudget(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-3 text-sm"><option value="all">Tất cả mức giá</option><option value="under3">Dưới 3 triệu</option><option value="3to5">3–5 triệu</option><option value="over5">Trên 5 triệu</option></select></div>
-        <Button disabled><Search className="h-4 w-4" />Tìm phòng · Sắp có</Button>
+  const [p, setP] = useSearchParams(),
+    me = useAuthStore((s) => s.user?.id),
+    page = Number(p.get("page")) || 1,
+    filters = {
+      page,
+      city: p.get("city") ?? undefined,
+      district: p.get("q") ?? undefined,
+      maxRent: p.has("maxRent") ? Number(p.get("maxRent")) : undefined,
+      availableBy: p.get("availableBy") ?? undefined,
+    };
+  const query = useQuery({
+    queryKey: ["rooms", "list", me, filters],
+    queryFn: () => roomsApi.search(filters),
+  });
+  const change = (key: string, value: string) =>
+    setP(
+      (old) => {
+        const n = new URLSearchParams(old);
+        if (value) n.set(key, value);
+        else n.delete(key);
+        if (key !== "page") n.delete("page");
+        return n;
+      },
+      { replace: true },
+    );
+  return (
+    <AppShell>
+      <div className="flex flex-wrap justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-display font-bold">
+            Tìm căn phòng phù hợp
+          </h1>
+          <p className="mt-2 text-muted-foreground">
+            Thông tin phòng do thành viên đăng, lọc theo khu vực và ngân sách.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link to="/settings?section=rooms">Phòng của tôi</Link>
+          </Button>
+          <Button asChild>
+            <Link to={me ? "/rooms/new" : "/login"}>Đăng phòng</Link>
+          </Button>
+        </div>
       </div>
-      <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground"><SlidersHorizontal className="h-4 w-4" />Bạn sẽ có thể lọc theo tiện ích, loại phòng và thời gian dọn vào.</p>
-    </Card>
-    <div className="mt-6 grid gap-4 sm:grid-cols-3">{[{ title: "Khu vực thuận tiện", desc: "Gần trường học, nơi làm việc và những nơi bạn thường đến.", icon: MapPin }, { title: "Ngân sách phù hợp", desc: "Dễ so sánh tiền phòng và chi phí sinh hoạt.", icon: SlidersHorizontal }, { title: "Sống cùng người hợp", desc: "Tìm người ở ghép có lối sống và mong muốn tương đồng.", icon: House }].map(({ title, desc, icon: Icon }) => <Card key={title} className="rounded-2xl border-0 bg-mint/15 p-5"><Icon className="h-5 w-5 text-teal" /><h2 className="mt-3 font-semibold">{title}</h2><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{desc}</p></Card>)}</div>
-    <div className="mt-8 rounded-3xl border border-dashed border-mint bg-white/50 px-6 py-14 text-center"><div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-mint/30"><House className="h-8 w-8 text-navy" /></div><h2 className="mt-5 text-xl font-semibold">Những căn phòng mới đang được chuẩn bị</h2><p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">Tính năng tìm và đăng phòng sẽ sớm có mặt. Bạn có thể khám phá người ở ghép trong lúc chờ.</p><Button asChild className="mt-5"><Link to="/matches">Khám phá ở ghép</Link></Button></div>
-  </AppShell>;
+      <Card className="mt-6 grid gap-4 rounded-2xl p-5 sm:grid-cols-4">
+        <label className="text-sm">
+          Thành phố
+          <Input
+            value={p.get("city") ?? ""}
+            onChange={(e) => change("city", e.target.value)}
+          />
+        </label>
+        <label className="text-sm">
+          Quận / khu vực
+          <Input
+            value={p.get("q") ?? ""}
+            onChange={(e) => change("q", e.target.value)}
+          />
+        </label>
+        <label className="text-sm">
+          Giá thuê tối đa (VND)
+          <Input
+            type="number"
+            min={0}
+            value={p.get("maxRent") ?? ""}
+            onChange={(e) => change("maxRent", e.target.value)}
+          />
+        </label>
+        <label className="text-sm">
+          Sẵn sàng trước
+          <Input
+            type="date"
+            value={p.get("availableBy") ?? ""}
+            onChange={(e) => change("availableBy", e.target.value)}
+          />
+        </label>
+      </Card>
+      <QueryState query={query} />
+      {query.data && (
+        <p className="mt-4 text-sm text-muted-foreground">
+          {query.data.totalCount} phòng
+        </p>
+      )}
+      <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {query.data?.items.map((r) => (
+          <Card key={r.id} className="rounded-3xl p-6">
+            <div className="mb-4 rounded-2xl bg-mint/20 p-6 text-xl text-navy">
+              {r.propertyType || "Phòng ở ghép"}
+            </div>
+            <h2 className="text-xl font-semibold">{r.title}</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {r.district}, {r.city}
+            </p>
+            <p className="mt-4 text-xl font-semibold text-teal">
+              {r.monthlyRent.toLocaleString("vi-VN")}₫ / tháng
+            </p>
+            <p className="mt-2 text-sm">Có thể dọn vào: {r.availableFrom}</p>
+            <Button asChild className="mt-5 w-full">
+              <Link to={`/rooms/${r.id}`}>Xem phòng</Link>
+            </Button>
+          </Card>
+        ))}
+      </div>
+      {query.data?.totalCount === 0 && (
+        <p role="status" className="py-12 text-center text-muted-foreground">
+          Chưa có phòng phù hợp với bộ lọc.
+        </p>
+      )}
+      {query.data && (
+        <Pagination
+          page={page}
+          hasNext={query.data.hasNextPage}
+          onChange={(n) => change("page", String(n))}
+        />
+      )}
+    </AppShell>
+  );
 }

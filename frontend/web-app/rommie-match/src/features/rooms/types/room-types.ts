@@ -12,6 +12,10 @@ export type Room = {
   deposit: number;
   availableFrom: string;
   maxOccupants: number;
+  propertyType: string | null;
+  bedrooms: number | null;
+  areaM2: number | null;
+  roommatesNeeded: number | null;
   amenities: string[];
   latitude: number | null;
   longitude: number | null;
@@ -22,10 +26,17 @@ export type Room = {
 
 export type SaveRoomRequest = Omit<
   Room,
-  "id" | "ownerUserId" | "ownerDisplayName" | "ownerAvatarUrl" | "createdAt" | "updatedAt"
+  | "id"
+  | "ownerUserId"
+  | "ownerDisplayName"
+  | "ownerAvatarUrl"
+  | "createdAt"
+  | "updatedAt"
 >;
 
 export type RoomSearch = {
+  page?: number;
+  pageSize?: number;
   city?: string;
   district?: string;
   maxRent?: number;

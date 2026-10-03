@@ -1,208 +1,341 @@
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/layouts/main-layout";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Users, Crown, Heart, DollarSign, TrendingUp, MapPin } from "lucide-react";
-
-function Spark({ data, color = "#15A9B8" }: { data: number[]; color?: string }) {
-  const max = Math.max(...data),
-    min = Math.min(...data);
-  const w = 240,
-    h = 70,
-    step = w / (data.length - 1);
-  const pts = data.map((v, i) => `${i * step},${h - ((v - min) / (max - min || 1)) * h}`).join(" ");
-  const area = `0,${h} ${pts} ${w},${h}`;
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-20">
-      <defs>
-        <linearGradient id="a" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.4" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon points={area} fill="url(#a)" />
-      <polyline
-        points={pts}
-        fill="none"
-        stroke={color}
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { QueryState, Pagination } from "@/components/common/query-state";
+import { adminApi } from "@/features/admin/services/admin-api";
+import { ServiceManager } from "@/features/admin/components/service-manager";
+import { useAuthStore } from "@/features/auth";
 export default function AdminPage() {
-  const cities = [
-    { name: "TP. Hồ Chí Minh", users: 7842, pct: 100 },
-    { name: "Hà Nội", users: 3210, pct: 41 },
-    { name: "Đà Nẵng", users: 1156, pct: 15 },
-    { name: "Cần Thơ", users: 432, pct: 6 },
-    { name: "Hải Phòng", users: 287, pct: 4 },
-  ];
-  const stats = [
-    {
-      i: Users,
-      label: "Tổng người dùng",
-      value: "12.927",
-      change: "+8,4%",
-      color: "from-teal/20 to-teal/5",
-    },
-    {
-      i: Crown,
-      label: "Người dùng Premium",
-      value: "1.842",
-      change: "+12,1%",
-      color: "from-amber-200/40 to-amber-100/10",
-    },
-    {
-      i: Heart,
-      label: "Ghép đôi thành công",
-      value: "3.408",
-      change: "+5,7%",
-      color: "from-mint/40 to-mint/10",
-    },
-    {
-      i: DollarSign,
-      label: "Doanh thu tháng",
-      value: "36,8 triệu ₫",
-      change: "+14,2%",
-      color: "from-navy/15 to-navy/5",
-    },
-  ];
-
+  const me = useAuthStore((s) => s.user?.id),
+    role = useAuthStore((s) => s.user?.role),
+    stats = useQuery({
+      queryKey: ["admin", "stats", me],
+      queryFn: adminApi.stats,
+      enabled: role === "admin",
+    }),
+    [tab, setTab] = useState("reports");
   return (
     <AppShell>
-      <div className="flex items-end justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-3xl font-display font-bold">Tổng quan quản trị</h1>
-          <p className="text-muted-foreground mt-1">RoomieMatch · 30 ngày qua</p>
+      <h1 className="text-3xl font-display font-bold">Quản trị RoomieMatch</h1>
+      <p className="mt-2 text-muted-foreground">
+        Số liệu và hàng đợi kiểm duyệt hiện tại.
+      </p>
+      {role === "admin" && <QueryState query={stats} />}
+      {stats.data && (
+        <div className="mt-5 grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          {[
+            ["Thành viên hoạt động", stats.data.activeUsers],
+            ["Báo cáo đang mở", stats.data.openReports],
+            ["Chờ xác minh", stats.data.pendingVerifications],
+            ["Hồ sơ đã xác minh", stats.data.verifiedProfiles],
+            ["Đăng ký 30 ngày", stats.data.newUsersLast30Days],
+          ].map(([l, v]) => (
+            <Card key={l} className="rounded-2xl p-5">
+              <p className="text-xs text-muted-foreground">{l}</p>
+              <strong className="mt-3 block text-3xl">{v}</strong>
+            </Card>
+          ))}
         </div>
-        <Badge className="rounded-full bg-mint/40 text-navy border-0 px-3 py-1.5">
-          Quản trị · Trực tiếp
-        </Badge>
+      )}
+      <div className="my-6 flex flex-wrap gap-3">
+        {[
+          ["reports", "Báo cáo"],
+          ["verifications", "Xác minh"],
+          ["services", "Dịch vụ"],
+          ["refunds", "Hoàn tiền"],
+        ]
+          .filter(
+            ([v]) =>
+              role === "admin" || v === "reports" || v === "verifications",
+          )
+          .map(([v, l]) => (
+            <Button
+              key={v}
+              variant={tab === v ? "default" : "outline"}
+              onClick={() => setTab(v)}
+            >
+              {l}
+            </Button>
+          ))}
       </div>
-
-      <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s) => (
-          <Card
-            key={s.label}
-            className={`p-5 rounded-2xl border-0 shadow-sm bg-gradient-to-br ${s.color}`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="h-10 w-10 rounded-xl bg-white/70 grid place-items-center text-navy">
-                <s.i className="h-5 w-5" />
-              </div>
-              <Badge className="bg-mint/60 text-navy border-0 rounded-full text-[10px]">
-                <TrendingUp className="h-3 w-3 mr-1" />
-                {s.change}
-              </Badge>
-            </div>
-            <div className="mt-4 text-3xl font-display font-bold">{s.value}</div>
-            <div className="text-sm font-medium mt-0.5">{s.label}</div>
-          </Card>
-        ))}
-      </div>
-
-      <div className="mt-6 grid lg:grid-cols-3 gap-5">
-        <Card className="p-6 rounded-2xl border-0 shadow-sm lg:col-span-2">
-          <div className="flex justify-between items-center">
-            <div>
-              <div className="font-display font-bold">Tăng trưởng người dùng</div>
-              <div className="text-xs text-muted-foreground">Đăng ký mỗi ngày · 30 ngày qua</div>
-            </div>
-            <Badge variant="outline" className="rounded-full">
-              +8,4%
-            </Badge>
-          </div>
-          <Spark
-            data={[
-              12, 18, 15, 22, 28, 24, 30, 35, 29, 38, 42, 40, 48, 52, 49, 55, 60, 58, 65, 71, 68,
-              74, 80, 77, 84, 90, 86, 93, 98, 104,
-            ]}
-          />
-          <div className="grid grid-cols-3 gap-4 mt-3 text-center text-xs">
-            <div>
-              <div className="font-bold text-lg">3.492</div>
-              <div className="text-muted-foreground">Người dùng mới</div>
-            </div>
-            <div>
-              <div className="font-bold text-lg">68%</div>
-              <div className="text-muted-foreground">Hoàn thành trắc nghiệm</div>
-            </div>
-            <div>
-              <div className="font-bold text-lg">2,4 phút</div>
-              <div className="text-muted-foreground">Thời gian ghép TB</div>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6 rounded-2xl border-0 shadow-sm">
-          <div className="font-display font-bold">Doanh thu (triệu ₫)</div>
-          <div className="text-xs text-muted-foreground">Hàng tháng · từ đầu năm</div>
-          <Spark data={[12, 14, 16, 18, 22, 25, 28, 30, 34, 36]} color="#0B3B6E" />
-          <div className="text-2xl font-display font-bold mt-2">36,8 triệu ₫</div>
-          <div className="text-xs text-mint">↑ 14,2% so với tháng trước</div>
-        </Card>
-
-        <Card className="p-6 rounded-2xl border-0 shadow-sm lg:col-span-2">
-          <div className="font-display font-bold mb-4 flex items-center gap-2">
-            <MapPin className="h-4 w-4" /> Thành phố phổ biến
-          </div>
-          <div className="space-y-4">
-            {cities.map((c) => (
-              <div key={c.name}>
-                <div className="flex justify-between text-sm mb-1.5">
-                  <span className="font-medium">{c.name}</span>
-                  <span className="text-muted-foreground">
-                    {c.users.toLocaleString("vi-VN")} người dùng
-                  </span>
-                </div>
-                <div className="h-2.5 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full gradient-brand rounded-full"
-                    style={{ width: `${c.pct}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="p-6 rounded-2xl border-0 shadow-sm">
-          <div className="font-display font-bold mb-4">Tỷ lệ ghép thành công</div>
-          <div className="relative h-40 grid place-items-center">
-            <svg viewBox="0 0 100 100" className="w-40 h-40 -rotate-90">
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                stroke="currentColor"
-                strokeWidth="10"
-                fill="none"
-                className="text-muted"
-              />
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                stroke="#15A9B8"
-                strokeWidth="10"
-                fill="none"
-                strokeDasharray={251}
-                strokeDashoffset={251 * 0.26}
-                strokeLinecap="round"
-              />
-            </svg>
-            <div className="absolute inset-0 grid place-items-center">
-              <div className="text-center">
-                <div className="text-3xl font-display font-bold">74%</div>
-                <div className="text-xs text-muted-foreground">tỷ lệ thành công</div>
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
+      {tab === "reports" && <Reports />}
+      {tab === "verifications" && <Verifications />}
+      {tab === "services" && <ServiceManager />}
+      {tab === "refunds" && <Refunds />}
     </AppShell>
+  );
+}
+function Reports() {
+  const [page, setPage] = useState(1),
+    [notes, setNotes] = useState<Record<string, string>>({}),
+    client = useQueryClient(),
+    me = useAuthStore((s) => s.user?.id),
+    query = useQuery({
+      queryKey: ["admin", "reports", me, page],
+      queryFn: () => adminApi.reports(page),
+    }),
+    review = useMutation({
+      mutationFn: ({ id, status }: { id: string; status: string }) =>
+        adminApi.reviewReport(id, status, notes[id] ?? ""),
+      onSuccess: () => client.invalidateQueries({ queryKey: ["admin"] }),
+    });
+  return (
+    <>
+      <QueryState query={query} />
+      {query.data?.totalCount === 0 && (
+        <p className="py-10 text-muted-foreground">Chưa có báo cáo.</p>
+      )}
+      {query.data?.items.map((r) => (
+        <Card key={r.id} className="mb-4 rounded-2xl p-5">
+          <h2 className="font-semibold">
+            {r.reporterName} → {r.reportedUserName}
+          </h2>
+          <p className="mt-2 text-sm">
+            {r.reason} · {r.status}
+          </p>
+          <p className="mt-3 whitespace-pre-wrap text-sm">{r.details}</p>
+          {r.status === "open" && (
+            <>
+              <Input
+                aria-label="Ghi chú xử lý"
+                maxLength={2000}
+                className="mt-3"
+                value={notes[r.id] ?? ""}
+                onChange={(e) =>
+                  setNotes((n) => ({ ...n, [r.id]: e.target.value }))
+                }
+              />
+              <div className="mt-3 flex gap-2">
+                <Button
+                  disabled={review.isPending}
+                  onClick={() =>
+                    review.mutate({ id: r.id, status: "resolved" })
+                  }
+                >
+                  Đã xử lý
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={review.isPending}
+                  onClick={() =>
+                    review.mutate({ id: r.id, status: "dismissed" })
+                  }
+                >
+                  Bác báo cáo
+                </Button>
+              </div>
+            </>
+          )}
+        </Card>
+      ))}
+      {review.isError && (
+        <p role="alert" className="text-destructive">
+          {review.error.message}
+        </p>
+      )}
+      {query.data && (
+        <Pagination
+          page={page}
+          hasNext={query.data.hasNextPage}
+          onChange={setPage}
+        />
+      )}
+    </>
+  );
+}
+function Verifications() {
+  const [page, setPage] = useState(1),
+    [notes, setNotes] = useState<Record<string, string>>({}),
+    client = useQueryClient(),
+    me = useAuthStore((s) => s.user?.id),
+    query = useQuery({
+      queryKey: ["admin", "verifications", me, page],
+      queryFn: () => adminApi.verifications(page),
+    }),
+    review = useMutation({
+      mutationFn: ({ id, status }: { id: string; status: string }) =>
+        adminApi.reviewVerification(id, status, notes[id] ?? ""),
+      onSuccess: () => client.invalidateQueries({ queryKey: ["admin"] }),
+    });
+  return (
+    <>
+      <QueryState query={query} />
+      {query.data?.totalCount === 0 && (
+        <p className="py-10 text-muted-foreground">Chưa có hồ sơ xác minh.</p>
+      )}
+      {query.data?.items.map((v) => (
+        <Card key={v.id} className="mb-4 rounded-2xl p-5">
+          <h2 className="font-semibold">
+            {v.userName} · {v.status}
+          </h2>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {[v.frontImageUrl, v.backImageUrl, v.selfieImageUrl]
+              .filter(Boolean)
+              .map((url, i) => (
+                <a
+                  key={i}
+                  href={url!}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm text-teal underline"
+                >
+                  Xem{" "}
+                  {i === 0
+                    ? "mặt trước"
+                    : i === 1
+                      ? "mặt sau"
+                      : "ảnh chân dung"}
+                </a>
+              ))}
+          </div>
+          {v.status === "pending" && (
+            <>
+              <Input
+                aria-label="Lý do từ chối"
+                placeholder="Lý do khi từ chối"
+                maxLength={2000}
+                className="mt-4"
+                value={notes[v.id] ?? ""}
+                onChange={(e) =>
+                  setNotes((n) => ({ ...n, [v.id]: e.target.value }))
+                }
+              />
+              <div className="mt-3 flex gap-2">
+                <Button
+                  disabled={review.isPending}
+                  onClick={() =>
+                    review.mutate({ id: v.id, status: "approved" })
+                  }
+                >
+                  Duyệt
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={review.isPending || !notes[v.id]?.trim()}
+                  onClick={() =>
+                    review.mutate({ id: v.id, status: "rejected" })
+                  }
+                >
+                  Từ chối
+                </Button>
+              </div>
+            </>
+          )}
+        </Card>
+      ))}
+      {review.isError && (
+        <p role="alert" className="text-destructive">
+          {review.error.message}
+        </p>
+      )}
+      {query.data && (
+        <Pagination
+          page={page}
+          hasNext={query.data.hasNextPage}
+          onChange={setPage}
+        />
+      )}
+    </>
+  );
+}
+function Refunds() {
+  const [page, setPage] = useState(1),
+    [notes, setNotes] = useState<Record<string, string>>({}),
+    [refs, setRefs] = useState<Record<string, string>>({}),
+    client = useQueryClient(),
+    me = useAuthStore((s) => s.user?.id),
+    query = useQuery({
+      queryKey: ["admin", "refunds", me, page],
+      queryFn: () => adminApi.refunds(page),
+    }),
+    resolve = useMutation({
+      mutationFn: ({
+        id,
+        action,
+      }: {
+        id: string;
+        action: "approve" | "reject";
+      }) => adminApi.resolveRefund(id, action, notes[id] ?? "", refs[id]),
+      onSuccess: () => client.invalidateQueries({ queryKey: ["admin"] }),
+    });
+  return (
+    <>
+      <p className="mb-4 text-sm text-muted-foreground">
+        Chỉ xác nhận đã hoàn tiền sau khi chuyển khoản thực tế cho người mua.
+      </p>
+      <QueryState query={query} />
+      {query.data?.totalCount === 0 && (
+        <p className="py-10 text-muted-foreground">
+          Chưa có yêu cầu hoàn tiền.
+        </p>
+      )}
+      {query.data?.items.map((r) => (
+        <Card key={r.id} className="mb-4 rounded-2xl p-5">
+          <h2 className="font-semibold">
+            {r.userName} · {r.amount.toLocaleString("vi-VN")}₫
+          </h2>
+          <p className="mt-2 text-sm">
+            {r.userEmail} · {r.status}
+          </p>
+          <p className="mt-2 text-sm">{r.reason}</p>
+          {r.status === "pending" && (
+            <>
+              <Input
+                aria-label="Mã giao dịch chuyển khoản hoàn tiền"
+                placeholder="Mã chuyển khoản đã hoàn tiền"
+                maxLength={200}
+                className="mt-3"
+                value={refs[r.id] ?? ""}
+                onChange={(e) =>
+                  setRefs((n) => ({ ...n, [r.id]: e.target.value }))
+                }
+              />
+              <Input
+                aria-label="Ghi chú hoàn tiền"
+                placeholder="Ghi chú / lý do từ chối"
+                maxLength={2000}
+                className="mt-3"
+                value={notes[r.id] ?? ""}
+                onChange={(e) =>
+                  setNotes((n) => ({ ...n, [r.id]: e.target.value }))
+                }
+              />
+              <div className="mt-3 flex flex-wrap gap-3">
+                <Button
+                  disabled={resolve.isPending || !refs[r.id]?.trim()}
+                  onClick={() =>
+                    resolve.mutate({ id: r.id, action: "approve" })
+                  }
+                >
+                  Xác nhận đã chuyển khoản
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={resolve.isPending || !notes[r.id]?.trim()}
+                  onClick={() => resolve.mutate({ id: r.id, action: "reject" })}
+                >
+                  Từ chối yêu cầu
+                </Button>
+              </div>
+            </>
+          )}
+        </Card>
+      ))}
+      {resolve.isError && (
+        <p role="alert" className="text-destructive">
+          {resolve.error.message}
+        </p>
+      )}
+      {query.data && (
+        <Pagination
+          page={page}
+          hasNext={query.data.hasNextPage}
+          onChange={setPage}
+        />
+      )}
+    </>
   );
 }

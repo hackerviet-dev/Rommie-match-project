@@ -15,13 +15,18 @@ import LoginPage from "@/pages/login-page";
 import MatchesPage from "@/pages/matches-page";
 import NotFoundPage from "@/pages/not-found-page";
 import OnboardingPage from "@/pages/onboarding-page";
+import PaymentDetailPage from "@/pages/payment-detail-page";
 import PremiumPage from "@/pages/premium-page";
 import PremiumResultPage from "@/pages/premium-result-page";
 import ProfilePage from "@/pages/profile-page";
 import QuizPage from "@/pages/quiz-page";
 import RegisterPage from "@/pages/register-page";
+import ServiceDetailPage from "@/pages/service-detail-page";
+import BookingDetailPage from "@/pages/booking-detail-page";
 import ServicesPage from "@/pages/services-page";
 import SettingsPage from "@/pages/settings-page";
+import RoomDetailPage from "@/pages/room-detail-page";
+import RoomEditorPage from "@/pages/room-editor-page";
 import RoomsPage from "@/pages/rooms-page";
 
 export function AppRouter() {
@@ -29,26 +34,123 @@ export function AppRouter() {
   const { pathname } = useLocation();
   return (
     <OnboardingGate>
-      <PageTransition><Routes>
-        <Route path={ROUTES.landing} element={<LandingPage />} />
-        <Route path={ROUTES.login} element={<LoginPage />} />
-        <Route path={ROUTES.register} element={<RegisterPage />} />
-        <Route path={ROUTES.onboarding} element={<AuthGuard><OnboardingPage /></AuthGuard>} />
-        <Route path={ROUTES.quiz} element={<AuthGuard><QuizPage /></AuthGuard>} />
-        <Route path={ROUTES.dashboard} element={<AuthGuard><DashboardPage /></AuthGuard>} />
-        <Route path={ROUTES.matches} element={<AuthGuard><MatchesPage /></AuthGuard>} />
-        <Route path={ROUTES.chat} element={<AuthGuard><ChatPage /></AuthGuard>} />
-        <Route path={ROUTES.services} element={<ServicesPage />} />
-        <Route path={ROUTES.rooms} element={<RoomsPage />} />
-        <Route path={ROUTES.premium} element={<PremiumPage />} />
-        <Route path="/premium/result" element={<PremiumResultPage />} />
-        <Route path={ROUTES.communityGuidelines} element={<CommunityGuidelinesPage />} />
-        <Route path={ROUTES.settings} element={<AuthGuard><SettingsPage /></AuthGuard>} />
-        <Route path={ROUTES.admin} element={<AuthGuard staff><AdminPage /></AuthGuard>} />
-        <Route path={ROUTES.profile} element={<AuthGuard><ProfilePage /></AuthGuard>} />
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes></PageTransition>
-      {pathname !== ROUTES.chat && pathname !== ROUTES.onboarding && <AIChatbox />}
+      <PageTransition>
+        <Routes>
+          <Route path={ROUTES.landing} element={<LandingPage />} />
+          <Route path={ROUTES.login} element={<LoginPage />} />
+          <Route path={ROUTES.register} element={<RegisterPage />} />
+          <Route
+            path={ROUTES.onboarding}
+            element={
+              <AuthGuard>
+                <OnboardingPage />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path={ROUTES.quiz}
+            element={
+              <AuthGuard>
+                <QuizPage />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path={ROUTES.dashboard}
+            element={
+              <AuthGuard>
+                <DashboardPage />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path={ROUTES.matches}
+            element={
+              <AuthGuard>
+                <MatchesPage />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path={ROUTES.chat}
+            element={
+              <AuthGuard>
+                <ChatPage />
+              </AuthGuard>
+            }
+          />
+          <Route path="/services/:id" element={<ServiceDetailPage />} />
+          <Route
+            path="/bookings/:id"
+            element={
+              <AuthGuard>
+                <BookingDetailPage />
+              </AuthGuard>
+            }
+          />
+          <Route path={ROUTES.services} element={<ServicesPage />} />
+          <Route
+            path="/rooms/new"
+            element={
+              <AuthGuard>
+                <RoomEditorPage />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/rooms/:id/edit"
+            element={
+              <AuthGuard>
+                <RoomEditorPage />
+              </AuthGuard>
+            }
+          />
+          <Route path="/rooms/:id" element={<RoomDetailPage />} />
+          <Route path={ROUTES.rooms} element={<RoomsPage />} />
+          <Route
+            path="/payments/:id"
+            element={
+              <AuthGuard>
+                <PaymentDetailPage />
+              </AuthGuard>
+            }
+          />
+          <Route path={ROUTES.premium} element={<PremiumPage />} />
+          <Route path="/premium/result" element={<PremiumResultPage />} />
+          <Route
+            path={ROUTES.communityGuidelines}
+            element={<CommunityGuidelinesPage />}
+          />
+          <Route
+            path={ROUTES.settings}
+            element={
+              <AuthGuard>
+                <SettingsPage />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path={ROUTES.admin}
+            element={
+              <AuthGuard staff>
+                <AdminPage />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path={ROUTES.profile}
+            element={
+              <AuthGuard>
+                <ProfilePage />
+              </AuthGuard>
+            }
+          />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </PageTransition>
+      {pathname !== ROUTES.chat && pathname !== ROUTES.onboarding && (
+        <AIChatbox />
+      )}
     </OnboardingGate>
   );
 }

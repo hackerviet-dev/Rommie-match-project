@@ -32,10 +32,11 @@ public sealed class HyperlocalController(IHyperlocalService hyperlocalService) :
         [FromQuery] [Description("Tên thành phố; ví dụ TP.HCM. Với danh sách dịch vụ, mặc định TP.HCM.")] string city = "TP.HCM",
         [FromQuery] [Description("Tên quận/huyện; bỏ trống để không lọc theo quận.")] string? district = null,
         [FromQuery] [Description("Loại dịch vụ đúng như database, ví dụ Giặt ủi hoặc Giao nước; bỏ trống để lấy mọi loại.")] string? category = null,
+        [FromQuery, System.ComponentModel.DataAnnotations.StringLength(100)] [Description("Tìm theo tên hoặc danh mục dịch vụ, tối đa 100 ký tự.")] string? q = null,
         CancellationToken cancellationToken = default)
     {
         return Ok(await hyperlocalService.GetNearbyServicesAsync(
-            city, district, category, paging, cancellationToken));
+            city, district, category, q, paging, cancellationToken));
     }
 
     [EndpointSummary("Xem chi tiết dịch vụ")]

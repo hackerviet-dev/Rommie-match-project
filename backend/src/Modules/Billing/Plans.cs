@@ -30,15 +30,15 @@ public static class Plans
             "Phân tích hợp nhau nâng cao",
             "Quét hợp nhau không giới hạn",
             "Bộ lọc nâng cao",
-            "Xem ai đã xem bạn",
-            "Boost hồ sơ — xem gấp 5 lần"
+            "Ưu tiên hiển thị khi Boost",
+            "Boost hồ sơ theo hạn mức của gói"
         ]),
         new(PremiumYearly, "Premium năm", "premium", 180_000, "VND", 12,
         [
             "Tất cả tính năng Premium tháng",
             "Quét hợp nhau không giới hạn",
             "Bộ lọc nâng cao theo khu vực và lối sống",
-            "Ưu tiên hiển thị cả năm",
+            "Phân tích điểm hợp nhau chi tiết",
             "Boost hồ sơ định kỳ"
         ])
     ];

@@ -435,6 +435,11 @@ public sealed class MatchingService(
 
         if (filters is not null)
         {
+            if (!string.IsNullOrWhiteSpace(filters.City))
+            {
+                conditions.Add("(lower(btrim(p.city)) = lower(@selected_city) OR (lower(@selected_city) = 'tp.hcm' AND lower(btrim(p.city)) = 'tp. hồ chí minh'))");
+                parameters.Add(("selected_city", filters.City.Trim()));
+            }
             if (!string.IsNullOrWhiteSpace(filters.Q))
             {
                 conditions.Add("""

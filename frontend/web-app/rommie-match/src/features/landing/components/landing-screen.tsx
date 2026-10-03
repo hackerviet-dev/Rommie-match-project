@@ -372,7 +372,7 @@ export function LandingScreen() {
                 name: "Premium", price: "20.000₫", period: "/ tháng", icon: Sparkles,
                 description: "Rẻ hơn ly cà phê. Đáng giá hơn nhiều.",
                 action: "Chọn gói tháng", to: "/premium", premium: true,
-                features: ["Phân tích hợp nhau nâng cao", "Quét hợp nhau không giới hạn", "Bộ lọc nâng cao (ngân sách, khu vực, lối sống)", "Hiển thị ưu tiên trong kết quả", "Boost hồ sơ — xem nhiều hơn 5 lần"],
+                features: ["Phân tích hợp nhau nâng cao", "Quét hợp nhau không giới hạn", "Bộ lọc nâng cao (ngân sách, khu vực, lối sống)", "Hiển thị ưu tiên khi Boost", "Boost hồ sơ theo hạn mức của gói"],
               },
               {
                 name: "Premium năm", price: "180.000đ", period: "/ năm", icon: Star,

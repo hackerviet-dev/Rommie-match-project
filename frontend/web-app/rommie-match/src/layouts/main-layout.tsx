@@ -1,52 +1,90 @@
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useQuery } from "@tanstack/react-query";
+import { chatApi } from "@/features/chat/services/chat-api";
+import { QueryState } from "@/components/common/query-state";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, Heart, MessageCircle, Store, Settings, Sparkles, Menu, Bell, TrendingUp, Crown, House } from "lucide-react";
+import {
+  Home,
+  Heart,
+  MessageCircle,
+  Store,
+  Settings,
+  Sparkles,
+  Menu,
+  Bell,
+  TrendingUp,
+  Crown,
+  House,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import { AccountMenu, useAuthStore } from "@/features/auth";
 import { HeaderSearch } from "@/components/common/header-search";
 import { tokenStorage } from "@/services/token-storage";
 
-const NOTIFICATIONS = [
-  { i: Heart, t: "Linh đã xem hồ sơ của bạn", time: "2 phút", color: "text-rose-500 bg-rose-50", unread: true },
-  { i: MessageCircle, t: "Minh: Mình ok chia tiền điện nước 50/50.", time: "1 giờ", color: "text-teal bg-mint/30", unread: true },
-  { i: Sparkles, t: "Ghép đôi mới 92% với Hà My", time: "3 giờ", color: "text-amber-600 bg-amber-50", unread: true },
-  { i: TrendingUp, t: "Hồ sơ của bạn đang nổi ở Quận 1", time: "1 ngày", color: "text-navy bg-mint/20", unread: false },
-  { i: Store, t: "Dịch vụ Giặt ủi mới gần bạn (0,6 km)", time: "2 ngày", color: "text-navy bg-muted", unread: false },
-];
-
 function NotificationBell() {
-  const unread = NOTIFICATIONS.filter(n => n.unread).length;
+  const me = useAuthStore((s) => s.user?.id),
+    query = useQuery({
+      queryKey: ["chat", "notifications", me],
+      queryFn: () => chatApi.list(),
+      enabled: Boolean(me),
+      refetchInterval: 15000,
+    });
+  const unread = query.data?.items.reduce((n, c) => n + c.unreadCount, 0) ?? 0;
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Thông báo" className="relative h-9 w-9 rounded-full bg-muted/60 text-navy/80 transition-colors hover:bg-muted data-[state=open]:bg-muted">
-          <Bell className="h-[18px] w-[18px]" strokeWidth={2} />
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Thông báo tin nhắn"
+          className="relative rounded-full"
+        >
+          <Bell className="h-5 w-5" />
           {unread > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-teal px-1 text-[9px] font-semibold text-white ring-2 ring-background">{unread}</span>
+            <span className="absolute -right-1 -top-1 rounded-full bg-teal px-1.5 text-xs text-white">
+              {unread}
+            </span>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] p-0 rounded-2xl overflow-hidden">
-        <div className="px-4 py-3 border-b flex items-center justify-between">
-          <div className="font-display font-bold">Thông báo</div>
-          <span className="text-xs text-muted-foreground">{unread} chưa đọc</span>
-        </div>
-        <ul className="max-h-96 overflow-y-auto">
-          {NOTIFICATIONS.map((n, i) => (
-            <li key={i} className={`flex gap-3 px-4 py-3 border-b last:border-0 hover:bg-muted/50 ${n.unread ? "bg-mint/5" : ""}`}>
-              <div className={`h-9 w-9 shrink-0 rounded-xl grid place-items-center ${n.color}`}><n.i className="h-4 w-4" /></div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm leading-snug">{n.t}</div>
-                <div className="text-[11px] text-muted-foreground mt-0.5">{n.time} trước</div>
-              </div>
-              {n.unread && <div className="h-2 w-2 rounded-full bg-teal mt-2 shrink-0" />}
-            </li>
+      <PopoverContent align="end" className="w-80 rounded-2xl p-4">
+        <h2 className="font-semibold">Tin nhắn chưa đọc</h2>
+        <QueryState query={query} />
+        {query.data && !unread && (
+          <p className="py-5 text-sm text-muted-foreground">
+            Không có tin nhắn chưa đọc trong danh sách gần đây.
+          </p>
+        )}
+        {query.data?.items
+          .filter((c) => c.unreadCount > 0)
+          .map((c) => (
+            <Link
+              key={c.id}
+              to={`/chat?conversation=${c.id}`}
+              className="mt-3 block rounded-xl bg-mint/15 p-3"
+            >
+              <strong className="text-sm">
+                {c.partner.displayName} · {c.unreadCount}
+              </strong>
+              <p className="mt-1 truncate text-xs">{c.lastMessage?.content}</p>
+            </Link>
           ))}
-        </ul>
-        <Link to="/dashboard" className="block text-center text-sm font-medium text-teal hover:bg-muted py-3 border-t">Xem tất cả</Link>
+        <Link to="/chat" className="mt-4 block text-center text-sm text-teal">
+          Mở tất cả hội thoại
+        </Link>
       </PopoverContent>
     </Popover>
   );
@@ -61,19 +99,55 @@ const nav = [
 ];
 
 export function Logo({ className = "" }: { className?: string }) {
-  const hasSession = useAuthStore((s) => s.isInitialized && s.isAuthenticated && Boolean(s.user));
+  const hasSession = useAuthStore(
+    (s) => s.isInitialized && s.isAuthenticated && Boolean(s.user),
+  );
   const location = useLocation();
-  const isMember = hasSession && Boolean(tokenStorage.getAccessToken() || tokenStorage.getRefreshToken()) && location.pathname !== "/login" && location.pathname !== "/register";
+  const isMember =
+    hasSession &&
+    Boolean(tokenStorage.getAccessToken() || tokenStorage.getRefreshToken()) &&
+    location.pathname !== "/login" &&
+    location.pathname !== "/register";
   const navigate = useNavigate();
   return (
-    <Link to={isMember ? "/dashboard" : "/"} onClick={event => {
-      if (!isMember || location.pathname !== "/dashboard" || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      event.preventDefault();
-      window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
-      const suggestionsPage = Number.isSafeInteger(location.state?.suggestionsPage) ? location.state.suggestionsPage : 0;
-      navigate("/dashboard", { replace: true, state: { suggestionsPage: suggestionsPage + 1 } });
-    }} className={`flex items-center gap-2 font-display font-bold text-lg ${className}`}>
-      <img src={`${import.meta.env.BASE_URL}logo-mark.png`} alt="RoomieMatch" className="h-10 w-10 object-contain" />
+    <Link
+      to={isMember ? "/dashboard" : "/"}
+      onClick={(event) => {
+        if (
+          !isMember ||
+          location.pathname !== "/dashboard" ||
+          event.button !== 0 ||
+          event.metaKey ||
+          event.ctrlKey ||
+          event.shiftKey ||
+          event.altKey
+        )
+          return;
+        event.preventDefault();
+        window.scrollTo({
+          top: 0,
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
+            .matches
+            ? "instant"
+            : "smooth",
+        });
+        const suggestionsPage = Number.isSafeInteger(
+          location.state?.suggestionsPage,
+        )
+          ? location.state.suggestionsPage
+          : 0;
+        navigate("/dashboard", {
+          replace: true,
+          state: { suggestionsPage: suggestionsPage + 1 },
+        });
+      }}
+      className={`flex items-center gap-2 font-display font-bold text-lg ${className}`}
+    >
+      <img
+        src={`${import.meta.env.BASE_URL}logo-mark.png`}
+        alt="RoomieMatch"
+        className="h-10 w-10 object-contain"
+      />
       <span>
         <span className="text-navy">Roomie</span>
         <span className="text-teal">Match</span>
@@ -82,7 +156,15 @@ export function Logo({ className = "" }: { className?: string }) {
   );
 }
 
-export function AppShell({ children, fullHeight = false, hideHeader = false }: { children: ReactNode; fullHeight?: boolean; hideHeader?: boolean }) {
+export function AppShell({
+  children,
+  fullHeight = false,
+  hideHeader = false,
+}: {
+  children: ReactNode;
+  fullHeight?: boolean;
+  hideHeader?: boolean;
+}) {
   const path = useLocation().pathname;
   const [open, setOpen] = useState(false);
   const user = useAuthStore((s) => s.user);
@@ -90,126 +172,254 @@ export function AppShell({ children, fullHeight = false, hideHeader = false }: {
   const isInitialized = useAuthStore((s) => s.isInitialized);
   const isMember = isInitialized && isAuthenticated && Boolean(user);
   const showNavigation = path !== "/premium" || isMember;
-  const visibleNav = isMember ? nav : [
-    { to: "/", label: "Trang chủ", icon: Home },
-    ...nav.filter((item) => item.to === "/rooms" || item.to === "/services" || item.to === "/premium"),
-  ];
+  const visibleNav = isMember
+    ? nav
+    : [
+        { to: "/", label: "Trang chủ", icon: Home },
+        ...nav.filter(
+          (item) =>
+            item.to === "/rooms" ||
+            item.to === "/services" ||
+            item.to === "/premium",
+        ),
+      ];
 
   return (
-    <div className={fullHeight ? "flex h-dvh flex-col overflow-hidden bg-background" : "min-h-screen bg-background"}>
-      <a href="#main-content" className="skip-link">Đến nội dung chính</a>
-      {!hideHeader && (showNavigation ? <header className="sticky top-0 z-40 glass border-b border-border/60">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
-          <div className="flex items-center gap-6">
-            <Logo className="[&>span]:hidden sm:[&>span]:inline" />
-            <nav aria-label="Điều hướng chính" className="hidden lg:flex items-center gap-1">
-              {visibleNav.filter((n) => n.to !== "/chat" && (!isMember || n.to !== "/premium")).map((n) => {
-                const active = n.to === "/" ? path === "/" : path.startsWith(n.to);
-                return (
-                  <Link
-                    key={n.to}
-                    to={n.to}
-                    aria-current={active ? "page" : undefined}
-                    className={`px-3 py-3 rounded-xl text-sm font-semibold transition-colors ${active ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
-                  >
-                    {n.label}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
-          {isMember && <div className="hidden min-w-0 flex-1 justify-center px-4 xl:flex"><HeaderSearch /></div>}
-          <div className="flex shrink-0 items-center gap-2">
-            {isMember ? <>
-            <div className="xl:hidden"><HeaderSearch /></div>
-            <Button asChild size="sm" className={`gap-1.5 rounded-full text-amber-950 shadow-sm hover:bg-amber-300 ${path.startsWith("/premium") ? "bg-amber-300" : "bg-amber-200"}`}>
-              <Link to="/premium" aria-label="Premium" aria-current={path.startsWith("/premium") ? "page" : undefined}>
-                <Crown className="h-4 w-4" /> <span className="hidden sm:inline">Premium</span>
-              </Link>
-            </Button>
-            <Button asChild variant="ghost" size="icon" className={`h-9 w-9 rounded-full transition-colors ${path.startsWith("/chat") ? "bg-mint/30 text-teal hover:bg-mint/40" : "bg-muted/60 text-navy/80 hover:bg-muted"}`}>
-              <Link to="/chat" aria-label="Tin nhắn" title="Tin nhắn" aria-current={path.startsWith("/chat") ? "page" : undefined}>
-                <MessageCircle className="h-[18px] w-[18px]" strokeWidth={2} />
-              </Link>
-            </Button>
-            <NotificationBell />
-            <AccountMenu />
-            </> : <>
-              <Button asChild variant="ghost" size="sm"><Link to="/login">Đăng nhập</Link></Button>
-              <Button asChild size="sm"><Link to="/register">Đăng ký</Link></Button>
-            </>}
-            <Sheet open={open} onOpenChange={setOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Mở menu" className="lg:hidden">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-72">
-                <SheetTitle>Khám phá RoomieMatch</SheetTitle>
-                <SheetDescription>Hồ sơ, ghép đôi và cuộc sống ở chung.</SheetDescription>
-                <div className="mt-8 flex flex-col gap-1">
-                  {visibleNav.map((n) => (
-                    <Link
-                      key={n.to}
-                      to={n.to}
-                      aria-current={(n.to === "/" ? path === "/" : path.startsWith(n.to)) ? "page" : undefined}
-                      onClick={() => setOpen(false)}
-                      className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-muted"
-                    >
-                      <n.icon className="h-4 w-4" /> {n.label}
-                    </Link>
-                  ))}
-                  {isMember && <Link
-                    to="/settings"
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-muted"
-                  >
-                    <Settings className="h-4 w-4" /> Cài đặt
-                  </Link>}
+    <div
+      className={
+        fullHeight
+          ? "flex h-dvh flex-col overflow-hidden bg-background"
+          : "min-h-screen bg-background"
+      }
+    >
+      <a href="#main-content" className="skip-link">
+        Đến nội dung chính
+      </a>
+      {!hideHeader &&
+        (showNavigation ? (
+          <header className="sticky top-0 z-40 glass border-b border-border/60">
+            <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
+              <div className="flex items-center gap-6">
+                <Logo className="[&>span]:hidden sm:[&>span]:inline" />
+                <nav
+                  aria-label="Điều hướng chính"
+                  className="hidden lg:flex items-center gap-1"
+                >
+                  {visibleNav
+                    .filter(
+                      (n) =>
+                        n.to !== "/chat" && (!isMember || n.to !== "/premium"),
+                    )
+                    .map((n) => {
+                      const active =
+                        n.to === "/" ? path === "/" : path.startsWith(n.to);
+                      return (
+                        <Link
+                          key={n.to}
+                          to={n.to}
+                          aria-current={active ? "page" : undefined}
+                          className={`px-3 py-3 rounded-xl text-sm font-semibold transition-colors ${active ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
+                        >
+                          {n.label}
+                        </Link>
+                      );
+                    })}
+                </nav>
+              </div>
+              {isMember && (
+                <div className="hidden min-w-0 flex-1 justify-center px-4 xl:flex">
+                  <HeaderSearch />
                 </div>
-              </SheetContent>
-            </Sheet>
-          </div>
-        </div>
-      </header> : <header className="sticky top-0 z-40 glass border-b border-border/50">
-        <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-2 sm:px-6">
-          <Logo className="[&>span]:hidden sm:[&>span]:inline" />
-          <nav aria-label="Điều hướng công khai" className="order-3 flex w-full justify-center gap-7 text-sm font-medium text-muted-foreground md:order-none md:w-auto">
-            <Link to="/" className="hover:text-foreground">Trang chủ</Link>
-            <Link to="/premium" aria-current="page" className="font-semibold text-navy">Premium</Link>
-          </nav>
-          <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" className="rounded-full"><Link to="/login">Đăng nhập</Link></Button>
-            <Button asChild className="rounded-full bg-navy text-white hover:bg-navy/90"><Link to="/register">Đăng ký</Link></Button>
-          </div>
-        </div>
-      </header>)}
-
-      <main id="main-content" tabIndex={-1} className={fullHeight ? "min-h-0 flex-1 overflow-hidden" : "mx-auto max-w-7xl px-4 sm:px-6 pb-28 lg:pb-10 pt-8 sm:pt-10"}>{children}</main>
-
-      {!hideHeader && showNavigation && !fullHeight && <nav aria-label="Điều hướng nhanh" className="lg:hidden fixed bottom-[max(.75rem,env(safe-area-inset-bottom))] inset-x-3 z-40 glass rounded-2xl shadow-lg border border-border/60">
-        <div className={`grid ${isMember ? "grid-cols-5" : "grid-cols-4"}`}>
-          {visibleNav.map((n) => {
-            const active = n.to === "/" ? path === "/" : path.startsWith(n.to);
-            return (
-              <Link
-                key={n.to}
-                to={n.to}
-                aria-current={active ? "page" : undefined}
-                className={`flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium ${active ? "text-teal" : "text-muted-foreground"}`}
+              )}
+              <div className="flex shrink-0 items-center gap-2">
+                {isMember ? (
+                  <>
+                    <div className="xl:hidden">
+                      <HeaderSearch />
+                    </div>
+                    <Button
+                      asChild
+                      size="sm"
+                      className={`gap-1.5 rounded-full text-amber-950 shadow-sm hover:bg-amber-300 ${path.startsWith("/premium") ? "bg-amber-300" : "bg-amber-200"}`}
+                    >
+                      <Link
+                        to="/premium"
+                        aria-label="Premium"
+                        aria-current={
+                          path.startsWith("/premium") ? "page" : undefined
+                        }
+                      >
+                        <Crown className="h-4 w-4" />{" "}
+                        <span className="hidden sm:inline">Premium</span>
+                      </Link>
+                    </Button>
+                    <Button
+                      asChild
+                      variant="ghost"
+                      size="icon"
+                      className={`h-9 w-9 rounded-full transition-colors ${path.startsWith("/chat") ? "bg-mint/30 text-teal hover:bg-mint/40" : "bg-muted/60 text-navy/80 hover:bg-muted"}`}
+                    >
+                      <Link
+                        to="/chat"
+                        aria-label="Tin nhắn"
+                        title="Tin nhắn"
+                        aria-current={
+                          path.startsWith("/chat") ? "page" : undefined
+                        }
+                      >
+                        <MessageCircle
+                          className="h-[18px] w-[18px]"
+                          strokeWidth={2}
+                        />
+                      </Link>
+                    </Button>
+                    <NotificationBell />
+                    <AccountMenu />
+                  </>
+                ) : (
+                  <>
+                    <Button asChild variant="ghost" size="sm">
+                      <Link to="/login">Đăng nhập</Link>
+                    </Button>
+                    <Button asChild size="sm">
+                      <Link to="/register">Đăng ký</Link>
+                    </Button>
+                  </>
+                )}
+                <Sheet open={open} onOpenChange={setOpen}>
+                  <SheetTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Mở menu"
+                      className="lg:hidden"
+                    >
+                      <Menu className="h-5 w-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-72">
+                    <SheetTitle>Khám phá RoomieMatch</SheetTitle>
+                    <SheetDescription>
+                      Hồ sơ, ghép đôi và cuộc sống ở chung.
+                    </SheetDescription>
+                    <div className="mt-8 flex flex-col gap-1">
+                      {visibleNav.map((n) => (
+                        <Link
+                          key={n.to}
+                          to={n.to}
+                          aria-current={
+                            (
+                              n.to === "/"
+                                ? path === "/"
+                                : path.startsWith(n.to)
+                            )
+                              ? "page"
+                              : undefined
+                          }
+                          onClick={() => setOpen(false)}
+                          className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-muted"
+                        >
+                          <n.icon className="h-4 w-4" /> {n.label}
+                        </Link>
+                      ))}
+                      {isMember && (
+                        <Link
+                          to="/settings"
+                          onClick={() => setOpen(false)}
+                          className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-muted"
+                        >
+                          <Settings className="h-4 w-4" /> Cài đặt
+                        </Link>
+                      )}
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
+            </div>
+          </header>
+        ) : (
+          <header className="sticky top-0 z-40 glass border-b border-border/50">
+            <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-2 sm:px-6">
+              <Logo className="[&>span]:hidden sm:[&>span]:inline" />
+              <nav
+                aria-label="Điều hướng công khai"
+                className="order-3 flex w-full justify-center gap-7 text-sm font-medium text-muted-foreground md:order-none md:w-auto"
               >
-                <n.icon className={`h-5 w-5 ${active ? "fill-mint/40" : ""}`} />
-                {n.label}
-              </Link>
-            );
-          })}
-        </div>
-      </nav>}
+                <Link to="/" className="hover:text-foreground">
+                  Trang chủ
+                </Link>
+                <Link
+                  to="/premium"
+                  aria-current="page"
+                  className="font-semibold text-navy"
+                >
+                  Premium
+                </Link>
+              </nav>
+              <div className="flex items-center gap-2">
+                <Button asChild variant="ghost" className="rounded-full">
+                  <Link to="/login">Đăng nhập</Link>
+                </Button>
+                <Button
+                  asChild
+                  className="rounded-full bg-navy text-white hover:bg-navy/90"
+                >
+                  <Link to="/register">Đăng ký</Link>
+                </Button>
+              </div>
+            </div>
+          </header>
+        ))}
+
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className={
+          fullHeight
+            ? "min-h-0 flex-1 overflow-hidden"
+            : "mx-auto max-w-7xl px-4 sm:px-6 pb-28 lg:pb-10 pt-8 sm:pt-10"
+        }
+      >
+        {children}
+      </main>
+
+      {!hideHeader && showNavigation && !fullHeight && (
+        <nav
+          aria-label="Điều hướng nhanh"
+          className="lg:hidden fixed bottom-[max(.75rem,env(safe-area-inset-bottom))] inset-x-3 z-40 glass rounded-2xl shadow-lg border border-border/60"
+        >
+          <div className={`grid ${isMember ? "grid-cols-5" : "grid-cols-4"}`}>
+            {visibleNav.map((n) => {
+              const active =
+                n.to === "/" ? path === "/" : path.startsWith(n.to);
+              return (
+                <Link
+                  key={n.to}
+                  to={n.to}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium ${active ? "text-teal" : "text-muted-foreground"}`}
+                >
+                  <n.icon
+                    className={`h-5 w-5 ${active ? "fill-mint/40" : ""}`}
+                  />
+                  {n.label}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      )}
     </div>
   );
 }
 
-export function CompatRing({ score, size = 64 }: { score: number; size?: number }) {
+export function CompatRing({
+  score,
+  size = 64,
+}: {
+  score: number;
+  size?: number;
+}) {
   const r = (size - 8) / 2;
   const c = 2 * Math.PI * r;
   const offset = c - (score / 100) * c;

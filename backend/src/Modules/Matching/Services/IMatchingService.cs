@@ -39,6 +39,10 @@ public sealed class MatchFilterQuery : IValidatableObject
     [Description("Tìm theo tên hoặc sở thích, không phân biệt hoa/thường, tối đa 60 ký tự.")]
     public string? Q { get; init; }
 
+    [StringLength(100)]
+    [Description("Lọc thành phố của ứng viên; bộ lọc tiêu chuẩn, tối đa 100 ký tự.")]
+    public string? City { get; init; }
+
     [Range(0, 100)]
     [Description("Điểm phù hợp tối thiểu, 0-100; bỏ trống để không lọc.")]
     public int? MinScore { get; init; }

@@ -25,14 +25,18 @@ public sealed class HyperlocalService(IDbConnectionFactory connectionFactory) : 
         string city,
         string? district,
         string? category,
+        string? q,
         PageQuery paging,
         CancellationToken cancellationToken)
     {
         const string fromWhere = """
             FROM local_services
-            WHERE city = @city
+            WHERE (lower(btrim(city)) = lower(btrim(@city))
+              OR (lower(btrim(city)) IN ('tp.hcm', 'tp. hồ chí minh', 'hồ chí minh')
+                AND lower(btrim(@city)) IN ('tp.hcm', 'tp. hồ chí minh', 'hồ chí minh')))
               AND (@district IS NULL OR district = @district)
               AND (@category IS NULL OR category = @category)
+              AND (@q IS NULL OR strpos(lower(name || ' ' || category), lower(@q)) > 0)
               AND deleted_at IS NULL
             """;
 
@@ -41,6 +45,7 @@ public sealed class HyperlocalService(IDbConnectionFactory connectionFactory) : 
             command.AddParameter("city", city);
             AddOptionalText(command, "district", district);
             AddOptionalText(command, "category", category);
+            AddOptionalText(command, "q", q);
         }
 
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);

@@ -1,144 +1,264 @@
+import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { getSaved, toggleSaved } from "@/features/profile";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import * as m from "motion/react-m";
 import { AppShell, CompatRing } from "@/layouts/main-layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { roommates } from "@/mocks/data/mock-data";
-import { MessageCircle, Bookmark, SlidersHorizontal, Search } from "lucide-react";
-
-import { normalizeSearch } from "@/utils/normalize-search";
-
+import { Label } from "@/components/ui/label";
+import { QueryState, Pagination } from "@/components/common/query-state";
+import { matchingApi } from "@/features/matching";
+import { MatchingRefresh } from "@/features/matching/components/matching-refresh";
+import { useSavedProfiles } from "@/features/profile/hooks/use-saved-profiles";
+import { useAuthStore } from "@/features/auth";
 export default function MatchesPage() {
-  const [params, setParams] = useSearchParams();
-  const search = params.get("q") ?? "";
-  const city = params.get("city") ?? "";
-  const results = roommates.filter(roommate => normalizeSearch([roommate.name, roommate.city, roommate.occupation, ...roommate.interests].join(" ")).includes(normalizeSearch(search)) && normalizeSearch(roommate.city).includes(normalizeSearch(city)));
-  const [savedIds, setSavedIds] = useState(getSaved);
-  useEffect(() => {
-    const sync = () => setSavedIds(getSaved());
-    window.addEventListener("saved-profiles-changed", sync);
-    window.addEventListener("storage", sync);
-    return () => {
-      window.removeEventListener("saved-profiles-changed", sync);
-      window.removeEventListener("storage", sync);
-    };
-  }, []);
-
-  const save = (id: string) => {
-    try { toggleSaved(id); }
-    catch { toast.error("Không thể lưu hồ sơ trên trình duyệt này."); }
+  const [params, setParams] = useSearchParams(),
+    [advanced, setAdvanced] = useState(false);
+  const userId = useAuthStore((s) => s.user?.id),
+    saved = useSavedProfiles();
+  const page = Number(params.get("page")) || 1;
+  const filters = {
+    page,
+    city: params.get("city") ?? undefined,
+    q: params.get("q") ?? undefined,
+    minScore: params.has("minScore")
+      ? Number(params.get("minScore"))
+      : undefined,
+    sameCity: params.get("sameCity") === "true",
+    petFriendly: params.get("petFriendly") === "true",
+    nonSmoking: params.get("nonSmoking") === "true",
+    district: params.get("district") ?? undefined,
+    budgetMin: params.has("budgetMin")
+      ? Number(params.get("budgetMin"))
+      : undefined,
+    budgetMax: params.has("budgetMax")
+      ? Number(params.get("budgetMax"))
+      : undefined,
+    minCleanliness: params.has("minCleanliness")
+      ? Number(params.get("minCleanliness"))
+      : undefined,
+    roomEnvironment: params.get("roomEnvironment") ?? undefined,
+    verifiedOnly: params.get("verifiedOnly") === "true",
+    moveInBy: params.get("moveInBy") ?? undefined,
   };
+  const query = useQuery({
+    queryKey: ["matching", "list", userId, filters],
+    queryFn: () => matchingApi.list(filters),
+  });
+  const change = (key: string, value: string) =>
+    setParams(
+      (p) => {
+        const next = new URLSearchParams(p);
+        if (value) next.set(key, value);
+        else next.delete(key);
+        if (key !== "page") next.delete("page");
+        return next;
+      },
+      { replace: true },
+    );
   return (
     <AppShell>
-      <div className="flex items-end justify-between flex-wrap gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-display font-bold">Người ở ghép phù hợp</h1>
-          <p className="text-muted-foreground mt-1">
-            {results.length} hồ sơ minh họa phù hợp với tìm kiếm.
+          <h1 className="text-3xl font-display font-bold">
+            Người ở ghép phù hợp
+          </h1>
+          <p className="mt-2 text-muted-foreground">
+            {query.data
+              ? `${query.data.totalCount} hồ sơ từ kết quả ghép đôi đã lưu.`
+              : "Khám phá người có lối sống phù hợp với bạn."}
           </p>
         </div>
-        <div className="flex gap-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              aria-label="Tìm người ở ghép" value={search} onChange={event => setParams(previous => { const next = new URLSearchParams(previous); if (event.target.value) next.set("q", event.target.value); else next.delete("q"); return next; }, { replace: true })} placeholder="Tìm theo tên hoặc sở thích..."
-              className="pl-9 h-10 rounded-xl w-64"
-            />
-          </div>
-          <Button variant="outline" className="rounded-xl">
-            <SlidersHorizontal className="h-4 w-4 mr-2" /> Bộ lọc
+        <Link to="/settings?section=saved">
+          <Button variant="outline">Hồ sơ đã lưu</Button>
+        </Link>
+      </div>
+      <div className="my-6">
+        <MatchingRefresh />
+      </div>
+      <Card className="space-y-4 rounded-2xl p-5">
+        <Input
+          aria-label="Tìm người ở ghép"
+          maxLength={60}
+          placeholder="Tên hoặc sở thích…"
+          value={params.get("q") ?? ""}
+          onChange={(e) => change("q", e.target.value)}
+        />
+        <Input
+          aria-label="Thành phố ứng viên"
+          placeholder="Thành phố ứng viên (tùy chọn)"
+          maxLength={100}
+          value={params.get("city") ?? ""}
+          onChange={(e) => change("city", e.target.value)}
+        />
+        <div className="flex flex-wrap gap-3">
+          {[
+            ["sameCity", "Cùng thành phố"],
+            ["petFriendly", "Yêu thú cưng"],
+            ["nonSmoking", "Không hút thuốc"],
+          ].map(([key, label]) => (
+            <label key={key} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={params.get(key) === "true"}
+                onChange={(e) => change(key, e.target.checked ? "true" : "")}
+              />
+              {label}
+            </label>
+          ))}
+          <label className="flex items-center gap-2 text-sm">
+            Điểm tối thiểu
+            <select
+              aria-label="Điểm tối thiểu"
+              value={params.get("minScore") ?? ""}
+              onChange={(e) => change("minScore", e.target.value)}
+              className="rounded-lg border p-2"
+            >
+              <option value="">Tất cả</option>
+              <option value="70">70%</option>
+              <option value="80">80%</option>
+              <option value="90">90%</option>
+            </select>
+          </label>
+          <Button variant="outline" onClick={() => setAdvanced((v) => !v)}>
+            Bộ lọc Premium
+          </Button>
+          <Button variant="ghost" onClick={() => setParams({})}>
+            Xóa bộ lọc
           </Button>
         </div>
-      </div>
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        {[
-          "Tất cả",
-          "≥ 90% hợp",
-          "Cùng thành phố",
-          "Yêu thú cưng",
-          "Không hút thuốc",
-          "Dọn vào tháng này",
-        ].map((t, i) => (
-          <Badge
-            key={t}
-            variant={i === 0 ? "default" : "outline"}
-            className={`rounded-full px-4 py-1.5 cursor-pointer ${i === 0 ? "bg-navy text-white" : ""}`}
-          >
-            {t}
-          </Badge>
-        ))}
-      </div>
-
-      {!results.length && <p role="status" className="mt-8 text-center text-muted-foreground">Không có hồ sơ phù hợp. Thử tên hoặc khu vực khác.</p>}
-      <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {results.map((r, index) => (
-          <m.div
-            key={r.id}
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.06 }}
-            whileHover={{ y: -6, scale: 1.01 }}
-          >
-            <Card className="h-full rounded-3xl border-0 shadow-sm overflow-hidden hover:shadow-xl transition-shadow">
-              <div className="relative h-32 gradient-brand">
-                <div className="absolute -bottom-10 left-5">
+        {advanced && (
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              ["district", "Quận / khu vực", "text"],
+              ["budgetMin", "Ngân sách từ (VND)", "number"],
+              ["budgetMax", "Ngân sách đến (VND)", "number"],
+              ["minCleanliness", "Sạch sẽ tối thiểu (1–5)", "number"],
+            ].map(([key, label, type]) => (
+              <div key={key}>
+                <Label htmlFor={key}>{label}</Label>
+                <Input
+                  id={key}
+                  type={type}
+                  min={key === "minCleanliness" ? 1 : 0}
+                  max={key === "minCleanliness" ? 5 : undefined}
+                  value={params.get(key) ?? ""}
+                  onChange={(e) => change(key, e.target.value)}
+                />
+              </div>
+            ))}
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={filters.verifiedOnly}
+                onChange={(e) =>
+                  change("verifiedOnly", e.target.checked ? "true" : "")
+                }
+              />
+              Chỉ hồ sơ đã xác minh
+            </label>
+            <select
+              aria-label="Không gian phòng"
+              value={params.get("roomEnvironment") ?? ""}
+              onChange={(e) => change("roomEnvironment", e.target.value)}
+              className="rounded-xl border p-2"
+            >
+              <option value="">Mọi không gian</option>
+              <option value="quiet">Yên tĩnh</option>
+              <option value="moderate">Vừa phải</option>
+              <option value="lively">Sôi nổi</option>
+            </select>
+          </div>
+        )}
+        <label className="flex items-center gap-3 text-sm">
+          Dọn vào trước
+          <Input
+            type="date"
+            className="w-auto"
+            value={params.get("moveInBy") ?? ""}
+            onChange={(e) => change("moveInBy", e.target.value)}
+          />
+        </label>
+      </Card>
+      <QueryState query={query} />
+      {query.data && !query.data.items.length && (
+        <p role="status" className="py-12 text-center text-muted-foreground">
+          Chưa có kết quả. Thử bỏ bộ lọc hoặc tìm người phù hợp bằng lượt quét.
+        </p>
+      )}
+      <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {query.data?.items.map((r) => (
+          <Card key={r.id} className="rounded-3xl p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-mint/30">
+                {r.avatarUrl ? (
                   <img
-                    src={r.avatar}
-                    className="h-20 w-20 rounded-2xl ring-4 ring-card bg-mint/30"
+                    src={r.avatarUrl}
+                    alt={r.name}
+                    className="h-16 w-16 rounded-2xl"
                   />
-                </div>
-                <div className="absolute top-3 right-3">
-                  <CompatRing score={r.score} size={56} />
-                </div>
+                ) : (
+                  r.name.slice(0, 1)
+                )}
               </div>
-              <div className="p-5 pt-12">
-                <div className="font-display font-bold text-lg">
-                  {r.name}, {r.age}
+              <CompatRing score={r.score} size={60} />
+            </div>
+            <h2 className="mt-4 text-xl font-semibold">
+              {r.name}
+              {r.age !== null ? `, ${r.age}` : ""}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {r.occupation} · {r.city}
+            </p>
+            <p className="mt-3 text-sm">{r.explanation}</p>
+            <div className="mt-4 space-y-2">
+              {r.breakdown.slice(0, 3).map((b) => (
+                <div key={b.key}>
+                  <div className="flex justify-between text-xs">
+                    <span>{b.label}</span>
+                    <span>{b.value}%</span>
+                  </div>
+                  <div className="mt-1 h-1.5 rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-teal"
+                      style={{ width: `${b.value}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  {r.occupation} · {r.city}
-                </div>
-
-                <div className="mt-4 space-y-2">
-                  {r.breakdown.slice(0, 3).map((b) => (
-                    <div key={b.label}>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">{b.label}</span>
-                        <span className="font-semibold">{b.value}%</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                        <div className="h-full gradient-brand" style={{ width: `${b.value}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-5 flex gap-2">
-                  <Link to={`/profile/${r.id}`} className="flex-1">
-                    <Button variant="outline" className="w-full rounded-xl">
-                      Xem hồ sơ
-                    </Button>
-                  </Link>
-                  <Link to="/chat">
-                    <Button size="icon" className="rounded-xl bg-teal hover:bg-teal/90 text-white">
-                      <MessageCircle className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                  <Button size="icon" variant="outline" className="rounded-xl" aria-label={`${savedIds.includes(r.id) ? "Bỏ lưu" : "Lưu"} ${r.name}`} aria-pressed={savedIds.includes(r.id)} onClick={() => save(r.id)}>
-                    <Bookmark className={`h-4 w-4 ${savedIds.includes(r.id) ? "fill-teal text-teal" : ""}`} />
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          </m.div>
+              ))}
+            </div>
+            <div className="mt-5 flex gap-2">
+              <Button asChild className="flex-1">
+                <Link to={`/profile/${r.id}`}>Xem hồ sơ</Link>
+              </Button>
+              <Button
+                variant="outline"
+                disabled={
+                  saved.query.isPending ||
+                  saved.query.isError ||
+                  saved.mutation.isPending
+                }
+                onClick={() =>
+                  saved.mutation.mutate(
+                    { id: r.id, saved: !saved.ids.includes(r.id) },
+                    { onError: (e) => toast.error(e.message) },
+                  )
+                }
+              >
+                {saved.ids.includes(r.id) ? "Bỏ lưu" : "Lưu"}
+              </Button>
+            </div>
+          </Card>
         ))}
       </div>
+      {query.data && (
+        <Pagination
+          page={page}
+          hasNext={query.data.hasNextPage}
+          onChange={(n) => change("page", String(n))}
+        />
+      )}
     </AppShell>
   );
 }

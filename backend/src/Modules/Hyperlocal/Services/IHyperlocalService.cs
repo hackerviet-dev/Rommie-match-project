@@ -12,6 +12,7 @@ public interface IHyperlocalService
         string city,
         string? district,
         string? category,
+        string? q,
         PageQuery paging,
         CancellationToken cancellationToken);
 

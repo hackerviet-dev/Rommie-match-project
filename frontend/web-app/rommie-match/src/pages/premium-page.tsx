@@ -1,147 +1,111 @@
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Link, useNavigate } from "react-router-dom";
 import { AppShell } from "@/layouts/main-layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Check, X, Sparkles, Zap, Eye, Filter, TrendingUp } from "lucide-react";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { QueryState } from "@/components/common/query-state";
 import { billingApi } from "@/features/billing";
 import { useAuthStore } from "@/features/auth";
-
-
-const features = [
-  { name: "Ghép đôi cơ bản", free: true, pro: true },
-  { name: "Trò chuyện trong ứng dụng", free: true, pro: true },
-  { name: "Xác minh hồ sơ", free: true, pro: true },
-  { name: "Phân tích hợp nhau nâng cao", free: false, pro: true },
-  { name: "Quét hợp nhau không giới hạn", free: false, pro: true },
-  { name: "Bộ lọc nâng cao", free: false, pro: true },
-  { name: "Hiển thị ưu tiên", free: false, pro: true },
-  { name: "Boost hồ sơ (xem nhiều hơn 5 lần)", free: false, pro: true },
-  { name: "Xem ai đã xem bạn", free: false, pro: true },
-];
-
 export default function PremiumPage() {
-  const navigate = useNavigate();
-  const isMember = useAuthStore(state => state.isInitialized && state.isAuthenticated && Boolean(state.user));
-  const [busy, setBusy] = useState<string | null>(null);
-  const { data: gateway } = useQuery({
-    queryKey: ["billing-health"],
-    queryFn: billingApi.health,
-    retry: false,
-  });
-  const paymentReady = gateway?.provider === "payos" || gateway?.provider === "mock";
-  const checkout = async (planCode: string) => {
-    if (!isMember) {
-      navigate("/login", { state: { returnTo: "/premium" } });
-      return;
-    }
-    if (!paymentReady) return;
-    setBusy(planCode);
-    try {
-      const payment = await billingApi.checkout(planCode);
-      window.location.assign(payment.paymentUrl);
-    } catch (reason) {
-      toast.error(reason instanceof Error ? reason.message : "Không thể tạo đơn thanh toán.");
-      setBusy(null);
-    }
-  };
-
+  const me = useAuthStore((s) => s.user?.id),
+    navigate = useNavigate(),
+    plans = useQuery({
+      queryKey: ["billing", "plans"],
+      queryFn: billingApi.plans,
+    }),
+    health = useQuery({
+      queryKey: ["billing", "health"],
+      queryFn: billingApi.health,
+      retry: false,
+    }),
+    subscription = useQuery({
+      queryKey: ["subscription", "me", me],
+      queryFn: billingApi.subscription,
+      enabled: Boolean(me),
+    }),
+    buy = useMutation({
+      mutationFn: billingApi.checkout,
+      onSuccess: (r) => window.location.assign(r.paymentUrl),
+    });
+  const ready =
+    health.data?.provider === "payos" || health.data?.provider === "mock";
   return (
     <AppShell>
-      <div className="text-center max-w-2xl mx-auto">
-        <Badge className="rounded-full bg-mint/40 text-navy border-0 px-3 py-1"><Sparkles className="h-3 w-3 mr-1.5" /> Premium</Badge>
-        <h1 className="mt-4 text-4xl sm:text-4xl font-display font-extrabold">Ghép thông minh. <span className="text-gradient-brand">Dọn vào nhanh.</span></h1>
-        <p className="mt-3 text-muted-foreground">Mở khoá bộ lọc nâng cao, hiển thị ưu tiên và phân tích AI.</p>
+      <div className="mx-auto max-w-2xl text-center">
+        <p className="font-semibold text-teal">RoomieMatch Premium</p>
+        <h1 className="mt-3 text-4xl font-display font-bold">
+          Thêm cơ hội tìm người phù hợp
+        </h1>
+        <p className="mt-4 text-muted-foreground">
+          Chọn gói với quyền lợi và mức giá hiện tại.
+        </p>
+        {subscription.data && (
+          <p className="mt-4 rounded-full bg-mint/30 p-3">
+            Gói của bạn: {subscription.data.isPremium ? "Premium" : "Miễn phí"}
+            {subscription.data.endsAt
+              ? ` · Đến ${new Date(subscription.data.endsAt).toLocaleDateString("vi-VN")}`
+              : ""}
+          </p>
+        )}
       </div>
-
-      <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
-        <Card className="p-8 rounded-3xl border-0 shadow-sm">
-          <div className="text-sm font-medium text-muted-foreground">Miễn phí</div>
-          <div className="mt-2 flex items-baseline gap-2"><span className="text-4xl font-display font-extrabold">0₫</span><span className="text-muted-foreground">/mãi mãi</span></div>
-          <p className="mt-2 text-sm text-muted-foreground">Mọi thứ để bắt đầu hành trình.</p>
-          <Button variant="outline" className="w-full mt-6 rounded-xl" onClick={() => { if (!isMember) navigate("/register"); }}>{isMember ? "Gói miễn phí" : "Bắt đầu miễn phí"}</Button>
-          <ul className="mt-6 space-y-3 text-sm">
-            {["Ghép đôi cơ bản","Trò chuyện trong ứng dụng","5 lượt quét/tháng","Bộ lọc tiêu chuẩn"].map(f=>(
-              <li key={f} className="flex gap-2"><Check className="h-4 w-4 text-mint mt-0.5" /> {f}</li>
-            ))}
-          </ul>
-        </Card>
-
-        <Card className="p-8 rounded-3xl border-0 shadow-xl gradient-brand text-white relative overflow-hidden">
-          <div className="absolute top-4 right-4">
-            <Badge className="bg-white/20 text-white border-0 rounded-full">Phổ biến nhất</Badge>
-          </div>
-          <div className="text-sm font-medium text-white/80">Premium</div>
-          <div className="mt-2 flex items-baseline gap-2"><span className="text-4xl font-display font-extrabold">20.000₫</span><span className="text-white/80">/tháng</span></div>
-          <p className="mt-2 text-sm text-white/80">Thanh toán một lần, không tự gia hạn.</p>
-          <Button onClick={() => void checkout("premium_monthly")} disabled={Boolean(busy) || (isMember && !paymentReady)} className="w-full mt-6 rounded-xl bg-white text-navy hover:bg-white/90 font-semibold">{busy === "premium_monthly" ? "Đang chuyển đến thanh toán…" : "Nâng cấp ngay"}</Button>
-          <ul className="mt-6 space-y-3 text-sm">
-            {[
-              { i: Sparkles, t: "Phân tích hợp nhau nâng cao" },
-              { i: Zap, t: "Quét hợp nhau không giới hạn" },
-              { i: Filter, t: "Bộ lọc nâng cao" },
-              { i: Eye, t: "Xem ai đã xem bạn" },
-              { i: TrendingUp, t: "Boost hồ sơ — xem gấp 5 lần" },
-            ].map((f,i)=>(
-              <li key={i} className="flex gap-2"><f.i className="h-4 w-4 mt-0.5" /> {f.t}</li>
-            ))}
-          </ul>
-        </Card>
-
-        <Card className="p-8 rounded-3xl border-0 shadow-sm relative overflow-hidden">
-          <div className="absolute top-4 right-4">
-            <Badge className="bg-mint/40 text-navy border-0 rounded-full">Tiết kiệm</Badge>
-          </div>
-          <div className="text-sm font-medium text-muted-foreground">Premium năm</div>
-          <div className="mt-2 flex items-baseline gap-2"><span className="text-4xl font-display font-extrabold">180.000đ</span><span className="text-muted-foreground">/năm</span></div>
-          <p className="mt-2 text-sm text-muted-foreground">Tiết kiệm 60.000đ so với trả theo tháng.</p>
-          <Button onClick={() => void checkout("premium_yearly")} disabled={Boolean(busy) || (isMember && !paymentReady)} className="w-full mt-6 rounded-xl bg-navy hover:bg-navy/90 text-white font-semibold">{busy === "premium_yearly" ? "Đang chuyển đến thanh toán…" : "Chọn gói năm"}</Button>
-          <ul className="mt-6 space-y-3 text-sm">
-            {[
-              { i: Sparkles, t: "Tất cả tính năng Premium tháng" },
-              { i: Zap, t: "Quét hợp nhau không giới hạn" },
-              { i: Filter, t: "Bộ lọc nâng cao theo khu vực và lối sống" },
-              { i: Eye, t: "Ưu tiên hiển thị cả năm" },
-              { i: TrendingUp, t: "Boost hồ sơ định kỳ" },
-            ].map((f,i)=>(
-              <li key={i} className="flex gap-2"><f.i className="h-4 w-4 mt-0.5 text-teal" /> {f.t}</li>
-            ))}
-          </ul>
-        </Card>
-      </div>
-
-      <div className="mt-12 max-w-3xl mx-auto">
-        <h2 className="text-2xl font-display font-bold text-center">So sánh các gói</h2>
-        <Card className="mt-6 rounded-3xl border-0 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-muted/50">
-                <th className="text-left p-4 font-semibold">Tính năng</th>
-                <th className="p-4 font-semibold text-center">Miễn phí</th>
-                <th className="p-4 font-semibold text-center text-teal">Premium</th>
-              </tr>
-            </thead>
-            <tbody>
-              {features.map((f,i)=>(
-                <tr key={f.name} className={i%2 ? "bg-muted/20":""}>
-                  <td className="p-4">{f.name}</td>
-                  <td className="p-4 text-center">{f.free ? <Check className="h-4 w-4 text-mint mx-auto" /> : <X className="h-4 w-4 text-muted-foreground mx-auto" />}</td>
-                  <td className="p-4 text-center">{f.pro ? <Check className="h-4 w-4 text-teal mx-auto" /> : <X className="h-4 w-4 text-muted-foreground mx-auto" />}</td>
-                </tr>
+      <QueryState query={plans} />
+      {me && <QueryState query={subscription} />}
+      <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {plans.data?.map((p) => (
+          <Card
+            key={p.code}
+            className={`flex flex-col rounded-3xl p-7 ${p.tier === "premium" ? "border-teal bg-mint/10" : ""}`}
+          >
+            <h2 className="text-xl font-semibold">{p.name}</h2>
+            <p className="mt-4 text-4xl font-display font-bold">
+              {p.price.toLocaleString("vi-VN")}₫
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {p.durationMonths
+                ? `${p.durationMonths} tháng · Thanh toán một lần`
+                : "Miễn phí"}
+            </p>
+            <ul className="my-6 flex-1 space-y-3 text-sm">
+              {p.features.map((f) => (
+                <li key={f}>✓ {f}</li>
               ))}
-            </tbody>
-          </table>
-        </Card>
-
-        <div className="mt-10 text-center">
-          <Button onClick={() => void checkout("premium_monthly")} disabled={Boolean(busy) || (isMember && !paymentReady)} size="lg" className="rounded-full bg-navy hover:bg-navy/90 text-white px-10 h-14 text-base">Nâng cấp Premium — 20.000₫/tháng</Button>
-          {!paymentReady && <p role="status" className="mt-3 text-sm text-muted-foreground">Cổng thanh toán chưa được kích hoạt.</p>}
-          <p className="mt-3 text-xs text-muted-foreground">Thanh toán qua payOS khi cổng được kích hoạt · Liên hệ hỗ trợ để yêu cầu hoàn tiền</p>
-        </div>
+            </ul>
+            <Button
+              disabled={buy.isPending || (p.price > 0 && Boolean(me) && !ready)}
+              onClick={() =>
+                !me
+                  ? navigate(p.price > 0 ? "/login" : "/register")
+                  : p.price > 0
+                    ? buy.mutate(p.code)
+                    : navigate("/matches")
+              }
+            >
+              {buy.isPending && buy.variables === p.code
+                ? "Đang tạo giao dịch…"
+                : p.price === 0
+                  ? "Khám phá ở ghép"
+                  : "Chọn gói"}
+            </Button>
+          </Card>
+        ))}
       </div>
+      <QueryState query={health} />
+      {buy.isError && (
+        <p role="alert" className="mt-5 text-center text-destructive">
+          {buy.error.message}
+        </p>
+      )}
+      {health.data && !ready && (
+        <p className="mt-5 text-center text-muted-foreground">
+          Cổng thanh toán chưa sẵn sàng.
+        </p>
+      )}
+      <p className="mt-8 text-center text-sm text-muted-foreground">
+        Gói được cập nhật sau khi hệ thống xác nhận thanh toán.{" "}
+        <Link to="/settings?section=billing" className="text-teal underline">
+          Lịch sử giao dịch
+        </Link>
+      </p>
     </AppShell>
   );
 }

@@ -1,5 +1,7 @@
+import { tokenStorage } from "@/services/token-storage";
 import { apiClient } from "@/services/api-client";
 import type { Room, RoomSearch, SaveRoomRequest } from "../types/room-types";
+import type { Page } from "@/services/paging";
 
 function toQuery(search: RoomSearch) {
   const query = new URLSearchParams();
@@ -11,11 +13,21 @@ function toQuery(search: RoomSearch) {
 }
 
 export const roomsApi = {
-  search: (search: RoomSearch = {}) => apiClient<Room[]>(`/api/rooms${toQuery(search)}`),
-  get: (roomId: string) => apiClient<Room>(`/api/rooms/${encodeURIComponent(roomId)}`),
+  search: (search: RoomSearch = {}) =>
+    apiClient<Page<Room>>(`/api/rooms${toQuery(search)}`, {
+      authenticated: Boolean(tokenStorage.getAccessToken()),
+    }),
+  get: (roomId: string) =>
+    apiClient<Room>(`/api/rooms/${encodeURIComponent(roomId)}`, {
+      authenticated: Boolean(tokenStorage.getAccessToken()),
+    }),
   mine: () => apiClient<Room[]>("/api/rooms/me", { authenticated: true }),
   create: (request: SaveRoomRequest) =>
-    apiClient<Room>("/api/rooms", { method: "POST", body: request, authenticated: true }),
+    apiClient<Room>("/api/rooms", {
+      method: "POST",
+      body: request,
+      authenticated: true,
+    }),
   update: (roomId: string, request: SaveRoomRequest) =>
     apiClient<Room>(`/api/rooms/${encodeURIComponent(roomId)}`, {
       method: "PUT",

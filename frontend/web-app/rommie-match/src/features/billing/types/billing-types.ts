@@ -25,4 +25,20 @@ export type Payment = {
   createdAt: string;
   expiresAt: string;
   paidAt: string | null;
+  refundedAt: string | null;
+  refundableUntil: string | null;
+  refundRequest: {
+    id: string;
+    status: string;
+    resolutionNote: string | null;
+  } | null;
+};
+export type Plan = {
+  code: string;
+  name: string;
+  tier: string;
+  price: number;
+  currency: string;
+  durationMonths: number;
+  features: string[];
 };
