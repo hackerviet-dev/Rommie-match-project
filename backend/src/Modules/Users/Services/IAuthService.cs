@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using RoomieMatch.Shared.Validation;
 
 namespace RoomieMatch.Modules.Users.Services;
 
@@ -21,7 +22,9 @@ public enum AuthError
     EmailAlreadyRegistered,
     InvalidCredentials,
     AccountDisabled,
-    InvalidRefreshToken
+    InvalidRefreshToken,
+    EmailNotRegistered,
+    PasswordLoginUnavailable
 }
 
 public sealed record AuthResult(AuthError Error, AuthSessionDto? Session)
@@ -37,7 +40,7 @@ public sealed record RegisterRequest(
     [Required, StringLength(120, MinimumLength = 2)] [property: Description("Tên hiển thị, 2-120 ký tự.")] string DisplayName,
     [Required, StringLength(100)] [property: Description("Tên thành phố, ví dụ TP.HCM, tối đa 100 ký tự.")] string City,
     [StringLength(100)] [property: Description("Tên quận/huyện, tối đa 100 ký tự.")] string? District,
-    [property: Description("Ngày sinh dạng yyyy-MM-dd; có thể null.")] DateOnly? BirthDate,
+    [NotFutureDate] [property: Description("Ngày sinh dạng yyyy-MM-dd, không được ở tương lai; có thể null.")] DateOnly? BirthDate,
     [StringLength(30), Gender] [property: Description("Giới tính: male, female hoặc other; có thể null.")] string? Gender,
     [StringLength(120)] [property: Description("Nghề nghiệp, tối đa 120 ký tự.")] string? Occupation);
 

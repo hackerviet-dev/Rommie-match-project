@@ -6,10 +6,14 @@ Run after applying migrations: python scripts/onboarding-access-test.py
 import json
 import os
 import uuid
+from datetime import datetime, timedelta, timezone
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
 BASE = os.environ.get('TEST_API_URL', 'http://localhost:5000')
+today = datetime.now(timezone(timedelta(hours=7))).date()
+yesterday = (today - timedelta(days=1)).isoformat()
+tomorrow = (today + timedelta(days=1)).isoformat()
 
 def call(path, method='GET', body=None, token=None):
     headers = {'Content-Type': 'application/json'}
@@ -53,13 +57,17 @@ for has_room in ['no', 'yes']:
         'employment': 'Đang đi làm', 'orgName': 'Test Company', 'bio': 'Test profile',
         'sleep': '22h–0h', 'env': 'Yên tĩnh', 'yn': {'smoke': 'Không', 'drink': 'Không', 'pets': 'Có'},
         'cleanliness': 5, 'extroversion': 25, 'budgetMin': 4, 'budgetMax': 8, 'hasRoom': has_room,
-        'distance': '2–5 km', 'roomType': 'Phòng riêng', 'moveInDate': '2026-10-15',
+        'distance': '2–5 km', 'roomType': 'Phòng riêng', 'moveInDate': today.isoformat(),
         'addr': '123 Test Street', 'district': 'Quận 1', 'bedrooms': '2', 'area': '45',
-        'rent': '3.500.000', 'needed': '1', 'moveIn': '2026-10-15', 'houseType': 'Căn hộ',
+        'rent': '3.500.000', 'needed': '1', 'moveIn': today.isoformat(), 'houseType': 'Căn hộ',
         'amenities': ['Wifi'],
     }
     for invalid in [{'yn': {}}, {'budgetMin': 10, 'budgetMax': 3}, {'hasRoom': 'invalid'}, {'age': '0'},
-                    {'moveIn' if has_room == 'yes' else 'moveInDate': '2026-02-30'}]:
+                    {'age': '1'}, {'age': '17'}, {'age': '121'}, {'age': '18.5'},
+                    {'employment': 'Đang đi học', 'orgName': '   '},
+                    {'orgName': 'a' * 161}, {'bio': 'a' * 501},
+                    {'moveIn' if has_room == 'yes' else 'moveInDate': '2026-02-30'},
+                    {'moveIn' if has_room == 'yes' else 'moveInDate': yesterday}]:
         assert call('/api/users/me/onboarding', 'PUT', {**values, **invalid}, token)[0] == 400
     assert call('/api/users/me/onboarding', 'PUT', values, token) == (200, {'isComplete': True})
     assert call('/api/users/profiles', token=token)[0] == 200
@@ -108,5 +116,29 @@ assert call('/api/users/me/housing-needs', 'PUT', {
 }, first_token)[0] == 200
 assert call('/api/users/me/lifestyle', token=first_token)[1]['drinking'] is None
 assert call('/api/users/me/profile', token=first_token)[1]['lifestyle']['drinking'] is None
+assert call('/api/users/me/profile', 'PUT', {
+    'displayName': 'Date Test', 'city': 'TP.HCM', 'birthDate': tomorrow,
+}, first_token)[0] == 400
+assert call('/api/auth/register', 'POST', {
+    'email': f'date-{uuid.uuid4().hex}@example.test', 'password': 'DateTestPassword1!',
+    'displayName': 'Date Test', 'city': 'TP.HCM', 'birthDate': tomorrow,
+})[0] == 400
+lifestyle_body = {
+    'sleepSchedule': '23:00–07:00', 'cleanliness': 4, 'socialStyle': 'balanced',
+    'smoking': False, 'petFriendly': False, 'budgetMin': 1000000, 'budgetMax': 2000000,
+    'moveInDate': yesterday,
+}
+assert call('/api/users/me/lifestyle', 'PUT', lifestyle_body, first_token)[0] == 400
+assert call('/api/users/me/lifestyle', 'PUT', {**lifestyle_body, 'moveInDate': today.isoformat()}, first_token)[0] == 200
+room_body = {
+    'title': 'Date rule room', 'address': '123 Test Street', 'district': 'Quận 1', 'city': 'TP.HCM',
+    'monthlyRent': 2000000, 'deposit': 0, 'availableFrom': yesterday, 'maxOccupants': 2,
+}
+assert call('/api/rooms', 'POST', room_body, first_token)[0] == 400
+room_code, room = call('/api/rooms', 'POST', {**room_body, 'availableFrom': today.isoformat()}, first_token)
+assert room_code in [200, 201], (room_code, room)
+assert call(f"/api/rooms/{room['id']}", 'PUT', room_body, first_token)[0] == 400
+assert call(f"/api/rooms/{room['id']}", 'DELETE', token=first_token)[0] == 204
 print('PASS: onboarding gate/validation/persistence/privacy, owner read, mutual blocks, saved profiles, nullable drinking')
+print('PASS: both move-in branches reject past/invalid dates and accept today; lifestyle/room writes and birth dates validated')
 print('Fixture IDs:', ','.join(fixture_ids))

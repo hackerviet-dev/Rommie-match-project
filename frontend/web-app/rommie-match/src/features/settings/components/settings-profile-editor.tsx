@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { settingsProfileSchema, type SettingsProfileValues } from "../schemas/settings-profile-schema";
+import { vietnamToday } from "@/utils/date-rules";
 
 export function SettingsProfileEditor({ profile, onSaved }: { profile: Profile; onSaved?: () => void }) {
   const queryClient = useQueryClient();
@@ -44,6 +45,7 @@ export function SettingsProfileEditor({ profile, onSaved }: { profile: Profile; 
       {fields.map(([field, label, type]) => <div key={field}>
         <Label htmlFor={`settings-${field}`}>{label}</Label>
         <Input {...form.register(field)} id={`settings-${field}`} type={type}
+          max={type === "date" ? vietnamToday() : undefined}
           aria-invalid={Boolean(form.formState.errors[field])}
           aria-describedby={form.formState.errors[field] ? `settings-error-${field}` : undefined}
           className={`mt-1.5 h-10 rounded-xl ${form.formState.errors[field] ? "border-destructive" : ""}`} />

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Profile } from "@/features/profile";
+import { isValidDate, vietnamToday } from "@/utils/date-rules";
 
 export const onboardingDefaults = {
   name: "", age: "", gender: "", employment: "", orgName: "", hideOrg: false, city: "", bio: "",
@@ -16,18 +17,18 @@ const number = (label: string, integer = false) => required(label).refine(value 
   const n = Number(value);
   return Number.isFinite(n) && n > 0 && (!integer || Number.isInteger(n));
 }, `${label} phải là số ${integer ? "nguyên " : ""}lớn hơn 0.`);
-const date = (label: string) => required(label).refine(value => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const d = new Date(`${value}T00:00:00Z`);
-  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
-}, `${label} không hợp lệ.`);
+const date = (label: string) => required(label)
+  .refine(isValidDate, `${label} không hợp lệ.`)
+  .refine(value => !isValidDate(value) || value >= vietnamToday(), `${label} phải từ hôm nay trở đi.`);
+export const isValidOnboardingAge = (value: string) => /^\d+$/.test(value) && Number(value) >= 18 && Number(value) <= 120;
 const personal = z.object({
   name: required("họ và tên").min(2, "Họ tên cần ít nhất 2 ký tự."),
-  age: number("Tuổi", true).refine(value => Number(value) <= 120, "Tuổi phải từ 1 đến 120."),
+  age: required("tuổi").refine(isValidOnboardingAge, "Tuổi phải là số nguyên từ 18 đến 120."),
   gender: choice("giới tính", ["Nam", "Nữ", "Khác", "Không muốn tiết lộ"]),
   city: required("thành phố"),
   employment: choice("tình trạng hiện tại", ["Đang đi học", "Đang đi làm", "Cả hai", "Khác"]),
-  orgName: z.string(),
+  orgName: z.string().max(160, "Tên trường học hoặc nơi làm việc tối đa 160 ký tự."),
+  bio: z.string().max(500, "Giới thiệu bản thân tối đa 500 ký tự."),
 }).superRefine((value, ctx) => {
   if (["Đang đi học", "Đang đi làm", "Cả hai"].includes(value.employment) && !value.orgName.trim()) {
     ctx.addIssue({ code: "custom", path: ["orgName"], message: "Vui lòng nhập trường học hoặc nơi làm việc." });

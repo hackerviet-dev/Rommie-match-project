@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using RoomieMatch.Shared.Paging;
+using RoomieMatch.Shared.Validation;
 
 namespace RoomieMatch.Modules.Rooms.Services;
 
@@ -93,7 +94,7 @@ public sealed record SaveRoomRequest(
     [Required, StringLength(100)] [property: Description("Tên thành phố, ví dụ TP.HCM, tối đa 100 ký tự.")] string City,
     [Required, Range(0, 1_000_000_000)] [property: Description("Giá thuê mỗi tháng, đơn vị VND, 0-1000000000.")] int? MonthlyRent,
     [Range(0, 1_000_000_000)] [property: Description("Tiền đặt cọc, đơn vị VND, 0-1000000000.")] int Deposit,
-    [Required] [property: Description("Ngày phòng bắt đầu sẵn sàng, dạng yyyy-MM-dd.")] DateOnly? AvailableFrom,
+    [Required, NotPastDate] [property: Description("Ngày phòng bắt đầu sẵn sàng, dạng yyyy-MM-dd, từ hôm nay trở đi theo giờ Việt Nam.")] DateOnly? AvailableFrom,
     [Range(1, 20)] [property: Description("Số người ở tối đa, từ 1 đến 20 (bao gồm người đăng).")] int MaxOccupants,
     [property: Description("Loại nhà: apartment, house, studio hoặc dormitory; có thể null.")] string? PropertyType,
     [Range(1, 50)] [property: Description("Số phòng ngủ, 1-50; có thể null.")] int? Bedrooms,

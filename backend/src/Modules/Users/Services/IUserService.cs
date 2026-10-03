@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using RoomieMatch.Shared.Paging;
+using RoomieMatch.Shared.Validation;
 
 namespace RoomieMatch.Modules.Users.Services;
 
@@ -96,7 +97,7 @@ public sealed record ProfileDetailDto(
 
 public sealed record UpdateProfileRequest(
     [Required, StringLength(120, MinimumLength = 2)] [property: Description("Tên hiển thị, bắt buộc, 2-120 ký tự.")] string DisplayName,
-    [property: Description("Ngày sinh dạng yyyy-MM-dd (ví dụ 2004-10-02), KHÔNG gửi tuổi/age; null để xóa. Tuổi hiển thị do backend suy ra từ trường này.")] DateOnly? BirthDate,
+    [NotFutureDate] [property: Description("Ngày sinh dạng yyyy-MM-dd, không được ở tương lai; null để xóa. Tuổi hiển thị do backend suy ra từ trường này.")] DateOnly? BirthDate,
     [StringLength(30), Gender] [property: Description("Giới tính: male, female hoặc other; null nếu không muốn tiết lộ. Nhãn cũ nam/nữ/khác vẫn được chấp nhận và tự quy về mã.")] string? Gender,
     [StringLength(120)] [property: Description("Nghề nghiệp, tối đa 120 ký tự; null để xóa giá trị cũ.")] string? Occupation,
     [StringLength(2000)] [property: Description("Giới thiệu bản thân, tối đa 2000 ký tự; null để xóa giá trị cũ.")] string? Bio,
@@ -134,7 +135,7 @@ public sealed record SaveLifestylePreferencesRequest(
     [AllowedValues("quiet", "moderate", "lively", null)] [property: Description("Môi trường phòng: quiet (15 điểm chịu ồn), moderate (50) hoặc lively (85); gửi null hoặc bỏ trống để xóa, khi đó điểm lấy từ trắc nghiệm và cả hai đều trống thì tính 50.")] string? RoomEnvironment,
     [Range(0, 1_000_000_000)] [property: Description("Ngân sách tối thiểu mỗi tháng, đơn vị VND (đồng), số nguyên 0-1000000000. PUT ghi đè toàn bộ nên bỏ trống sẽ lưu 0.")] int BudgetMin,
     [Range(0, 1_000_000_000)] [property: Description("Ngân sách tối đa mỗi tháng, đơn vị VND (đồng), số nguyên 0-1000000000 và bắt buộc >= budgetMin; vi phạm trả 400. PUT ghi đè toàn bộ nên bỏ trống sẽ lưu 0.")] int BudgetMax,
-    [property: Description("Ngày dự kiến dọn vào dạng yyyy-MM-dd; gửi null hoặc bỏ trống để lưu null (linh hoạt, tính 50 điểm thời điểm).")] DateOnly? MoveInDate,
+    [NotPastDate] [property: Description("Ngày dự kiến dọn vào dạng yyyy-MM-dd, từ hôm nay trở đi theo giờ Việt Nam; null nghĩa là linh hoạt.")] DateOnly? MoveInDate,
     [property: Description("Danh sách sở thích: tối đa 20 mục, mỗi mục tối đa 40 ký tự; phần tử null hoặc chỉ có khoảng trắng bị từ chối với 400. Gửi null hoặc bỏ trống để lưu mảng rỗng; mục trùng nhau được gộp.")] string[]? Interests) : IValidatableObject
 {
     public const int MaxInterests = 20;

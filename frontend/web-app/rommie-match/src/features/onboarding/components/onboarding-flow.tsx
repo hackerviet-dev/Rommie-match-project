@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { onboardingApi } from "../services/onboarding-api";
 import { profileApi } from "@/features/profile";
 import { useAuthStore } from "@/features/auth";
-import { onboardingDefaults, validateOnboardingStep, profileToOnboarding, type OnboardingValues, type OnboardingErrors } from "../schemas/onboarding-schema";
+import { onboardingDefaults, validateOnboardingStep, profileToOnboarding, isValidOnboardingAge, type OnboardingValues, type OnboardingErrors } from "../schemas/onboarding-schema";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState, type ReactNode, type MouseEventHandler } from "react";
 import { Logo } from "@/layouts/main-layout";
@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
+import { vietnamToday } from "@/utils/date-rules";
 
 
 function Pill({ active, onClick, children }: { active: boolean; onClick: MouseEventHandler<HTMLButtonElement>; children: ReactNode }) {
@@ -33,6 +34,9 @@ export function OnboardingFlow() {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
   const [hasAttempted, setHasAttempted] = useState(false);
+  const [ageTouched, setAgeTouched] = useState(false);
+  const [orgTouched, setOrgTouched] = useState(false);
+  const [bioTouched, setBioTouched] = useState(false);
   const form = useForm<OnboardingValues>({ defaultValues: onboardingDefaults });
   const values = form.watch();
   const userId = useAuthStore(state => state.user?.id);
@@ -50,6 +54,7 @@ export function OnboardingFlow() {
   const profile = useQuery({ queryKey: ["profile", "me", userId], queryFn: profileApi.getMine, enabled: Boolean(userId), retry: false });
   const [isPrefilled, setIsPrefilled] = useState(false);
   const registeredInfo = profile.data ? profileToOnboarding(profile.data) : {};
+  const hasValidRegisteredAge = isValidOnboardingAge(registeredInfo.age ?? "");
   useEffect(() => {
     if (!profile.data || isPrefilled) return;
     form.reset({ ...form.getValues(), ...profileToOnboarding(profile.data) });
@@ -62,7 +67,7 @@ export function OnboardingFlow() {
   const name = values.name;
   const setName = (value: OnboardingValues["name"]) => form.setValue("name", value, { shouldDirty: true });
   const age = values.age;
-  const setAge = (value: OnboardingValues["age"]) => form.setValue("age", value, { shouldDirty: true });
+  const setAge = (value: OnboardingValues["age"]) => { setAgeTouched(true); form.setValue("age", value, { shouldDirty: true }); };
   const gender = values.gender;
   const setGender = (value: OnboardingValues["gender"]) => form.setValue("gender", value, { shouldDirty: true });
   const employment = values.employment;
@@ -120,7 +125,16 @@ export function OnboardingFlow() {
   const orgLabel = employment === "Đang đi học" ? "Trường học" : employment === "Đang đi làm" ? "Nơi làm việc" : employment === "Cả hai" ? "Trường / Nơi làm việc" : "Tổ chức (tuỳ chọn)";
   const orgRequired = employment === "Đang đi học" || employment === "Đang đi làm" || employment === "Cả hai";
 
-  const errors = hasAttempted ? validateOnboardingStep(step, values) : {};
+  const errors: OnboardingErrors = hasAttempted ? validateOnboardingStep(step, values) : {};
+  if (step === 1 && (ageTouched || Boolean(registeredInfo.age) && !hasValidRegisteredAge)) {
+    const ageError = validateOnboardingStep(1, values).age;
+    if (ageError) errors.age = ageError;
+  }
+  if (step === 1) {
+    const personalErrors = validateOnboardingStep(1, values);
+    if (orgTouched && personalErrors.orgName) errors.orgName = personalErrors.orgName;
+    if ((bioTouched || bio.length > 500) && personalErrors.bio) errors.bio = personalErrors.bio;
+  }
   const hasErrors = Object.keys(errors).length > 0;
   function handleNext() {
     const nextErrors = validateOnboardingStep(step, values);
@@ -184,7 +198,7 @@ export function OnboardingFlow() {
                   Thông tin đã đăng ký
                 </div>
                 <dl className="mt-4 grid gap-4 sm:grid-cols-3">
-                  {[["Họ và tên", registeredInfo.name], ["Giới tính", registeredInfo.gender], ["Thành phố", registeredInfo.city], ...(registeredInfo.age ? [["Tuổi", registeredInfo.age]] : [])].filter(([, value]) => value).map(([label, value]) => (
+                  {[["Họ và tên", registeredInfo.name], ["Giới tính", registeredInfo.gender], ["Thành phố", registeredInfo.city], ...(hasValidRegisteredAge ? [["Tuổi", registeredInfo.age]] : [])].filter(([, value]) => value).map(([label, value]) => (
                     <div key={label} className="min-w-0">
                       <dt className="text-xs text-muted-foreground">{label}</dt>
                       <dd className="mt-1 break-words text-sm font-medium text-navy">{value}</dd>
@@ -194,7 +208,7 @@ export function OnboardingFlow() {
               </section>
               <div className="mt-6 grid sm:grid-cols-2 gap-4">
                 {(!registeredInfo.name || errors.name) && <Field field="name" error={errors.name}><Label>Họ và tên <span className="text-destructive">*</span></Label><Input value={name} onChange={e=>setName(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="Nguyễn Linh" /></Field>}
-                {!registeredInfo.age && <Field field="age" error={errors.age}><Label htmlFor="onboarding-age">Tuổi <span className="text-destructive">*</span></Label><Input id="onboarding-age" aria-invalid={Boolean(errors.age)} aria-describedby={errors.age ? "error-age" : undefined} value={age} onChange={e=>setAge(e.target.value)} type="number" className="mt-1.5 h-11 rounded-xl" placeholder="Nhập tuổi của bạn" /></Field>}
+                {!hasValidRegisteredAge && <Field field="age" error={errors.age}><Label htmlFor="onboarding-age">Tuổi <span className="text-destructive">*</span></Label><Input id="onboarding-age" aria-invalid={Boolean(errors.age)} aria-describedby={errors.age ? "error-age" : "age-hint"} value={age} onChange={e=>setAge(e.target.value)} onBlur={()=>setAgeTouched(true)} type="number" min={18} max={120} step={1} className={`mt-1.5 h-11 rounded-xl ${errors.age ? "border-destructive" : ""}`} placeholder="Nhập tuổi của bạn" /><p id="age-hint" className="mt-1 text-xs text-muted-foreground">Bạn cần từ 18 tuổi để sử dụng RoomieMatch.</p></Field>}
                 {(!registeredInfo.gender || errors.gender) && <Field field="gender" error={errors.gender}><Label>Giới tính <span className="text-destructive">*</span></Label><select aria-label="Giới tính" value={gender} onChange={e=>setGender(e.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-input bg-card px-3 text-sm"><option value="">Chọn giới tính</option>{["Nam", "Nữ", "Khác", "Không muốn tiết lộ"].map(value => <option key={value} value={value}>{value}</option>)}</select></Field>}
                 {(!registeredInfo.city || errors.city) && <Field field="city" error={errors.city}><Label>Thành phố <span className="text-destructive">*</span></Label><Input value={city} onChange={e=>setCity(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="TP. Hồ Chí Minh" /></Field>}
                 <Field field="employment" error={errors.employment} className="sm:col-span-2">
@@ -206,26 +220,31 @@ export function OnboardingFlow() {
                 {employment && employment !== "Khác" && (
                   <Field field="orgName" error={errors.orgName} className="sm:col-span-2">
                     <div className="flex items-center justify-between">
-                      <Label>{orgLabel} {orgRequired && <span className="text-destructive">*</span>}</Label>
+                      <Label htmlFor="onboarding-org">{orgLabel} {orgRequired && <span className="text-destructive">*</span>}</Label>
                       <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
                         <input type="checkbox" checked={hideOrg} onChange={e=>setHideOrg(e.target.checked)} className="h-4 w-4 rounded" />
                         Ẩn khỏi hồ sơ
                       </label>
                     </div>
-                    <Input value={orgName} onChange={e=>setOrgName(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder={employment === "Đang đi học" ? "VD: RMIT Việt Nam" : "VD: Công ty ABC"} />
+                    <Input id="onboarding-org" value={orgName} onChange={e=>setOrgName(e.target.value)} onBlur={()=>setOrgTouched(true)} maxLength={160} aria-invalid={Boolean(errors.orgName)} aria-describedby={errors.orgName ? "error-orgName" : undefined} className={`mt-1.5 h-11 rounded-xl ${errors.orgName ? "border-destructive" : ""}`} placeholder={employment === "Đang đi học" ? "VD: RMIT Việt Nam" : "VD: Công ty ABC"} />
                     {hideOrg && <p className="mt-1 text-xs text-muted-foreground">Thông tin này sẽ không hiển thị công khai trên hồ sơ.</p>}
                   </Field>
                 )}
-                <div className="sm:col-span-2">
-                  <Label>Giới thiệu bản thân <span className="text-muted-foreground font-normal">(tuỳ chọn)</span></Label>
+                <Field field="bio" error={errors.bio} className="sm:col-span-2">
+                  <Label htmlFor="onboarding-bio">Giới thiệu bản thân <span className="text-muted-foreground font-normal">(tuỳ chọn)</span></Label>
                   <textarea
+                    id="onboarding-bio"
                     value={bio}
-                    onChange={e=>setBio(e.target.value.slice(0, 500))}
-                    className="mt-1.5 w-full min-h-28 rounded-xl border bg-background p-3 text-sm"
+                    onChange={e=>setBio(e.target.value)}
+                    onBlur={()=>setBioTouched(true)}
+                    maxLength={500}
+                    aria-invalid={Boolean(errors.bio)}
+                    aria-describedby={errors.bio ? "error-bio" : undefined}
+                    className={`mt-1.5 w-full min-h-28 rounded-xl border bg-background p-3 text-sm ${errors.bio ? "border-destructive" : ""}`}
                     placeholder="Một vài dòng giới thiệu về bạn, tính cách, sở thích, kỳ vọng về bạn cùng phòng..."
                   />
                   <div className="text-right text-xs text-muted-foreground mt-1">{bio.length}/500</div>
-                </div>
+                </Field>
               </div>
             </>
           )}
@@ -302,7 +321,7 @@ export function OnboardingFlow() {
                   <Field field="area" error={errors.area}><Label>Diện tích (m²) <span className="text-destructive">*</span></Label><Input value={area} onChange={e=>setArea(e.target.value)} type="number" className="mt-1.5 h-11 rounded-xl" placeholder="45" /></Field>
                   <Field field="rent" error={errors.rent}><Label>Tiền thuê chia mỗi người (VND) <span className="text-destructive">*</span></Label><Input value={rent} onChange={e=>setRent(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="3.500.000" /></Field>
                   <Field field="needed" error={errors.needed}><Label>Số người cần thêm <span className="text-destructive">*</span></Label><Input value={needed} onChange={e=>setNeeded(e.target.value)} type="number" className="mt-1.5 h-11 rounded-xl" placeholder="1" /></Field>
-                  <Field field="moveIn" error={errors.moveIn}><Label>Ngày có thể dọn vào <span className="text-destructive">*</span></Label><Input value={moveIn} onChange={e=>setMoveIn(e.target.value)} type="date" className="mt-1.5 h-11 rounded-xl" /></Field>
+                  <Field field="moveIn" error={errors.moveIn}><Label>Ngày có thể dọn vào <span className="text-destructive">*</span></Label><Input value={moveIn} onChange={e=>setMoveIn(e.target.value)} type="date" min={vietnamToday()} className="mt-1.5 h-11 rounded-xl" /><p className="mt-1 text-xs text-muted-foreground">Chọn từ hôm nay trở đi.</p></Field>
                   <Field field="houseType" error={errors.houseType}>
                     <Label>Loại nhà <span className="text-destructive">*</span></Label>
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -369,7 +388,8 @@ export function OnboardingFlow() {
                 </Field>
                 <Field field="moveInDate" error={errors.moveInDate}>
                   <Label>Ngày dọn vào <span className="text-destructive">*</span></Label>
-                  <Input value={moveInDate} onChange={e=>setMoveInDate(e.target.value)} type="date" className="mt-1.5 h-11 rounded-xl" />
+                  <Input value={moveInDate} onChange={e=>setMoveInDate(e.target.value)} type="date" min={vietnamToday()} className="mt-1.5 h-11 rounded-xl" />
+                  <p className="mt-1 text-xs text-muted-foreground">Chọn từ hôm nay trở đi.</p>
                 </Field>
               </div>
             </>

@@ -104,10 +104,15 @@ public sealed class AuthService(
         {
             if (!await reader.ReadAsync(cancellationToken))
             {
-                return AuthResult.Failure(AuthError.InvalidCredentials);
+                return AuthResult.Failure(AuthError.EmailNotRegistered);
             }
 
-            if (reader.IsDBNull(3) || !passwordHashService.Verify(reader.GetString(3), request.Password))
+            if (reader.IsDBNull(3))
+            {
+                return AuthResult.Failure(AuthError.PasswordLoginUnavailable);
+            }
+
+            if (!passwordHashService.Verify(reader.GetString(3), request.Password))
             {
                 return AuthResult.Failure(AuthError.InvalidCredentials);
             }

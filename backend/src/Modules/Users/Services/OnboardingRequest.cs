@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
+using RoomieMatch.Shared.Validation;
 
 namespace RoomieMatch.Modules.Users.Services;
 
@@ -41,14 +42,25 @@ public sealed class OnboardingRequest : IValidatableObject
         bool Text(string? value, int max) => !string.IsNullOrWhiteSpace(value) && value.Length <= max;
         bool Choice(string? value, params string[] choices) => choices.Contains(value);
         bool Positive(string? value, bool integer = false) => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var n) && n > 0 && n <= 1000000000 && (!integer || decimal.Truncate(n) == n);
-        bool Date(string? value) => DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
+        void CheckMoveInDate(string? value, string field)
+        {
+            if (!DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+                errors.Add(new("Vui lòng nhập ngày hợp lệ theo định dạng yyyy-MM-dd.", new[] { field }));
+            else if (date < DateRules.Today)
+                errors.Add(new("Ngày dọn vào phải từ hôm nay trở đi.", new[] { field }));
+        }
         Check(Text(Name, 120) && Name.Trim().Length >= 2, nameof(Name));
-        Check(int.TryParse(Age, out var age) && age >= 1 && age <= 120, nameof(Age));
+        if (!int.TryParse(Age, out var age) || age < 18 || age > 120)
+            errors.Add(new("Tuổi phải là số nguyên từ 18 đến 120.", new[] { nameof(Age) }));
         Check(Choice(Gender, "Nam", "Nữ", "Khác", "Không muốn tiết lộ"), nameof(Gender));
         Check(Text(City, 100), nameof(City));
         Check(Choice(Employment, "Đang đi học", "Đang đi làm", "Cả hai", "Khác"), nameof(Employment));
-        Check(Employment == "Khác" ? OrgName is not null && OrgName.Length <= 160 : Text(OrgName, 160), nameof(OrgName));
-        Check(Bio is not null && Bio.Length <= 10000, nameof(Bio));
+        if (OrgName is null || OrgName.Length > 160)
+            errors.Add(new("Tên trường học hoặc nơi làm việc tối đa 160 ký tự.", new[] { nameof(OrgName) }));
+        else if (Employment != "Khác" && string.IsNullOrWhiteSpace(OrgName))
+            errors.Add(new("Vui lòng nhập trường học hoặc nơi làm việc.", new[] { nameof(OrgName) }));
+        if (Bio is null || Bio.Length > 500)
+            errors.Add(new("Giới thiệu bản thân tối đa 500 ký tự.", new[] { nameof(Bio) }));
         Check(Choice(Sleep, "Trước 22h", "22h–0h", "Sau 0h"), nameof(Sleep));
         Check(Choice(Env, "Yên tĩnh", "Vừa phải", "Sôi nổi"), nameof(Env));
         foreach (var key in new[] { "smoke", "drink", "pets" })
@@ -66,14 +78,14 @@ public sealed class OnboardingRequest : IValidatableObject
             Check(Positive(Area), nameof(Area));
             Check(Rent is not null && System.Text.RegularExpressions.Regex.IsMatch(Rent, @"^(?:\d+|\d{1,3}(?:[.,]\d{3})+)$") && Positive(Rent.Replace(".", "").Replace(",", "")), nameof(Rent));
             Check(Positive(Needed, true), nameof(Needed));
-            Check(Date(MoveIn), nameof(MoveIn));
+            CheckMoveInDate(MoveIn, nameof(MoveIn));
             Check(Choice(HouseType, "Căn hộ", "Nhà nguyên căn", "Studio", "Ký túc xá"), nameof(HouseType));
         }
         else if (HasRoom == "no")
         {
             Check(Choice(Distance, "< 2 km", "2–5 km", "5–10 km", "Bất kỳ đâu trong thành phố"), nameof(Distance));
             Check(Choice(RoomType, "Phòng riêng", "Phòng chung", "Studio", "Cả căn hộ"), nameof(RoomType));
-            Check(Date(MoveInDate), nameof(MoveInDate));
+            CheckMoveInDate(MoveInDate, nameof(MoveInDate));
         }
         return errors;
     }
