@@ -28,6 +28,7 @@ document = call('/openapi/v1.json')[1]
 assert document['paths']['/api/users/me/profile']['get']['security'] == [{'Bearer': []}]
 assert 'security' not in document['paths']['/api/auth/login']['post']
 fixture_ids = []
+fixture_tokens = []
 for has_room in ['no', 'yes']:
     email = f'onboarding-{uuid.uuid4().hex}@example.test'
     password = uuid.uuid4().hex + 'Aa1!'
@@ -38,6 +39,7 @@ for has_room in ['no', 'yes']:
     assert code in [200, 201], (code, session)
     fixture_ids.append(session['user']['id'])
     token = session['accessToken']
+    fixture_tokens.append(token)
     assert call('/api/users/me/onboarding', token=token) == (200, {'isComplete': False})
     assert call('/api/users/me/profile', token=token)[0] == 200
     for path in ['/api/users/profiles', '/api/users/me/lifestyle', '/api/rooms', '/api/billing/plans', '/hubs/chat/negotiate']:
@@ -86,5 +88,25 @@ for has_room in ['no', 'yes']:
     assert code == 200
     assert call('/api/users/me/onboarding', token=login['accessToken']) == (200, {'isComplete': True})
     assert call('/api/users/me/profile', token=login['accessToken'])[1]['onboarding'] == profile['onboarding']
-print('PASS: unauthenticated access, incomplete API/hub blocking, validation, both branches, persistence after login')
+# Merge regression: owner-only onboarding and mutual-block rules must coexist.
+first, second = fixture_ids
+first_token, second_token = fixture_tokens
+assert call(f'/api/users/{second}/save', 'POST', token=first_token)[0] == 204
+assert second in call('/api/users/me/saved-profiles/ids', token=first_token)[1]
+assert call(f'/api/users/{second}/block', 'POST', token=first_token)[0] == 204
+assert call(f'/api/users/{second}/profile', token=first_token)[0] == 404
+assert call(f'/api/users/{first}/profile', token=second_token)[0] == 404
+assert second not in call('/api/users/me/saved-profiles/ids', token=first_token)[1]
+assert call(f'/api/users/{first}/profile', token=first_token)[1]['onboarding']
+assert call(f'/api/users/{second}/block', 'DELETE', token=first_token)[0] == 204
+assert call(f'/api/users/{second}/profile', token=first_token)[0] == 200
+assert call(f'/api/users/{second}/save', 'DELETE', token=first_token)[0] == 204
+# main permits unanswered drinking; the expanded lifestyle DTO must read NULL.
+assert call('/api/users/me/housing-needs', 'PUT', {
+    'hasRoom': False, 'occupationStatus': 'employed', 'organizationName': 'Test Company',
+    'hideOrganization': False, 'drinking': None, 'preferredDistance': None, 'preferredRoomType': None,
+}, first_token)[0] == 200
+assert call('/api/users/me/lifestyle', token=first_token)[1]['drinking'] is None
+assert call('/api/users/me/profile', token=first_token)[1]['lifestyle']['drinking'] is None
+print('PASS: onboarding gate/validation/persistence/privacy, owner read, mutual blocks, saved profiles, nullable drinking')
 print('Fixture IDs:', ','.join(fixture_ids))

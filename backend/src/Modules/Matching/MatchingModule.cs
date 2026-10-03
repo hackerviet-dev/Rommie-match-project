@@ -18,6 +18,7 @@ public static class MatchingModuleExtensions
         services.Configure<MatchingOptions>(configuration.GetSection(MatchingOptions.SectionName));
         services.AddScoped<IMatchingService, MatchingService>();
         services.AddScoped<IQuizService, QuizService>();
+        services.AddScoped<IMatchRequestService, MatchRequestService>();
         return services;
     }
 }

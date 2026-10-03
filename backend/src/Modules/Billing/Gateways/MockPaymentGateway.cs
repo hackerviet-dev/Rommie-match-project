@@ -11,6 +11,8 @@ public sealed class MockPaymentGateway(IOptions<BillingOptions> options) : IPaym
     // The mock page is addressed by our own payment id, so there is no code to mint.
     public bool UsesProviderOrderCode => false;
 
+    public bool SupportsAutomaticRefund => true;
+
     public Task<GatewayCheckout> CreateCheckoutAsync(
         Guid paymentId,
         PlanDto plan,

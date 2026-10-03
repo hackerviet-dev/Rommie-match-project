@@ -12,7 +12,7 @@ export type LifestylePreferences = {
   interests: string[];
   updatedAt: string;
   roomEnvironment?: string | null;
-  drinking?: boolean;
+  drinking?: boolean | null;
   extroversion?: number | null;
   preferredDistance?: string | null;
   preferredRoomType?: string | null;

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +13,9 @@ namespace RoomieMatch.Modules.Users.Controllers;
 [Route("api/auth")]
 public sealed class AuthController(IAuthService authService, IUserService userService) : ControllerBase
 {
+    [EndpointSummary("Thông tin module Auth")]
+    [EndpointDescription("API công khai, không có parameter hoặc body. Trả thông tin cấu hình cố định của module; không kiểm tra database. Kiểm tra kết nối database bằng GET /health.")]
+    [ProducesResponseType(200, Description = "Thành công; dữ liệu trả về theo schema bên dưới.")]
     [HttpGet("health")]
     public IActionResult Health()
     {
@@ -19,9 +23,15 @@ public sealed class AuthController(IAuthService authService, IUserService userSe
     }
 
     [EnableRateLimiting(RateLimitPolicies.Credentials)]
+    [EndpointSummary("Đăng ký tài khoản")]
+    [EndpointDescription("Dùng cho form đăng ký. Gửi JSON thông tin tài khoản; 200 trả accessToken, refreshToken và user. 400: dữ liệu không hợp lệ; 409: email đã đăng ký; 429: quá nhiều yêu cầu.")]
+    [ProducesResponseType(400, Description = "Dữ liệu đầu vào không hợp lệ; xem chi tiết lỗi và các trường trong response.")]
+    [ProducesResponseType(409, Description = "Xung đột trạng thái; xem mô tả endpoint và code lỗi nếu có.")]
+    [ProducesResponseType(429, Description = "Quá nhiều yêu cầu; chờ trước khi thử lại.")]
+    [ProducesResponseType(typeof(AuthSessionDto), 200, Description = "Thành công; dữ liệu trả về theo schema bên dưới.")]
     [HttpPost("register")]
     public async Task<ActionResult<AuthSessionDto>> Register(
-        RegisterRequest request,
+        [Description("JSON theo schema bên dưới; tên trường dùng camelCase.")] RegisterRequest request,
         CancellationToken cancellationToken)
     {
         var result = await authService.RegisterAsync(request, cancellationToken);
@@ -29,9 +39,16 @@ public sealed class AuthController(IAuthService authService, IUserService userSe
     }
 
     [EnableRateLimiting(RateLimitPolicies.Credentials)]
+    [EndpointSummary("Đăng nhập bằng email và mật khẩu")]
+    [EndpointDescription("Dùng cho form đăng nhập. Body bắt buộc: email (đúng định dạng email, tối đa 320 ký tự) và password (không được rỗng). 200 trả AuthSessionDto gồm accessToken (Bearer, hết hạn sau 60 phút; gửi ở header Authorization), tokenType, expiresAt, refreshToken (hết hạn sau 30 ngày), refreshTokenExpiresAt và user (AuthenticatedUserDto: id, email, role, displayName, avatarUrl, city, district, profileCompletion); frontend phải lưu cả accessToken và refreshToken. 400: thiếu email/password hoặc sai định dạng; 401: sai email/mật khẩu; 403: tài khoản đã bị vô hiệu hóa (problem details tiếng Việt, không có trường code); 429: quá nhiều yêu cầu, chờ rồi thử lại.")]
+    [ProducesResponseType(400, Description = "Dữ liệu đầu vào không hợp lệ; xem chi tiết lỗi và các trường trong response.")]
+    [ProducesResponseType(401, Description = "Thông tin đăng nhập/token không hợp lệ hoặc đã hết hạn.")]
+    [ProducesResponseType(403, Description = "Không đủ quyền hoặc không thỏa điều kiện; xem mô tả endpoint và code lỗi nếu có.")]
+    [ProducesResponseType(429, Description = "Quá nhiều yêu cầu; chờ trước khi thử lại.")]
+    [ProducesResponseType(typeof(AuthSessionDto), 200, Description = "Thành công; dữ liệu trả về theo schema bên dưới.")]
     [HttpPost("login")]
     public async Task<ActionResult<AuthSessionDto>> Login(
-        LoginRequest request,
+        [Description("JSON theo schema bên dưới; tên trường dùng camelCase.")] LoginRequest request,
         CancellationToken cancellationToken)
     {
         var result = await authService.LoginAsync(request, cancellationToken);
@@ -39,17 +56,28 @@ public sealed class AuthController(IAuthService authService, IUserService userSe
     }
 
     [EnableRateLimiting(RateLimitPolicies.Credentials)]
+    [EndpointSummary("Đổi refresh token lấy phiên mới")]
+    [EndpointDescription("Gọi khi access token hết hạn. 200 trả cả access token và refresh token mới; thay token cũ bằng token mới và tránh refresh đồng thời. Token cũ bị vô hiệu; dùng lại token đã đổi có thể thu hồi toàn bộ phiên. 401: token không hợp lệ/hết hạn; 403: tài khoản bị vô hiệu; 429: quá nhiều yêu cầu.")]
+    [ProducesResponseType(400, Description = "Dữ liệu đầu vào không hợp lệ; xem chi tiết lỗi và các trường trong response.")]
+    [ProducesResponseType(401, Description = "Thông tin đăng nhập/token không hợp lệ hoặc đã hết hạn.")]
+    [ProducesResponseType(403, Description = "Không đủ quyền hoặc không thỏa điều kiện; xem mô tả endpoint và code lỗi nếu có.")]
+    [ProducesResponseType(429, Description = "Quá nhiều yêu cầu; chờ trước khi thử lại.")]
+    [ProducesResponseType(typeof(AuthSessionDto), 200, Description = "Thành công; dữ liệu trả về theo schema bên dưới.")]
     [HttpPost("refresh")]
     public async Task<ActionResult<AuthSessionDto>> Refresh(
-        RefreshRequest request,
+        [Description("JSON theo schema bên dưới; tên trường dùng camelCase.")] RefreshRequest request,
         CancellationToken cancellationToken)
     {
         var result = await authService.RefreshAsync(request, cancellationToken);
         return result.Session is null ? Failure(result.Error) : Ok(result.Session);
     }
 
+    [EndpointSummary("Đăng xuất phiên hiện tại")]
+    [EndpointDescription("Gửi refreshToken cần thu hồi. Luôn trả 204, không có response body. Frontend xóa token đã lưu.")]
+    [ProducesResponseType(400, Description = "Dữ liệu đầu vào không hợp lệ; xem chi tiết lỗi và các trường trong response.")]
+    [ProducesResponseType(204, Description = "Thành công; không có body.")]
     [HttpPost("logout")]
-    public async Task<IActionResult> Logout(RefreshRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Logout([Description("JSON theo schema bên dưới; tên trường dùng camelCase.")] RefreshRequest request, CancellationToken cancellationToken)
     {
         // Always 204: whether the token existed is not something an unauthenticated caller should learn.
         await authService.LogoutAsync(request, cancellationToken);
@@ -58,6 +86,9 @@ public sealed class AuthController(IAuthService authService, IUserService userSe
 
     // Takes effect immediately: the caller's current access token stops working too.
     [Authorize]
+    [EndpointSummary("Đăng xuất tất cả thiết bị")]
+    [EndpointDescription("Cần Bearer access token. Không có body. 204: thu hồi toàn bộ phiên, kể cả access token hiện tại; frontend xóa token và quay về đăng nhập.")]
+    [ProducesResponseType(204, Description = "Thành công; không có body.")]
     [HttpPost("logout-all")]
     public async Task<IActionResult> LogoutEverywhere(CancellationToken cancellationToken)
     {
@@ -71,6 +102,10 @@ public sealed class AuthController(IAuthService authService, IUserService userSe
     }
 
     [Authorize]
+    [EndpointSummary("Lấy tài khoản đang đăng nhập")]
+    [EndpointDescription("Cần Bearer access token. Không có parameter hoặc body. 200 trả AuthenticatedUserDto; 401: phiên không hợp lệ.")]
+    [ProducesResponseType(401, Description = "Thông tin đăng nhập/token không hợp lệ hoặc đã hết hạn.")]
+    [ProducesResponseType(typeof(AuthenticatedUserDto), 200, Description = "Thành công; dữ liệu trả về theo schema bên dưới.")]
     [HttpGet("me")]
     public async Task<ActionResult<AuthenticatedUserDto>> Me(CancellationToken cancellationToken)
     {

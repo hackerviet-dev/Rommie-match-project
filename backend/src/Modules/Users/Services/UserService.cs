@@ -32,6 +32,12 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
         PageQuery paging,
         CancellationToken cancellationToken)
     {
+        // BR-07 ("loại tài khoản không hoạt động hoặc bị chặn theo chính sách") applies to the
+        // discovery list too: a one-way block hides both members from each other, exactly like
+        // the matching list, the room search, chat and GET /api/users/{userId}/profile. It reuses
+        // the existing user_blocks table and the viewer id from the token; no block/report member
+        // API is introduced here. The clause is folded into the shared FROM/WHERE, so the count
+        // and the page always agree on totalCount.
         const string fromWhere = """
             FROM users u
             INNER JOIN profiles p ON p.user_id = u.id
@@ -39,6 +45,11 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
               AND u.role = 'member'
               AND p.is_public = true
               AND u.id <> @viewer_id
+              AND NOT EXISTS (
+                  SELECT 1 FROM user_blocks b
+                  WHERE b.deleted_at IS NULL
+                    AND ((b.blocker_id = @viewer_id AND b.blocked_id = u.id)
+                      OR (b.blocker_id = u.id AND b.blocked_id = @viewer_id)))
             """;
 
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
@@ -94,8 +105,17 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
         // A private profile answers 404 to others, the same as a missing one, so its
         // existence is not revealed. Its owner still sees it.
         if (viewerId == userId) return await GetProfileAsync(userId, cancellationToken);
+        // A block is hidden too: every other read path (the matching list, the room search and
+        // chat) already treats two members who blocked each other as invisible to each other,
+        // and GET /api/users/{userId}/profile documents "bị chặn" as a 404. The owner flag keeps
+        // the viewer's own profile readable no matter what.
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
-        return await ReadProfileAsync(connection, userId, cancellationToken, publicOnly: viewerId != userId);
+        return await ReadProfileAsync(
+            connection,
+            userId,
+            cancellationToken,
+            publicOnly: true,
+            viewerId: viewerId);
     }
 
     public async Task<ProfileDetailDto?> UpdateProfileAsync(
@@ -151,7 +171,14 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
         Guid userId,
         CancellationToken cancellationToken)
     {
-        var sql = $"SELECT {LifestyleColumns} FROM lifestyle_preferences WHERE user_id = @user_id";
+        // A lifestyle_preferences row may carry only the onboarding housing-need fields with
+        // sleep_schedule NULL. That row is not a submitted lifestyle questionnaire, so it is
+        // treated as "chưa khai" (404), exactly like a missing row.
+        var sql = $"""
+            SELECT {LifestyleColumns}
+            FROM lifestyle_preferences
+            WHERE user_id = @user_id AND sleep_schedule IS NOT NULL
+            """;
 
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
@@ -214,12 +241,109 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
         return ReadLifestyle(reader);
     }
 
+    public async Task<HousingNeedsDto?> GetHousingNeedsAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT p.user_id, p.has_room, p.occupation_status, p.organization_name, p.hide_organization,
+                   lp.drinking, lp.preferred_distance, lp.preferred_room_type
+            FROM profiles p
+            LEFT JOIN lifestyle_preferences lp ON lp.user_id = p.user_id
+            WHERE p.user_id = @user_id
+            """;
+
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.AddParameter("user_id", userId);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? ReadHousingNeeds(reader) : null;
+    }
+
+    public async Task<HousingNeedsDto?> SaveHousingNeedsAsync(
+        Guid userId,
+        SaveHousingNeedsRequest request,
+        CancellationToken cancellationToken)
+    {
+        // Four of the fields live on profiles, three on lifestyle_preferences; both writes
+        // must land together, so they share one transaction.
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        await using (var transaction = await connection.BeginTransactionAsync(cancellationToken))
+        {
+            // Every registered member has a profile row; a missing one is a 404, not a 500.
+            await using (var profile = connection.CreateCommand())
+            {
+                profile.Transaction = transaction;
+                profile.CommandText = """
+                    UPDATE profiles SET
+                        has_room = @has_room,
+                        occupation_status = @occupation_status,
+                        organization_name = @organization_name,
+                        hide_organization = @hide_organization
+                    WHERE user_id = @user_id
+                    """;
+                profile
+                    .AddParameter("user_id", userId)
+                    .AddParameter("has_room", request.HasRoom)
+                    .AddParameter("occupation_status", Normalize(request.OccupationStatus))
+                    .AddParameter("organization_name", Normalize(request.OrganizationName))
+                    .AddParameter("hide_organization", request.HideOrganization);
+
+                if (await profile.ExecuteNonQueryAsync(cancellationToken) == 0)
+                {
+                    return null;
+                }
+            }
+
+            // The three preference fields reuse the lifestyle_preferences row. For a member who
+            // has not submitted the lifestyle questionnaire yet the insert leaves the other
+            // preference columns NULL ("chưa khai") rather than fabricating them, so the row is
+            // excluded from matching and from GET /me/lifestyle until sleep_schedule is written.
+            await using (var preferences = connection.CreateCommand())
+            {
+                preferences.Transaction = transaction;
+                preferences.CommandText = """
+                    INSERT INTO lifestyle_preferences
+                        (user_id, drinking, preferred_distance, preferred_room_type, updated_at)
+                    VALUES (@user_id, @drinking, @preferred_distance, @preferred_room_type, now())
+                    ON CONFLICT (user_id) DO UPDATE SET
+                        drinking = EXCLUDED.drinking,
+                        preferred_distance = EXCLUDED.preferred_distance,
+                        preferred_room_type = EXCLUDED.preferred_room_type,
+                        updated_at = now()
+                    """;
+                preferences
+                    .AddParameter("user_id", userId)
+                    .AddParameter("drinking", request.Drinking)
+                    .AddParameter("preferred_distance", Normalize(request.PreferredDistance))
+                    .AddParameter("preferred_room_type", Normalize(request.PreferredRoomType));
+
+                await preferences.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+
+        return await GetHousingNeedsAsync(userId, cancellationToken);
+    }
+
     private static async Task<ProfileDetailDto?> ReadProfileAsync(
         DbConnection connection,
         Guid userId,
         CancellationToken cancellationToken,
-        bool publicOnly = false)
+        bool publicOnly = false,
+        Guid? viewerId = null)
     {
+        // publicOnly hides a profile from other members; viewerId additionally hides it while
+        // either member has blocked the other. Both are off by default, so the owner's own reads
+        // (GET /me/profile, the read-back after PUT) never change behaviour.
+        var blockClause = viewerId is null
+            ? string.Empty
+            : "AND NOT EXISTS (SELECT 1 FROM user_blocks b "
+              + "WHERE b.deleted_at IS NULL "
+              + "AND ((b.blocker_id = @viewer_id AND b.blocked_id = p.user_id) "
+              + "OR (b.blocker_id = p.user_id AND b.blocked_id = @viewer_id)))";
+
         var sql = $"""
             SELECT {ProfileDetailColumns},
                 CASE WHEN @owner THEN p.occupation_status END,
@@ -232,12 +356,17 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
             INNER JOIN users u ON u.id = p.user_id
             WHERE p.user_id = @user_id AND u.is_active = true
             {(publicOnly ? "AND p.is_public = true" : "")}
+            {blockClause}
             """;
 
         await using var command = connection.CreateCommand();
         command.CommandText = sql;
         command.AddParameter("user_id", userId);
         command.AddParameter("owner", !publicOnly);
+        if (viewerId is { } viewer)
+        {
+            command.AddParameter("viewer_id", viewer);
+        }
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         if (!await reader.ReadAsync(cancellationToken))
@@ -285,10 +414,23 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
             reader.IsDBNull(10) ? null : reader.GetFieldValue<DateOnly>(10),
             reader.GetFieldValue<string[]>(11),
             reader.GetFieldValue<DateTimeOffset>(12),
-            reader.GetBoolean(13),
+            reader.IsDBNull(13) ? null : reader.GetBoolean(13),
             reader.IsDBNull(14) ? null : reader.GetInt16(14),
             reader.IsDBNull(15) ? null : reader.GetString(15),
             reader.IsDBNull(16) ? null : reader.GetString(16));
+    }
+
+    private static HousingNeedsDto ReadHousingNeeds(DbDataReader reader)
+    {
+        return new HousingNeedsDto(
+            reader.GetGuid(0),
+            reader.IsDBNull(1) ? null : reader.GetBoolean(1),
+            reader.IsDBNull(2) ? null : reader.GetString(2),
+            reader.IsDBNull(3) ? null : reader.GetString(3),
+            reader.GetBoolean(4),
+            reader.IsDBNull(5) ? null : reader.GetBoolean(5),
+            reader.IsDBNull(6) ? null : reader.GetString(6),
+            reader.IsDBNull(7) ? null : reader.GetString(7));
     }
 
     private static string[] NormalizeInterests(string[]? interests)
@@ -299,8 +441,10 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
         }
 
         return interests
+            // Null/trắng elements are dropped here as well as rejected by validation, so a
+            // bad array can never reach Trim() and fail the insert with a 500.
+            .Where(interest => !string.IsNullOrWhiteSpace(interest))
             .Select(interest => interest.Trim())
-            .Where(interest => interest.Length > 0)
             .Distinct()
             .ToArray();
     }

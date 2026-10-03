@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using RoomieMatch.Shared.Paging;
 
@@ -53,10 +54,10 @@ public sealed record ServiceBookingDto(
     DateTimeOffset UpdatedAt);
 
 public sealed record CreateServiceBookingRequest(
-    [Required] DateTimeOffset? ScheduledAt,
-    [Required, StringLength(500, MinimumLength = 4)] string Address,
-    [Required, Phone, StringLength(30)] string ContactPhone,
-    [StringLength(1000)] string? Note) : IValidatableObject
+    [Required] [property: Description("Thời gian hẹn ISO 8601 có múi giờ, ví dụ 2026-10-03T09:00:00+07:00; sau hiện tại 30 phút đến 60 ngày.")] DateTimeOffset? ScheduledAt,
+    [Required, StringLength(500, MinimumLength = 4)] [property: Description("Địa chỉ, 4-500 ký tự.")] string Address,
+    [Required, Phone, StringLength(30)] [property: Description("Số điện thoại liên hệ hợp lệ, tối đa 30 ký tự.")] string ContactPhone,
+    [StringLength(1000)] [property: Description("Ghi chú đặt lịch, tối đa 1000 ký tự; có thể null.")] string? Note) : IValidatableObject
 {
     public static readonly TimeSpan MinLeadTime = TimeSpan.FromMinutes(30);
     public static readonly TimeSpan MaxLeadTime = TimeSpan.FromDays(60);
