@@ -1,5 +1,6 @@
 import { useForm } from "react-hook-form";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { onboardingApi } from "../services/onboarding-api";
 import { profileApi } from "@/features/profile";
 import { useAuthStore } from "@/features/auth";
 import { onboardingDefaults, validateOnboardingStep, profileToOnboarding, type OnboardingValues, type OnboardingErrors } from "../schemas/onboarding-schema";
@@ -29,17 +30,32 @@ function Field({ field, error, children, className = "" }: { field: string; erro
 }
 
 export function OnboardingFlow() {
+  const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
   const [hasAttempted, setHasAttempted] = useState(false);
   const form = useForm<OnboardingValues>({ defaultValues: onboardingDefaults });
   const values = form.watch();
   const userId = useAuthStore(state => state.user?.id);
+  const saveOnboarding = useMutation({
+    mutationFn: onboardingApi.complete,
+    onSuccess: async (status) => {
+      queryClient.setQueryData(["onboarding", userId], status);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["profile", "me", userId] }),
+        queryClient.invalidateQueries({ queryKey: ["lifestyle", "me", userId] }),
+      ]);
+      nav("/quiz", { replace: true });
+    },
+  });
   const profile = useQuery({ queryKey: ["profile", "me", userId], queryFn: profileApi.getMine, enabled: Boolean(userId), retry: false });
   const [isPrefilled, setIsPrefilled] = useState(false);
   const registeredInfo = profile.data ? profileToOnboarding(profile.data) : {};
   useEffect(() => {
     if (!profile.data || isPrefilled) return;
     form.reset({ ...form.getValues(), ...profileToOnboarding(profile.data) });
+    const savedAmenities = profile.data.onboarding?.amenities ?? [];
+    setSelectedAmenities(savedAmenities);
+    setAmenityOptions(current => [...new Set([...current, ...savedAmenities])]);
     setIsPrefilled(true);
   }, [profile.data, isPrefilled, form]);
   // Step 1
@@ -119,7 +135,16 @@ export function OnboardingFlow() {
     }
     setHasAttempted(false);
     if (step < total) setStep(current => current + 1);
-    else nav("/quiz");
+    else {
+      for (let current = 1; current <= total; current++) {
+        if (Object.keys(validateOnboardingStep(current, values)).length) {
+          setStep(current);
+          setHasAttempted(true);
+          return;
+        }
+      }
+      saveOnboarding.mutate({ ...values, amenities: selectedAmenities });
+    }
   }
 
   const toggleAmenity = (a: string) =>
@@ -141,6 +166,7 @@ export function OnboardingFlow() {
       <div className="mx-auto max-w-2xl">
         <div className="flex items-center justify-between mb-6"><Logo /><span className="text-sm text-muted-foreground">Bước {step}/{total}</span></div>
         <Progress value={(step/total)*100} className="h-2 mb-8" />
+        <p className="mb-6 text-sm text-muted-foreground">Bạn cần hoàn thành 4 bước và lưu hồ sơ trước khi sử dụng các chức năng của RoomieMatch.</p>
 
         <Card className="p-8 sm:p-10 rounded-3xl border-0 shadow-lg">
           {!isPrefilled && (
@@ -217,7 +243,7 @@ export function OnboardingFlow() {
                 </Field>
                 <div>
                   <Label>Bạn sạch sẽ ở mức nào? <span className="text-muted-foreground font-normal">(1 bừa → 5 sạch tinh)</span></Label>
-                  <Slider aria-label="Mức độ sạch sẽ" defaultValue={[4]} max={5} min={1} step={1} className="mt-2" />
+                  <Slider aria-label="Mức độ sạch sẽ" value={[values.cleanliness]} onValueChange={([value]) => form.setValue("cleanliness", value)} max={5} min={1} step={1} className="mt-2" />
                 </div>
                 <div className="grid sm:grid-cols-3 gap-4">
                   {[["smoke","Có hút thuốc?"],["drink","Có uống rượu bia?"],["pets","Có nuôi thú cưng?"]].map(([k,l]) => (
@@ -231,7 +257,7 @@ export function OnboardingFlow() {
                 </div>
                 <div>
                   <Label>Hướng nội ←→ Hướng ngoại</Label>
-                  <Slider aria-label="Mức độ hướng ngoại" defaultValue={[60]} max={100} step={5} className="mt-2" />
+                  <Slider aria-label="Mức độ hướng ngoại" value={[values.extroversion]} onValueChange={([value]) => form.setValue("extroversion", value)} max={100} step={5} className="mt-2" />
                 </div>
                 <Field field="env" error={errors.env}>
                   <Label>Không gian phòng ưa thích <span className="text-destructive">*</span></Label>
@@ -326,8 +352,8 @@ export function OnboardingFlow() {
               <div className="mt-8 space-y-6">
                 <div>
                   <Label>Ngân sách hàng tháng (VND)</Label>
-                  <Slider aria-label="Ngân sách hàng tháng" defaultValue={[3,7]} max={15} min={1} step={1} className="mt-2" />
-                  <div className="flex justify-between text-xs text-muted-foreground mt-2"><span>3 triệu</span><span>7 triệu</span></div>
+                  <Slider aria-label="Ngân sách hàng tháng" value={[values.budgetMin, values.budgetMax]} onValueChange={([min, max]) => { form.setValue("budgetMin", min); form.setValue("budgetMax", max); }} max={15} min={1} step={1} className="mt-2" />
+                  <div className="flex justify-between text-xs text-muted-foreground mt-2"><span>{values.budgetMin} triệu</span><span>{values.budgetMax} triệu</span></div>
                 </div>
                 <Field field="distance" error={errors.distance}>
                   <Label>Khoảng cách mong muốn <span className="text-destructive">*</span></Label>
@@ -353,12 +379,15 @@ export function OnboardingFlow() {
             <p role="alert" className="mt-6 text-sm text-destructive">Vui lòng kiểm tra các mục được đánh dấu đỏ trước khi tiếp tục.</p>
           )}
 
-          <div className="mt-4 flex justify-between gap-3">
-            <Button variant="ghost" disabled={step===1} onClick={()=>{ setHasAttempted(false); setStep(s=>s-1); }} className="rounded-xl"><ArrowLeft className="h-4 w-4 mr-2" /> Quay lại</Button>
-            <Button onClick={handleNext} disabled={!isPrefilled} className="rounded-xl bg-navy hover:bg-navy/90 text-white px-6 disabled:opacity-50 disabled:cursor-not-allowed">
-              {step < total ? "Tiếp tục" : "Làm trắc nghiệm"} <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
-          </div>
+          {saveOnboarding.isError && <p role="alert" className="mt-4 text-sm text-destructive">{saveOnboarding.error.message} Hồ sơ chưa được lưu, vui lòng thử lại.</p>}
+          <fieldset disabled={saveOnboarding.isPending} className="contents">
+            <div className="mt-4 flex justify-between gap-3">
+              <Button variant="ghost" disabled={step===1} onClick={()=>{ setHasAttempted(false); setStep(s=>s-1); }} className="rounded-xl"><ArrowLeft className="h-4 w-4 mr-2" /> Quay lại</Button>
+              <Button onClick={handleNext} disabled={!isPrefilled || saveOnboarding.isPending} className="rounded-xl bg-navy hover:bg-navy/90 text-white px-6 disabled:opacity-50 disabled:cursor-not-allowed">
+                {saveOnboarding.isPending ? "Đang lưu…" : step < total ? "Tiếp tục" : "Lưu hồ sơ & tiếp tục"} <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </fieldset>
         </Card>
       </div>
     </div>

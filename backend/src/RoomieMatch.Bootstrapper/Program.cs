@@ -70,6 +70,7 @@ app.UseAuthentication();
 // After authentication so the global limit can be keyed on the signed-in user.
 app.UseRateLimiter();
 app.UseAuthorization();
+app.UseMiddleware<OnboardingMiddleware>();
 
 app.MapOpenApi("/openapi/v1.json");
 app.UseSwaggerUI(options =>

@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Text.Json;
 using RoomieMatch.Shared.Data;
 using RoomieMatch.Shared.Paging;
 
@@ -8,13 +9,13 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
 {
     private const string ProfileDetailColumns = """
         p.user_id, p.display_name, p.birth_date, p.gender, p.occupation, p.bio,
-        p.city, p.district, p.avatar_url, p.is_verified, p.profile_completion, p.updated_at
+        p.city, p.district, p.avatar_url, p.is_verified, p.profile_completion, p.updated_at, p.birth_year
         """;
 
     private const string LifestyleColumns = """
         user_id, sleep_schedule, cleanliness, social_style, smoking, pet_friendly,
         cooking_frequency, room_environment, budget_min, budget_max, move_in_date, interests,
-        updated_at
+        updated_at, drinking, extroversion, preferred_distance, preferred_room_type
         """;
 
     public object GetModuleStatus()
@@ -81,7 +82,8 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
     public async Task<ProfileDetailDto?> GetProfileAsync(Guid userId, CancellationToken cancellationToken)
     {
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
-        return await ReadProfileAsync(connection, userId, cancellationToken);
+        var profile = await ReadProfileAsync(connection, userId, cancellationToken);
+        return profile is null ? null : profile with { Lifestyle = await GetLifestylePreferencesAsync(userId, cancellationToken) };
     }
 
     public async Task<ProfileDetailDto?> GetVisibleProfileAsync(
@@ -91,6 +93,7 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
     {
         // A private profile answers 404 to others, the same as a missing one, so its
         // existence is not revealed. Its owner still sees it.
+        if (viewerId == userId) return await GetProfileAsync(userId, cancellationToken);
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
         return await ReadProfileAsync(connection, userId, cancellationToken, publicOnly: viewerId != userId);
     }
@@ -218,7 +221,13 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
         bool publicOnly = false)
     {
         var sql = $"""
-            SELECT {ProfileDetailColumns}
+            SELECT {ProfileDetailColumns},
+                CASE WHEN @owner THEN p.occupation_status END,
+                CASE WHEN @owner THEN p.organization_name END,
+                CASE WHEN @owner THEN p.hide_organization END,
+                CASE WHEN @owner THEN p.has_room END,
+                CASE WHEN @owner THEN p.onboarding_completed_at END,
+                CASE WHEN @owner THEN p.onboarding_data::text END
             FROM profiles p
             INNER JOIN users u ON u.id = p.user_id
             WHERE p.user_id = @user_id AND u.is_active = true
@@ -228,6 +237,7 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
         await using var command = connection.CreateCommand();
         command.CommandText = sql;
         command.AddParameter("user_id", userId);
+        command.AddParameter("owner", !publicOnly);
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         if (!await reader.ReadAsync(cancellationToken))
@@ -247,7 +257,16 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
             reader.IsDBNull(8) ? null : reader.GetString(8),
             reader.GetBoolean(9),
             reader.GetInt16(10),
-            reader.GetFieldValue<DateTimeOffset>(11));
+            reader.GetFieldValue<DateTimeOffset>(11),
+            reader.IsDBNull(12) ? null : reader.GetInt16(12))
+        {
+            OccupationStatus = reader.IsDBNull(13) ? null : reader.GetString(13),
+            OrganizationName = reader.IsDBNull(14) ? null : reader.GetString(14),
+            HideOrganization = reader.IsDBNull(15) ? null : reader.GetBoolean(15),
+            HasRoom = reader.IsDBNull(16) ? null : reader.GetBoolean(16),
+            OnboardingCompletedAt = reader.IsDBNull(17) ? null : reader.GetFieldValue<DateTimeOffset>(17),
+            Onboarding = reader.IsDBNull(18) ? null : JsonSerializer.Deserialize<OnboardingRequest>(reader.GetString(18), new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+        };
     }
 
     private static LifestylePreferencesDto ReadLifestyle(DbDataReader reader)
@@ -265,7 +284,11 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
             reader.GetInt32(9),
             reader.IsDBNull(10) ? null : reader.GetFieldValue<DateOnly>(10),
             reader.GetFieldValue<string[]>(11),
-            reader.GetFieldValue<DateTimeOffset>(12));
+            reader.GetFieldValue<DateTimeOffset>(12),
+            reader.GetBoolean(13),
+            reader.IsDBNull(14) ? null : reader.GetInt16(14),
+            reader.IsDBNull(15) ? null : reader.GetString(15),
+            reader.IsDBNull(16) ? null : reader.GetString(16));
     }
 
     private static string[] NormalizeInterests(string[]? interests)

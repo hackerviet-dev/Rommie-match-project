@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using RoomieMatch.Shared.Paging;
 
 namespace RoomieMatch.Modules.Users.Services;
@@ -60,7 +61,26 @@ public sealed record ProfileDetailDto(
     string? AvatarUrl,
     bool IsVerified,
     int ProfileCompletion,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    int? BirthYear = null)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? OccupationStatus { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? OrganizationName { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? HideOrganization { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? HasRoom { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DateTimeOffset? OnboardingCompletedAt { get; init; }
+    // The submission contains the member's address and private preferences.
+    // Only the owner receives it, never another member viewing this profile.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public OnboardingRequest? Onboarding { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public LifestylePreferencesDto? Lifestyle { get; init; }
+}
 
 public sealed record UpdateProfileRequest(
     [Required, StringLength(120, MinimumLength = 2)] string DisplayName,
@@ -85,7 +105,11 @@ public sealed record LifestylePreferencesDto(
     int BudgetMax,
     DateOnly? MoveInDate,
     IReadOnlyList<string> Interests,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    bool Drinking = false,
+    int? Extroversion = null,
+    string? PreferredDistance = null,
+    string? PreferredRoomType = null);
 
 public sealed record SaveLifestylePreferencesRequest(
     [Required, StringLength(40)] string SleepSchedule,

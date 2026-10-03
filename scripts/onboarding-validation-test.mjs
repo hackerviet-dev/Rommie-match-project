@@ -31,4 +31,8 @@ const saved=prefill(profile,new Date(2026,9,1));
 assert.equal(saved.name,profile.displayName);assert.equal(saved.city,profile.city);assert.equal(saved.gender,'Nữ');assert.equal(saved.age,'21');
 assert.equal(prefill({...profile,gender:null}).gender,'Không muốn tiết lộ');
 assert.equal(prefill({...profile,birthDate:null}).age,'');
+const completed={...profile,birthDate:null,birthYear:2002,occupation:'Đang đi làm',occupationStatus:'employed',organizationName:'Company',hideOrganization:true,onboarding:{...room,yn:{smoke:'Không',drink:'Có',pets:'Có'},sleep:'22h–0h',env:'Yên tĩnh',cleanliness:5,extroversion:25,budgetMin:4,budgetMax:8,amenities:['Wifi']}};
+const restored=prefill(completed,new Date(2026,9,2));
+assert.equal(restored.age,'24');assert.equal(restored.employment,'Đang đi làm');assert.equal(restored.orgName,'Company');assert.equal(restored.hideOrg,true);
+assert.equal(restored.hasRoom,'yes');assert.equal(restored.addr,room.addr);assert.equal(restored.rent,room.rent);assert.equal(restored.cleanliness,5);assert.deepEqual(restored.yn,completed.onboarding.yn);
 console.log('PASS: all 4 steps, both room branches, blank/invalid numbers/dates, registered profile prefill and nondisclosure');

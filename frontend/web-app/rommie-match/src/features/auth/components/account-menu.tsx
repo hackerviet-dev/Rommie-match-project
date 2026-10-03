@@ -1,35 +1,18 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, ClipboardList, LogOut, ShieldCheck, UserRound, Shield } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { Link } from "react-router-dom";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ROUTES } from "@/constants/routes";
 import { ACCOUNT_SECTIONS } from "@/constants/account-sections";
-import { tokenStorage } from "@/services/token-storage";
-import { authApi } from "../services/auth-api";
+import { useSignOut } from "../hooks/use-sign-out";
 import { useAuthStore } from "../store/auth-store";
 
 export function AccountMenu() {
   const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const initials = user?.name?.trim().slice(0, 2).toUpperCase() || "ME";
-  const signOut = useMutation({
-    mutationFn: async () => {
-      const token = tokenStorage.getRefreshToken();
-      if (token) await authApi.logout(token);
-    },
-    onSuccess: () => {
-      logout();
-      queryClient.clear();
-      navigate(ROUTES.landing, { replace: true });
-    },
-    onError: (error) => toast.error(error.message),
-  });
+  const signOut = useSignOut();
 
   return (
     <DropdownMenu>
@@ -70,7 +53,7 @@ export function AccountMenu() {
           <Link to={ROUTES.communityGuidelines} className="gap-3 rounded-xl px-3 py-3 font-medium"><ShieldCheck className="text-navy" /> Quy tắc cộng đồng <ChevronRight className="ml-auto" /></Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator className="mx-0 my-2" />
-        <DropdownMenuItem disabled={signOut.isPending} onSelect={(event) => { event.preventDefault(); signOut.mutate(); }} className="gap-3 rounded-xl px-3 py-3 font-medium text-destructive focus:text-destructive">
+        <DropdownMenuItem disabled={signOut.isPending} onSelect={(event) => { event.preventDefault(); signOut.mutate(false); }} className="gap-3 rounded-xl px-3 py-3 font-medium text-destructive focus:text-destructive">
           <LogOut /> {signOut.isPending ? "Đang đăng xuất…" : "Đăng xuất"}
         </DropdownMenuItem>
       </DropdownMenuContent>

@@ -44,7 +44,7 @@ internal sealed class AuthorizeRequirementTransformer : IOpenApiOperationTransfo
         [
             new OpenApiSecurityRequirement
             {
-                [new OpenApiSecuritySchemeReference(JwtBearerDefaults.AuthenticationScheme)] = []
+                [new OpenApiSecuritySchemeReference(JwtBearerDefaults.AuthenticationScheme, context.Document)] = []
             }
         ];
 

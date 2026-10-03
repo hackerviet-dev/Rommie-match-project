@@ -6,6 +6,7 @@ export const onboardingDefaults = {
   sleep: "", env: "", yn: {} as Record<string, string>, hasRoom: "",
   addr: "", district: "", bedrooms: "", area: "", rent: "", needed: "", moveIn: "", houseType: "",
   distance: "", roomType: "", moveInDate: "",
+  cleanliness: 4, extroversion: 60, budgetMin: 3, budgetMax: 7,
 };
 export type OnboardingValues = typeof onboardingDefaults;
 export type OnboardingErrors = Partial<Record<keyof OnboardingValues | "smoke" | "drink" | "pets", string>>;
@@ -64,7 +65,7 @@ export function validateOnboardingStep(step: number, values: OnboardingValues): 
   return errors;
 }
 export function profileToOnboarding(profile: Profile, now = new Date()): Partial<OnboardingValues> {
-  let age = "";
+  let age = profile.birthYear ? String(now.getFullYear() - profile.birthYear) : "";
   if (profile.birthDate) {
     const birth = new Date(`${profile.birthDate}T00:00:00`);
     let years = now.getFullYear() - birth.getFullYear();
@@ -72,9 +73,14 @@ export function profileToOnboarding(profile: Profile, now = new Date()): Partial
     if (years > 0 && years <= 120) age = String(years);
   }
   return {
+    ...profile.onboarding,
     name: profile.displayName, city: profile.city, age,
     gender: profile.gender === "male" ? "Nam" : profile.gender === "female" ? "Nữ" : profile.gender === "other" ? "Khác" : "Không muốn tiết lộ",
     bio: profile.bio ?? "", district: profile.district ?? "",
-    ...(profile.occupation ? { employment: "Khác", orgName: profile.occupation } : {}),
+    ...(profile.occupationStatus ? {
+      employment: ({ student: "Đang đi học", employed: "Đang đi làm", both: "Cả hai", other: "Khác" } as Record<string, string>)[profile.occupationStatus] ?? "Khác",
+      orgName: profile.organizationName ?? "",
+      hideOrg: profile.hideOrganization ?? false,
+    } : profile.occupation ? { employment: "Khác", orgName: profile.occupation } : {}),
   };
 }

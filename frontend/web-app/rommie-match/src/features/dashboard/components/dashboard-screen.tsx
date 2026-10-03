@@ -1,5 +1,5 @@
+import { QuizHistory } from "@/features/quiz";
 import { Link, useLocation } from "react-router-dom";
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/features/auth";
 import { profileApi } from "@/features/profile";
@@ -11,14 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { roommates, quizQuestions } from "@/mocks/data/mock-data";
+import { roommates } from "@/mocks/data/mock-data";
 import {
   Heart,
   MessageCircle,
@@ -27,13 +20,14 @@ import {
   TrendingUp,
   Sparkles,
   ArrowRight,
-  ClipboardList,
-  CheckCircle2,
-  Eye,
 } from "lucide-react";
 
 export function DashboardScreen() {
   const location = useLocation();
+  const suggestionsPage = Number.isSafeInteger(location.state?.suggestionsPage) ? location.state.suggestionsPage : 0;
+  const suggestedRoommates = Array.from({ length: Math.min(4, roommates.length) }, (_, index) =>
+    roommates[(suggestionsPage + index) % roommates.length],
+  );
   const user = useAuthStore(state => state.user);
   const profile = useQuery({ queryKey: ["profile", "me", user?.id], queryFn: profileApi.getMine, enabled: Boolean(user?.id) });
   const lifestyle = useQuery({ queryKey: ["lifestyle", "me", user?.id], enabled: Boolean(user?.id), queryFn: async () => {
@@ -42,42 +36,6 @@ export function DashboardScreen() {
   } });
   const displayName = profile.data?.displayName || user?.name || "bạn";
   const completion = profile.data?.profileCompletion;
-  const quizHistory = [
-    {
-      date: "12/06/2026",
-      title: "Trắc nghiệm tính cách & lối sống",
-      score: 92,
-      tag: "Hướng nội · Gọn gàng",
-      status: "Hoàn thành",
-      answers: [1, 0, 1, 0, 1],
-    },
-    {
-      date: "28/05/2026",
-      title: "Trắc nghiệm tương thích mở rộng",
-      score: 88,
-      tag: "Cú đêm · Linh hoạt",
-      status: "Hoàn thành",
-      answers: [0, 1, 0, 2, 1],
-    },
-    {
-      date: "10/05/2026",
-      title: "Trắc nghiệm ngân sách & khu vực",
-      score: 95,
-      tag: "Quận 1 · 4–6 triệu",
-      status: "Hoàn thành",
-      answers: [1, 0, 1, 0, 0],
-    },
-    {
-      date: "22/04/2026",
-      title: "Trắc nghiệm cơ bản",
-      score: 80,
-      tag: "Sinh viên · Năm 3",
-      status: "Hoàn thành",
-      answers: [2, 1, 2, 1, 2],
-    },
-  ];
-  const [openQuiz, setOpenQuiz] = useState<number | null>(null);
-  const active = openQuiz !== null ? quizHistory[openQuiz] : null;
   const stats = [
     {
       i: Heart,
@@ -197,10 +155,10 @@ export function DashboardScreen() {
               </Link>
             </div>
             <m.div key={location.key} className="grid sm:grid-cols-2 gap-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
-              {roommates.slice(0, 4).map((r) => (
+              {suggestedRoommates.map((r) => (
                 <Link key={r.id} to={`/profile/${r.id}`} className="group">
                   <div className="flex items-center gap-4 p-4 rounded-2xl border hover:border-teal/40 hover:shadow-md transition-all">
-                    <img src={r.avatar} className="h-14 w-14 rounded-xl bg-mint/30" />
+                    <img src={r.avatar} alt={r.name} className="h-14 w-14 rounded-xl bg-mint/30" />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold truncate">{r.name}</div>
                       <div className="text-xs text-muted-foreground truncate">
@@ -214,112 +172,7 @@ export function DashboardScreen() {
             </m.div>
           </Card>
 
-          <Card className="p-6 rounded-2xl border-0 shadow-sm">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <div className="font-display font-bold text-lg flex items-center gap-2">
-                  <ClipboardList className="h-5 w-5 text-teal" /> Lịch sử bài trắc nghiệm
-                </div>
-                <div className="text-sm text-muted-foreground mt-0.5">
-                  Theo dõi sự thay đổi tính cách & lối sống theo thời gian.
-                </div>
-              </div>
-              <Link to="/quiz" className="text-sm text-teal font-medium hover:underline">
-                Làm lại
-              </Link>
-            </div>
-            <ul className="space-y-3">
-              {quizHistory.map((q, i) => (
-                <li
-                  key={i}
-                  className="flex items-center gap-4 p-3 rounded-xl border hover:border-teal/40 transition-colors"
-                >
-                  <div className="h-11 w-11 shrink-0 rounded-xl bg-mint/30 grid place-items-center text-navy">
-                    <CheckCircle2 className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm truncate">{q.title}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {q.date} · {q.tag}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-lg font-display font-bold text-teal">
-                      {q.score}
-                      <span className="text-xs text-muted-foreground">/100</span>
-                    </div>
-                    <Badge variant="outline" className="rounded-full text-[10px] mt-0.5">
-                      {q.status}
-                    </Badge>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setOpenQuiz(i)}
-                    className="rounded-full text-teal hover:bg-mint/30 hover:text-teal"
-                  >
-                    <Eye className="h-4 w-4 mr-1" /> Xem
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </Card>
-
-          <Dialog open={openQuiz !== null} onOpenChange={(o) => !o && setOpenQuiz(null)}>
-            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl">
-              <DialogHeader>
-                <DialogTitle className="font-display text-2xl">{active?.title}</DialogTitle>
-                <DialogDescription>
-                  {active?.date} · {active?.tag} · Điểm:{" "}
-                  <span className="text-teal font-bold">{active?.score}/100</span>
-                </DialogDescription>
-              </DialogHeader>
-              <div className="mt-2 space-y-4">
-                {active &&
-                  quizQuestions.map((qq, qi) => {
-                    const pickedIdx = active.answers[qi];
-                    return (
-                      <div key={qi} className="p-4 rounded-xl border bg-muted/30">
-                        <div className="flex items-start gap-3">
-                          <div className="text-2xl">{qq.emoji}</div>
-                          <div className="flex-1">
-                            <div className="text-xs uppercase tracking-wider text-teal font-semibold">
-                              Câu {qi + 1}
-                            </div>
-                            <div className="font-semibold mt-1 leading-snug">{qq.q}</div>
-                            <div className="mt-3 space-y-2">
-                              {qq.options.map((opt, oi) => {
-                                const isPicked = oi === pickedIdx;
-                                return (
-                                  <div
-                                    key={oi}
-                                    className={`flex items-center gap-2 p-2.5 rounded-lg text-sm ${isPicked ? "bg-mint/30 border border-teal/40 font-medium text-navy" : "text-muted-foreground"}`}
-                                  >
-                                    <div
-                                      className={`h-5 w-5 rounded-full grid place-items-center shrink-0 ${isPicked ? "bg-teal text-white" : "border border-border"}`}
-                                    >
-                                      {isPicked && <CheckCircle2 className="h-3.5 w-3.5" />}
-                                    </div>
-                                    <span>
-                                      {String.fromCharCode(65 + oi)}. {opt}
-                                    </span>
-                                    {isPicked && (
-                                      <Badge className="ml-auto bg-teal text-white border-0 rounded-full text-[10px]">
-                                        Đã chọn
-                                      </Badge>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            </DialogContent>
-          </Dialog>
+          <QuizHistory />
         </div>
 
         <div className="space-y-6">

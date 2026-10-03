@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { AccountMenu, useAuthStore } from "@/features/auth";
 import { HeaderSearch } from "@/components/common/header-search";
+import { tokenStorage } from "@/services/token-storage";
 
 const NOTIFICATIONS = [
   { i: Heart, t: "Linh đã xem hồ sơ của bạn", time: "2 phút", color: "text-rose-500 bg-rose-50", unread: true },
@@ -60,15 +61,17 @@ const nav = [
 ];
 
 export function Logo({ className = "" }: { className?: string }) {
-  const isMember = useAuthStore((s) => s.isInitialized && s.isAuthenticated && Boolean(s.user));
+  const hasSession = useAuthStore((s) => s.isInitialized && s.isAuthenticated && Boolean(s.user));
   const location = useLocation();
+  const isMember = hasSession && Boolean(tokenStorage.getAccessToken() || tokenStorage.getRefreshToken()) && location.pathname !== "/login" && location.pathname !== "/register";
   const navigate = useNavigate();
   return (
     <Link to={isMember ? "/dashboard" : "/"} onClick={event => {
       if (!isMember || location.pathname !== "/dashboard" || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       event.preventDefault();
       window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
-      navigate("/dashboard", { replace: true, state: { refreshSuggestions: true } });
+      const suggestionsPage = Number.isSafeInteger(location.state?.suggestionsPage) ? location.state.suggestionsPage : 0;
+      navigate("/dashboard", { replace: true, state: { suggestionsPage: suggestionsPage + 1 } });
     }} className={`flex items-center gap-2 font-display font-bold text-lg ${className}`}>
       <img src={`${import.meta.env.BASE_URL}logo-mark.png`} alt="RoomieMatch" className="h-10 w-10 object-contain" />
       <span>

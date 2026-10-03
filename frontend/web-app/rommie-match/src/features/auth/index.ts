@@ -4,5 +4,6 @@ export type { AuthSession, AuthenticatedUser, LoginRequest, RegisterRequest } fr
 
 export { useAuthSession } from "./hooks/use-auth-session";
 export { AccountMenu } from "./components/account-menu";
+export { useSignOut } from "./hooks/use-sign-out";
 
 export { loginSchema, registerSchema } from "./schemas/auth-schema";

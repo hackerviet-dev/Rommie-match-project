@@ -11,6 +11,11 @@ export type LifestylePreferences = {
   moveInDate: string | null;
   interests: string[];
   updatedAt: string;
+  roomEnvironment?: string | null;
+  drinking?: boolean;
+  extroversion?: number | null;
+  preferredDistance?: string | null;
+  preferredRoomType?: string | null;
 };
 
 export type SaveLifestyleRequest = Omit<LifestylePreferences, "userId" | "updatedAt">;

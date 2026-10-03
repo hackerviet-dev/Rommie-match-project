@@ -1,4 +1,5 @@
 import { AuthGuard } from "./auth-guard";
+import { OnboardingGate } from "@/features/onboarding";
 import { useAuthSession } from "@/features/auth";
 import { Route, Routes, useLocation } from "react-router-dom";
 
@@ -27,7 +28,7 @@ export function AppRouter() {
   useAuthSession();
   const { pathname } = useLocation();
   return (
-    <>
+    <OnboardingGate>
       <PageTransition><Routes>
         <Route path={ROUTES.landing} element={<LandingPage />} />
         <Route path={ROUTES.login} element={<LoginPage />} />
@@ -47,7 +48,7 @@ export function AppRouter() {
         <Route path={ROUTES.profile} element={<AuthGuard><ProfilePage /></AuthGuard>} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes></PageTransition>
-      {pathname !== ROUTES.chat && <AIChatbox />}
-    </>
+      {pathname !== ROUTES.chat && pathname !== ROUTES.onboarding && <AIChatbox />}
+    </OnboardingGate>
   );
 }

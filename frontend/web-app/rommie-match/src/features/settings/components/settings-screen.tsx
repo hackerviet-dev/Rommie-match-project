@@ -1,12 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { tokenStorage } from "@/services/token-storage";
+import { QuizHistory } from "@/features/quiz";
+import { useQuery } from "@tanstack/react-query";
 import { roommates } from "@/mocks/data/mock-data";
 import { getSaved, removeSaved, profileApi } from "@/features/profile";
 import { toast } from "sonner";
 import { Bookmark, MessageCircle, Search } from "lucide-react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AppShell } from "@/layouts/main-layout";
-import { authApi, useAuthStore } from "@/features/auth";
+import { useSignOut, useAuthStore } from "@/features/auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -149,20 +149,10 @@ function SavedProfiles() {
 }
 
 export function SettingsScreen() {
-  const nav = useNavigate();
   const [params] = useSearchParams();
   const section = (ACCOUNT_SECTIONS.some(item => item.id === params.get("section")) ? params.get("section") : "profile") as AccountSection;
   const isProfile = section === "profile";
-  const logout = useAuthStore((s) => s.logout);
-  const queryClient = useQueryClient();
-  const signOut = useMutation({
-    mutationFn: async (allDevices: boolean) => {
-      if (allDevices) await authApi.logoutAll();
-      else { const token = tokenStorage.getRefreshToken(); if (token) await authApi.logout(token); }
-    },
-    onSuccess: () => { logout(); queryClient.clear(); nav("/"); },
-    onError: (error) => toast.error(error.message),
-  });
+  const signOut = useSignOut();
   const handleLogout = () => signOut.mutate(true);
   const [dark, setDark] = useState(false);
   const userId = useAuthStore(state => state.user?.id);
@@ -183,7 +173,7 @@ export function SettingsScreen() {
   const missing = "Chưa cập nhật";
   const birth = actual?.birthDate ? new Date(`${actual?.birthDate}T00:00:00`) : null;
   const today = new Date();
-  const age = birth ? today.getFullYear() - birth.getFullYear() - (today.getMonth() < birth.getMonth() || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate()) ? 1 : 0) : null;
+  const age = birth ? today.getFullYear() - birth.getFullYear() - (today.getMonth() < birth.getMonth() || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate()) ? 1 : 0) : actual?.birthYear ? today.getFullYear() - actual.birthYear : null;
   const life = lifestyle.data;
   const p = {
     name: actual?.displayName, age: age === null ? missing : `${age} tuổi`,
@@ -288,6 +278,7 @@ export function SettingsScreen() {
       </Dialog>
 
       <Card className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl p-5"><div><h2 className="font-semibold">Lối sống & khảo sát</h2><p className="mt-1 text-sm text-muted-foreground">Bổ sung thói quen và điều bạn mong đợi ở người ở ghép.</p></div><div className="flex gap-2"><Button asChild variant="outline"><Link to="/onboarding">Hoàn thiện hồ sơ</Link></Button><Button asChild><Link to="/quiz">Làm khảo sát</Link></Button></div></Card>
+      <div className="mt-5"><QuizHistory /></div>
       </>}
       {section === "settings" && <div className="grid lg:grid-cols-2 gap-5">
         <Section icon={Bell} title="Thông báo" desc="Tuỳ chọn thông báo · Sắp có.">
