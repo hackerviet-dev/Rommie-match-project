@@ -19,6 +19,10 @@ export default function RoomEditorPage() {
       <h1 className="text-3xl font-display font-bold">
         {id ? "Chỉnh sửa phòng" : "Đăng phòng"}
       </h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Tin mới hoặc nội dung sửa sẽ được kiểm duyệt trước khi hiển thị công
+        khai.
+      </p>
       <Card className="mt-6 rounded-3xl p-6">
         {id && <QueryState query={query} />}{" "}
         {id && query.data?.ownerUserId !== me && query.data ? (

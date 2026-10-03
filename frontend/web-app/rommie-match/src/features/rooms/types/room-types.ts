@@ -22,6 +22,8 @@ export type Room = {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  moderationStatus: "pending" | "approved" | "rejected";
+  moderationNote: string | null;
 };
 
 export type SaveRoomRequest = Omit<
@@ -32,6 +34,8 @@ export type SaveRoomRequest = Omit<
   | "ownerAvatarUrl"
   | "createdAt"
   | "updatedAt"
+  | "moderationStatus"
+  | "moderationNote"
 >;
 
 export type RoomSearch = {

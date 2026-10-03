@@ -2,6 +2,10 @@ import { apiClient } from "@/services/api-client";
 import type { Page } from "@/services/paging";
 export type AdminReport = {
   id: string;
+  reporterId: string;
+  reportedUserId: string;
+  createdAt: string;
+  reviewedAt: string | null;
   reporterName: string;
   reportedUserName: string;
   reason: string;
@@ -11,6 +15,8 @@ export type AdminReport = {
 };
 export type AdminVerification = {
   id: string;
+  userId: string;
+  createdAt: string;
   userName: string;
   status: string;
   frontImageUrl: string;
@@ -36,13 +42,16 @@ export const adminApi = {
       verifiedProfiles: number;
       newUsersLast30Days: number;
     }>("/api/admin/stats", { authenticated: true }),
-  reports: (page = 1) =>
-    apiClient<Page<AdminReport>>(`/api/admin/reports?page=${page}`, {
-      authenticated: true,
-    }),
-  verifications: (page = 1) =>
+  reports: (page = 1, status = "") =>
+    apiClient<Page<AdminReport>>(
+      `/api/admin/reports?page=${page}${status ? `&status=${status}` : ""}`,
+      {
+        authenticated: true,
+      },
+    ),
+  verifications: (page = 1, status = "") =>
     apiClient<Page<AdminVerification>>(
-      `/api/admin/verifications?page=${page}`,
+      `/api/admin/verifications?page=${page}${status ? `&status=${status}` : ""}`,
       { authenticated: true },
     ),
   reviewReport: (id: string, status: string, resolutionNote: string) =>

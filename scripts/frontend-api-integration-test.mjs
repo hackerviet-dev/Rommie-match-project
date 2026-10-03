@@ -9,7 +9,7 @@ const require = createRequire(process.cwd()+'/frontend/web-app/rommie-match/pack
 await mkdir('tmp/frontend-api', {recursive:true});
 const names=['matching','rooms','hyperlocal','billing','quiz','chat','admin'];
 const entry=names.map(n=>`export {${n==='hyperlocal'?'hyperlocalApi':n+'Api'}} from '../../frontend/web-app/rommie-match/src/features/${n}/services/${n}-api';`).join('\n')+`\nexport {savedProfilesApi} from '../../frontend/web-app/rommie-match/src/features/profile/hooks/use-saved-profiles';\nexport {safetyApi} from '../../frontend/web-app/rommie-match/src/features/profile/services/safety-api';\nexport {bookingsApi} from '../../frontend/web-app/rommie-match/src/features/hyperlocal/services/bookings-api';`;
-await writeFile('tmp/frontend-api/entry.ts',entry);
+await writeFile('tmp/frontend-api/entry.ts',entry+`\nexport {staffApi} from '../../frontend/web-app/rommie-match/src/features/admin/services/staff-api';`);
 await require('esbuild').build({entryPoints:['tmp/frontend-api/entry.ts'],bundle:true,platform:'node',format:'cjs',outfile:'tmp/frontend-api/client.cjs',define:{'import.meta.env':JSON.stringify({VITE_API_BASE_URL:'http://localhost:5000'})}});
 const session=new Map();
 globalThis.sessionStorage={getItem:k=>session.get(k)??null,setItem:(k,v)=>session.set(k,v),removeItem:k=>session.delete(k)};
@@ -19,8 +19,9 @@ const api=require(process.cwd()+'/tmp/frontend-api/client.cjs');
 const fixture={users:[],serviceIds:[]};
 let passed=false;
 const sql=query=>execFileSync('docker',['compose','exec','-T','postgres','psql','-U','roomiematch','-d','roomiematch','-v','ON_ERROR_STOP=1','-c',query],{stdio:['ignore','pipe','pipe']});
-async function raw(path,body,token,method='POST'){
+async function raw(path,body,token,method='POST',attempt=0){
  const response=await fetch('http://localhost:5000'+path,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:body===undefined?undefined:JSON.stringify(body)});
+ if(response.status===429 && attempt<2){await response.text();const seconds=Math.max(1,Math.min(60,Number(response.headers.get('Retry-After'))||60));console.log(`Credential rate limit: retrying after ${seconds}s.`);await new Promise(resolve=>setTimeout(resolve,seconds*1000));return raw(path,body,token,method,attempt+1);}
  const result=await response.json();assert.ok(response.ok,`${method} ${path}: ${response.status} ${JSON.stringify(result)}`);return result;
 }
 const auth=user=>{session.set('roomiematch-access-token',user.accessToken);session.set('roomiematch-refresh-token',user.refreshToken);};
@@ -52,6 +53,7 @@ try {
  auth(b);assert.ok((await api.chatApi.list()).items.some(c=>c.id===conversation.id));assert.equal((await api.chatApi.get(conversation.id)).unreadCount,1);assert.ok((await api.chatApi.messages(conversation.id)).items.some(m=>m.id===message.id));await api.chatApi.read(conversation.id);assert.equal((await api.chatApi.get(conversation.id)).unreadCount,0);
  auth(a);const request=await api.matchingApi.request(b.user.id,'Kiểm tra xác nhận ghép');assert.ok((await api.matchingApi.requests()).items.some(r=>r.id===request.id));auth(b);await api.matchingApi.respond(request.id,'accept');auth(a);await api.matchingApi.respond(request.id,'end');
  const room=await api.roomsApi.create({title:'Phòng kiểm tra API web',description:'Phòng fixture',address:'123 API Test Street',district:'Quận 1',city:'TP.HCM',monthlyRent:3500000,deposit:1000000,availableFrom:today,maxOccupants:3,propertyType:'apartment',bedrooms:2,areaM2:45,roommatesNeeded:1,amenities:['Wi-Fi'],latitude:10.7769,longitude:106.7009,isActive:true});fixture.roomId=room.id;
+ auth(admin);await api.staffApi.review(room.id,{status:'approved',note:'QA manual review approved',expectedUpdatedAt:room.updatedAt});auth(a);
  assert.ok((await api.roomsApi.search({city:'TP.HCM',district:'Quận 1',maxRent:4000000})).items.some(r=>r.id===room.id));assert.ok((await api.roomsApi.mine()).some(r=>r.id===room.id));assert.equal((await api.roomsApi.get(room.id)).latitude,10.7769);await api.roomsApi.update(room.id,{...room,title:'Phòng kiểm tra API web đã sửa'});assert.equal((await api.roomsApi.get(room.id)).title,'Phòng kiểm tra API web đã sửa');
  auth(admin);const service=await api.hyperlocalApi.create({name:'Dịch vụ QA web '+randomUUID().slice(0,6),category:'Dọn dẹp',description:'Fixture only',phone:'0901234567',district:'Quận 1',city:'TP.HCM',distanceKm:1,rating:4.5,reviewCount:0,priceFrom:100000,isVerified:true});fixture.serviceIds.push(service.id);fixture.serviceId=service.id;
  await api.hyperlocalApi.update(service.id,{...service,priceFrom:120000});assert.equal((await api.hyperlocalApi.get(service.id)).priceFrom,120000);
@@ -70,7 +72,7 @@ try {
 } finally {
  if(process.env.KEEP_UI_FIXTURES!=='1'||!passed){
   for(const id of fixture.serviceIds)sql(`DELETE FROM service_bookings WHERE service_id IN (SELECT id FROM local_services WHERE id='${id}' AND name LIKE 'Dịch vụ QA web %'); DELETE FROM local_services WHERE id='${id}' AND name LIKE 'Dịch vụ QA web %';`);
-  for(const u of fixture.users)sql(`DELETE FROM users WHERE id='${u.user.id}' AND email='${u.email}';`);
+  for(const u of fixture.users)sql(`DELETE FROM staff_audit_logs WHERE actor_id='${u.user.id}'; DELETE FROM users WHERE id='${u.user.id}' AND email='${u.email}';`);
   console.log('Isolated fixtures cleaned.');
  }
 }

@@ -11,7 +11,8 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
         r.id, r.owner_user_id, p.display_name, p.avatar_url, r.title, r.description,
         r.address, r.district, r.city, r.monthly_rent, r.deposit, r.available_from,
         r.max_occupants, r.amenities, r.latitude, r.longitude, r.is_active,
-        r.created_at, r.updated_at, r.property_type, r.bedrooms, r.area_m2, r.roommates_needed
+        r.created_at, r.updated_at, r.property_type, r.bedrooms, r.area_m2, r.roommates_needed,
+        r.moderation_status, r.moderation_note
         """;
 
     public object GetModuleStatus()
@@ -28,7 +29,7 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
         PageQuery paging,
         CancellationToken cancellationToken)
     {
-        var filters = new StringBuilder("WHERE r.is_active = true AND r.deleted_at IS NULL");
+        var filters = new StringBuilder("WHERE r.is_active = true AND r.deleted_at IS NULL AND r.moderation_status = 'approved'");
         if (!string.IsNullOrWhiteSpace(query.City))
         {
             filters.Append(" AND r.city = @city");
@@ -158,6 +159,7 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
     {
         const string sql = """
             UPDATE rooms SET
+                moderation_status = 'pending', moderation_note = NULL, reviewed_by = NULL, reviewed_at = NULL,
                 title = @title,
                 description = @description,
                 address = @address,
@@ -303,7 +305,8 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
                 reader.IsDBNull(15) ? null : reader.GetDecimal(15),
                 reader.GetBoolean(16),
                 reader.GetFieldValue<DateTimeOffset>(17),
-                reader.GetFieldValue<DateTimeOffset>(18)));
+                reader.GetFieldValue<DateTimeOffset>(18),
+                reader.GetString(23), reader.IsDBNull(24) ? null : reader.GetString(24)));
         }
 
         return rooms;

@@ -1,334 +1,248 @@
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AppShell } from "@/layouts/main-layout";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { QueryState, Pagination } from "@/components/common/query-state";
-import { adminApi } from "@/features/admin/services/admin-api";
-import { ServiceManager } from "@/features/admin/components/service-manager";
+import { Routes, Route, Navigate, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import type { ReactNode } from "react";
+import {
+  Users,
+  Building2,
+  Scale,
+  Flag,
+  ShieldCheck,
+  UsersRound,
+  ArrowUpRight,
+} from "lucide-react";
 import { useAuthStore } from "@/features/auth";
-export default function AdminPage() {
-  const me = useAuthStore((s) => s.user?.id),
-    role = useAuthStore((s) => s.user?.role),
+import { AdminLayout } from "@/features/admin/components/admin-layout";
+import {
+  StaffUsers,
+  StaffUserDetail,
+} from "@/features/admin/components/staff-users";
+import { RoomModeration } from "@/features/admin/components/room-moderation";
+import {
+  Reports,
+  Verifications,
+  Refunds,
+} from "@/features/admin/components/review-queues";
+import { ServiceManager } from "@/features/admin/components/service-manager";
+import { GroupsPanel } from "@/features/workspaces/components/groups-panel";
+import { DisputesPanel } from "@/features/workspaces/components/disputes-panel";
+import { staffApi } from "@/features/admin/services/staff-api";
+import { adminApi } from "@/features/admin/services/admin-api";
+import { Card } from "@/components/ui/card";
+import { QueryState, Pagination } from "@/components/common/query-state";
+import { useState } from "react";
+function AdminOnly({ children }: { children: ReactNode }) {
+  return useAuthStore((s) => s.user?.role) === "admin" ? (
+    children
+  ) : (
+    <Navigate to="/admin" replace />
+  );
+}
+function Overview() {
+  const me = useAuthStore((s) => s.user),
+    query = useQuery({
+      queryKey: ["staff", "overview", me?.id],
+      queryFn: staffApi.overview,
+    }),
     stats = useQuery({
-      queryKey: ["admin", "stats", me],
+      queryKey: ["admin", "stats", me?.id],
       queryFn: adminApi.stats,
-      enabled: role === "admin",
-    }),
-    [tab, setTab] = useState("reports");
+      enabled: me?.role === "admin",
+    });
+  const cards = [
+    {
+      label: "Tin đăng chờ duyệt",
+      value: query.data?.pendingRooms,
+      path: "rooms",
+      icon: Building2,
+      color: "text-indigo-600 bg-indigo-50",
+    },
+    {
+      label: "Tranh chấp cần xử lý",
+      value: query.data?.openDisputes,
+      path: "disputes",
+      icon: Scale,
+      color: "text-orange-600 bg-orange-50",
+    },
+    {
+      label: "Báo cáo đang mở",
+      value: query.data?.openReports,
+      path: "reports",
+      icon: Flag,
+      color: "text-rose-600 bg-rose-50",
+    },
+    {
+      label: "Xác minh chờ duyệt",
+      value: query.data?.pendingVerifications,
+      path: "verifications",
+      icon: ShieldCheck,
+      color: "text-emerald-600 bg-emerald-50",
+    },
+  ];
   return (
-    <AppShell>
-      <h1 className="text-3xl font-display font-bold">Quản trị RoomieMatch</h1>
-      <p className="mt-2 text-muted-foreground">
-        Số liệu và hàng đợi kiểm duyệt hiện tại.
-      </p>
-      {role === "admin" && <QueryState query={stats} />}
-      {stats.data && (
-        <div className="mt-5 grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          {[
-            ["Thành viên hoạt động", stats.data.activeUsers],
-            ["Báo cáo đang mở", stats.data.openReports],
-            ["Chờ xác minh", stats.data.pendingVerifications],
-            ["Hồ sơ đã xác minh", stats.data.verifiedProfiles],
-            ["Đăng ký 30 ngày", stats.data.newUsersLast30Days],
-          ].map(([l, v]) => (
-            <Card key={l} className="rounded-2xl p-5">
-              <p className="text-xs text-muted-foreground">{l}</p>
-              <strong className="mt-3 block text-3xl">{v}</strong>
-            </Card>
-          ))}
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-bold">
+            Tổng quan {me?.role === "admin" ? "quản trị" : "kiểm duyệt"}
+          </h1>
+          <p className="mt-2 text-sm text-slate-500">
+            Theo dõi công việc cần xử lý và hoạt động của cộng đồng.
+          </p>
         </div>
-      )}
-      <div className="my-6 flex flex-wrap gap-3">
-        {[
-          ["reports", "Báo cáo"],
-          ["verifications", "Xác minh"],
-          ["services", "Dịch vụ"],
-          ["refunds", "Hoàn tiền"],
-        ]
-          .filter(
-            ([v]) =>
-              role === "admin" || v === "reports" || v === "verifications",
-          )
-          .map(([v, l]) => (
-            <Button
-              key={v}
-              variant={tab === v ? "default" : "outline"}
-              onClick={() => setTab(v)}
-            >
-              {l}
-            </Button>
-          ))}
+        <span className="rounded-full border bg-white px-3 py-2 text-xs text-slate-500">
+          {new Date().toLocaleDateString("vi-VN")}
+        </span>
       </div>
-      {tab === "reports" && <Reports />}
-      {tab === "verifications" && <Verifications />}
-      {tab === "services" && <ServiceManager />}
-      {tab === "refunds" && <Refunds />}
-    </AppShell>
-  );
-}
-function Reports() {
-  const [page, setPage] = useState(1),
-    [notes, setNotes] = useState<Record<string, string>>({}),
-    client = useQueryClient(),
-    me = useAuthStore((s) => s.user?.id),
-    query = useQuery({
-      queryKey: ["admin", "reports", me, page],
-      queryFn: () => adminApi.reports(page),
-    }),
-    review = useMutation({
-      mutationFn: ({ id, status }: { id: string; status: string }) =>
-        adminApi.reviewReport(id, status, notes[id] ?? ""),
-      onSuccess: () => client.invalidateQueries({ queryKey: ["admin"] }),
-    });
-  return (
-    <>
       <QueryState query={query} />
-      {query.data?.totalCount === 0 && (
-        <p className="py-10 text-muted-foreground">Chưa có báo cáo.</p>
-      )}
-      {query.data?.items.map((r) => (
-        <Card key={r.id} className="mb-4 rounded-2xl p-5">
-          <h2 className="font-semibold">
-            {r.reporterName} → {r.reportedUserName}
-          </h2>
-          <p className="mt-2 text-sm">
-            {r.reason} · {r.status}
-          </p>
-          <p className="mt-3 whitespace-pre-wrap text-sm">{r.details}</p>
-          {r.status === "open" && (
-            <>
-              <Input
-                aria-label="Ghi chú xử lý"
-                maxLength={2000}
-                className="mt-3"
-                value={notes[r.id] ?? ""}
-                onChange={(e) =>
-                  setNotes((n) => ({ ...n, [r.id]: e.target.value }))
-                }
-              />
-              <div className="mt-3 flex gap-2">
-                <Button
-                  disabled={review.isPending}
-                  onClick={() =>
-                    review.mutate({ id: r.id, status: "resolved" })
-                  }
-                >
-                  Đã xử lý
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={review.isPending}
-                  onClick={() =>
-                    review.mutate({ id: r.id, status: "dismissed" })
-                  }
-                >
-                  Bác báo cáo
-                </Button>
+      <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        {cards.map((c) => (
+          <Link key={c.path} to={`/admin/${c.path}`}>
+            <Card className="h-full rounded-2xl border-slate-200 p-6 shadow-none transition-shadow hover:shadow-sm">
+              <div
+                className={`grid h-12 w-12 place-items-center rounded-xl ${c.color}`}
+              >
+                <c.icon className="h-6 w-6" />
               </div>
-            </>
-          )}
-        </Card>
-      ))}
-      {review.isError && (
-        <p role="alert" className="text-destructive">
-          {review.error.message}
-        </p>
-      )}
-      {query.data && (
-        <Pagination
-          page={page}
-          hasNext={query.data.hasNextPage}
-          onChange={setPage}
-        />
-      )}
-    </>
-  );
-}
-function Verifications() {
-  const [page, setPage] = useState(1),
-    [notes, setNotes] = useState<Record<string, string>>({}),
-    client = useQueryClient(),
-    me = useAuthStore((s) => s.user?.id),
-    query = useQuery({
-      queryKey: ["admin", "verifications", me, page],
-      queryFn: () => adminApi.verifications(page),
-    }),
-    review = useMutation({
-      mutationFn: ({ id, status }: { id: string; status: string }) =>
-        adminApi.reviewVerification(id, status, notes[id] ?? ""),
-      onSuccess: () => client.invalidateQueries({ queryKey: ["admin"] }),
-    });
-  return (
-    <>
-      <QueryState query={query} />
-      {query.data?.totalCount === 0 && (
-        <p className="py-10 text-muted-foreground">Chưa có hồ sơ xác minh.</p>
-      )}
-      {query.data?.items.map((v) => (
-        <Card key={v.id} className="mb-4 rounded-2xl p-5">
-          <h2 className="font-semibold">
-            {v.userName} · {v.status}
-          </h2>
-          <div className="mt-4 flex flex-wrap gap-3">
-            {[v.frontImageUrl, v.backImageUrl, v.selfieImageUrl]
-              .filter(Boolean)
-              .map((url, i) => (
-                <a
-                  key={i}
-                  href={url!}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm text-teal underline"
-                >
-                  Xem{" "}
-                  {i === 0
-                    ? "mặt trước"
-                    : i === 1
-                      ? "mặt sau"
-                      : "ảnh chân dung"}
-                </a>
-              ))}
+              <p className="mt-5 text-3xl font-semibold">
+                {query.isError ? "—" : (c.value ?? "…")}
+              </p>
+              <div className="mt-2 flex items-center justify-between gap-2 text-sm text-slate-500">
+                {c.label}
+                <ArrowUpRight className="h-4 w-4" />
+              </div>
+            </Card>
+          </Link>
+        ))}
+      </div>
+      <div className="mt-6 grid gap-6 xl:grid-cols-3">
+        <Card className="rounded-2xl border-slate-200 p-6 shadow-none xl:col-span-2">
+          <h2 className="font-semibold">Không gian cộng đồng</h2>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <Link
+              to="/admin/groups"
+              className="flex items-center gap-4 rounded-xl bg-slate-50 p-5"
+            >
+              <UsersRound className="h-6 w-6 text-indigo-500" />
+              <div>
+                <p className="text-2xl font-semibold">
+                  {query.data?.groups ?? "…"}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">Nhóm ở ghép</p>
+              </div>
+            </Link>
+            <Link
+              to="/admin/users"
+              className="flex items-center gap-4 rounded-xl bg-slate-50 p-5"
+            >
+              <Users className="h-6 w-6 text-emerald-500" />
+              <div>
+                <p className="text-sm font-semibold">Tra cứu thành viên</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Hồ sơ, trạng thái và quyền
+                </p>
+              </div>
+            </Link>
           </div>
-          {v.status === "pending" && (
+          {me?.role === "admin" && (
             <>
-              <Input
-                aria-label="Lý do từ chối"
-                placeholder="Lý do khi từ chối"
-                maxLength={2000}
-                className="mt-4"
-                value={notes[v.id] ?? ""}
-                onChange={(e) =>
-                  setNotes((n) => ({ ...n, [v.id]: e.target.value }))
-                }
-              />
-              <div className="mt-3 flex gap-2">
-                <Button
-                  disabled={review.isPending}
-                  onClick={() =>
-                    review.mutate({ id: v.id, status: "approved" })
-                  }
-                >
-                  Duyệt
-                </Button>
-                <Button
-                  variant="destructive"
-                  disabled={review.isPending || !notes[v.id]?.trim()}
-                  onClick={() =>
-                    review.mutate({ id: v.id, status: "rejected" })
-                  }
-                >
-                  Từ chối
-                </Button>
+              <QueryState query={stats} />
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                {[
+                  ["Tài khoản hoạt động", stats.data?.activeUsers],
+                  ["Đăng ký trong 30 ngày", stats.data?.newUsersLast30Days],
+                  ["Hồ sơ đã xác minh", stats.data?.verifiedProfiles],
+                ].map(([label, value]) => (
+                  <div key={String(label)} className="rounded-xl border p-4">
+                    <p className="text-xl font-semibold">{value ?? "…"}</p>
+                    <p className="mt-2 text-xs text-slate-500">{label}</p>
+                  </div>
+                ))}
               </div>
             </>
           )}
         </Card>
-      ))}
-      {review.isError && (
-        <p role="alert" className="text-destructive">
-          {review.error.message}
-        </p>
-      )}
-      {query.data && (
-        <Pagination
-          page={page}
-          hasNext={query.data.hasNextPage}
-          onChange={setPage}
-        />
-      )}
-    </>
+        <Card className="rounded-2xl border-slate-200 p-6 shadow-none">
+          <h2 className="font-semibold">Quy trình xử lý</h2>
+          <ol className="mt-5 space-y-5 text-sm text-slate-600">
+            <li>
+              <span className="mr-2 rounded-full bg-indigo-50 px-2 py-1 text-indigo-600">
+                1
+              </span>
+              Đọc hồ sơ và nội dung liên quan
+            </li>
+            <li>
+              <span className="mr-2 rounded-full bg-indigo-50 px-2 py-1 text-indigo-600">
+                2
+              </span>
+              Thu thập phản hồi, kiểm tra căn cứ
+            </li>
+            <li>
+              <span className="mr-2 rounded-full bg-indigo-50 px-2 py-1 text-indigo-600">
+                3
+              </span>
+              Ghi rõ lý do và kết quả xử lý
+            </li>
+          </ol>
+          <p className="mt-6 border-t pt-4 text-xs leading-relaxed text-slate-500">
+            Quyền nhóm ở ghép chỉ có hiệu lực trong nhóm. Premium không cấp
+            quyền quản trị hệ thống.
+          </p>
+        </Card>
+      </div>
+    </div>
   );
 }
-function Refunds() {
+function AuditLog() {
   const [page, setPage] = useState(1),
-    [notes, setNotes] = useState<Record<string, string>>({}),
-    [refs, setRefs] = useState<Record<string, string>>({}),
-    client = useQueryClient(),
     me = useAuthStore((s) => s.user?.id),
     query = useQuery({
-      queryKey: ["admin", "refunds", me, page],
-      queryFn: () => adminApi.refunds(page),
-    }),
-    resolve = useMutation({
-      mutationFn: ({
-        id,
-        action,
-      }: {
-        id: string;
-        action: "approve" | "reject";
-      }) => adminApi.resolveRefund(id, action, notes[id] ?? "", refs[id]),
-      onSuccess: () => client.invalidateQueries({ queryKey: ["admin"] }),
+      queryKey: ["staff", "audit", me, page],
+      queryFn: () => staffApi.audit(page),
     });
   return (
-    <>
-      <p className="mb-4 text-sm text-muted-foreground">
-        Chỉ xác nhận đã hoàn tiền sau khi chuyển khoản thực tế cho người mua.
+    <div>
+      <h1 className="font-display text-2xl font-bold">Nhật ký xử lý</h1>
+      <p className="mt-2 text-sm text-slate-500">
+        Ghi nhận người thực hiện, đối tượng và lý do thay đổi.
       </p>
       <QueryState query={query} />
-      {query.data?.totalCount === 0 && (
-        <p className="py-10 text-muted-foreground">
-          Chưa có yêu cầu hoàn tiền.
-        </p>
-      )}
-      {query.data?.items.map((r) => (
-        <Card key={r.id} className="mb-4 rounded-2xl p-5">
-          <h2 className="font-semibold">
-            {r.userName} · {r.amount.toLocaleString("vi-VN")}₫
-          </h2>
-          <p className="mt-2 text-sm">
-            {r.userEmail} · {r.status}
+      <Card className="mt-6 overflow-x-auto rounded-2xl border-slate-200 p-0 shadow-none">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 text-left text-xs text-slate-500">
+            <tr>
+              {["Thời điểm", "Người thực hiện", "Thao tác", "Ghi chú"].map(
+                (h) => (
+                  <th key={h} className="p-4">
+                    {h}
+                  </th>
+                ),
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {query.data?.items.map((a) => (
+              <tr key={a.id} className="border-t">
+                <td className="whitespace-nowrap p-4 text-xs">
+                  {new Date(a.created_at).toLocaleString("vi-VN")}
+                </td>
+                <td className="p-4">{a.actorName ?? "Tài khoản đã xóa"}</td>
+                <td className="p-4">
+                  <p>{a.action}</p>
+                  <p className="mt-1 text-[10px] text-slate-400">
+                    {a.targetId}
+                  </p>
+                </td>
+                <td className="min-w-64 p-4">{a.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {query.data?.totalCount === 0 && (
+          <p className="p-8 text-center text-slate-500">
+            Chưa có thao tác được ghi nhận.
           </p>
-          <p className="mt-2 text-sm">{r.reason}</p>
-          {r.status === "pending" && (
-            <>
-              <Input
-                aria-label="Mã giao dịch chuyển khoản hoàn tiền"
-                placeholder="Mã chuyển khoản đã hoàn tiền"
-                maxLength={200}
-                className="mt-3"
-                value={refs[r.id] ?? ""}
-                onChange={(e) =>
-                  setRefs((n) => ({ ...n, [r.id]: e.target.value }))
-                }
-              />
-              <Input
-                aria-label="Ghi chú hoàn tiền"
-                placeholder="Ghi chú / lý do từ chối"
-                maxLength={2000}
-                className="mt-3"
-                value={notes[r.id] ?? ""}
-                onChange={(e) =>
-                  setNotes((n) => ({ ...n, [r.id]: e.target.value }))
-                }
-              />
-              <div className="mt-3 flex flex-wrap gap-3">
-                <Button
-                  disabled={resolve.isPending || !refs[r.id]?.trim()}
-                  onClick={() =>
-                    resolve.mutate({ id: r.id, action: "approve" })
-                  }
-                >
-                  Xác nhận đã chuyển khoản
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={resolve.isPending || !notes[r.id]?.trim()}
-                  onClick={() => resolve.mutate({ id: r.id, action: "reject" })}
-                >
-                  Từ chối yêu cầu
-                </Button>
-              </div>
-            </>
-          )}
-        </Card>
-      ))}
-      {resolve.isError && (
-        <p role="alert" className="text-destructive">
-          {resolve.error.message}
-        </p>
-      )}
+        )}
+      </Card>
       {query.data && (
         <Pagination
           page={page}
@@ -336,6 +250,81 @@ function Refunds() {
           onChange={setPage}
         />
       )}
-    </>
+    </div>
+  );
+}
+function Queue({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div>
+      <h1 className="mb-6 text-2xl font-display font-bold">{title}</h1>
+      {children}
+    </div>
+  );
+}
+export default function AdminPage() {
+  return (
+    <AdminLayout>
+      <Routes>
+        <Route index element={<Overview />} />
+        <Route path="users" element={<StaffUsers />} />
+        <Route path="users/:id" element={<StaffUserDetail />} />
+        <Route
+          path="staff"
+          element={
+            <AdminOnly>
+              <StaffUsers team />
+            </AdminOnly>
+          }
+        />
+        <Route path="rooms" element={<RoomModeration />} />
+        <Route path="groups" element={<GroupsPanel staff />} />
+        <Route path="disputes" element={<DisputesPanel staff />} />
+        <Route
+          path="reports"
+          element={
+            <Queue title="Báo cáo vi phạm">
+              <Reports />
+            </Queue>
+          }
+        />
+        <Route
+          path="verifications"
+          element={
+            <Queue title="Xác minh danh tính">
+              <Verifications />
+            </Queue>
+          }
+        />
+        <Route
+          path="services"
+          element={
+            <AdminOnly>
+              <Queue title="Quản lý dịch vụ">
+                <ServiceManager />
+              </Queue>
+            </AdminOnly>
+          }
+        />
+        <Route
+          path="refunds"
+          element={
+            <AdminOnly>
+              <Queue title="Yêu cầu hoàn tiền">
+                <Refunds />
+              </Queue>
+            </AdminOnly>
+          }
+        />
+        <Route
+          path="audit"
+          element={
+            <AdminOnly>
+              <AuditLog />
+            </AdminOnly>
+          }
+        />
+        <Route path="*" element={<Navigate to="/admin" replace />} />
+      </Routes>
+    </AdminLayout>
   );
 }

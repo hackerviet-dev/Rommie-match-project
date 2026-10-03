@@ -78,7 +78,9 @@ public sealed record RoomDto(
     decimal? Longitude,
     bool IsActive,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    string ModerationStatus,
+    string? ModerationNote);
 
 public static class RoomPropertyTypes
 {

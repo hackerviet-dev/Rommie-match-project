@@ -42,23 +42,26 @@ export function Pagination({
   hasNext: boolean;
   onChange: (page: number) => void;
 }) {
+  if (page <= 1 && !hasNext) return null;
   return (
-    <div className="mt-6 flex items-center justify-center gap-4">
+    <nav aria-label="Phân trang" className="mt-6 flex flex-wrap items-center justify-center gap-2">
       <Button
         variant="outline"
+        size="sm"
         disabled={page <= 1}
         onClick={() => onChange(page - 1)}
       >
         Trang trước
       </Button>
-      <span>Trang {page}</span>
+      <span aria-current="page" className="shrink-0 whitespace-nowrap px-1 text-sm">Trang {page}</span>
       <Button
         variant="outline"
+        size="sm"
         disabled={!hasNext}
         onClick={() => onChange(page + 1)}
       >
         Trang sau
       </Button>
-    </div>
+    </nav>
   );
 }

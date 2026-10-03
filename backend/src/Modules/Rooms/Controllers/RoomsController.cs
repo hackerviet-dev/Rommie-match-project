@@ -53,19 +53,21 @@ public sealed class RoomsController(IRoomService roomService) : ControllerBase
     }
 
     [EndpointSummary("Xem chi tiết một phòng")]
-    [EndpointDescription("API công khai. 200 trả RoomDto; 404: phòng không tồn tại hoặc đã bị xóa.")]
+    [EndpointDescription("API công khai chỉ trả tin approved/active; chủ tin và admin/moderator được đọc pending/rejected/ẩn. 200 trả RoomDto; 404: không tồn tại, bị xóa hoặc không được xem.")]
     [ProducesResponseType(404, Description = "Không tìm thấy dữ liệu hoặc không được phép xem dữ liệu này.")]
     [ProducesResponseType(typeof(RoomDto), 200, Description = "Thành công; dữ liệu trả về theo schema bên dưới.")]
     [HttpGet("{roomId:guid}")]
     public async Task<ActionResult<RoomDto>> Get([Description("UUID của phòng, lấy từ id trong danh sách phòng.")] Guid roomId, CancellationToken cancellationToken)
     {
         var room = await roomService.GetAsync(roomId, cancellationToken);
+        if(room is not null && (room.ModerationStatus != "approved" || !room.IsActive) && room.OwnerUserId != User.GetUserId() && !User.IsInRole("admin") && !User.IsInRole("moderator"))
+            return NotFound();
         return room is null ? NotFound() : Ok(room);
     }
 
     [Authorize]
     [EndpointSummary("Đăng phòng mới")]
-    [EndpointDescription("Cần đăng nhập. Gửi SaveRoomRequest; chủ tin được lấy từ token. 201 trả RoomDto và header Location dẫn tới chi tiết; 400: dữ liệu không hợp lệ.")]
+    [EndpointDescription("Cần đăng nhập. Gửi SaveRoomRequest; chủ tin được lấy từ token. 201 trả RoomDto với moderationStatus=pending, chờ duyệt trước khi công khai, và header Location dẫn tới chi tiết; 400: dữ liệu không hợp lệ.")]
     [ProducesResponseType(400, Description = "Dữ liệu đầu vào không hợp lệ; xem chi tiết lỗi và các trường trong response.")]
     [ProducesResponseType(typeof(RoomDto), 201, Description = "Thành công; dữ liệu trả về theo schema bên dưới.")]
     [HttpPost]

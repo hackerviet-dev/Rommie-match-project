@@ -60,7 +60,13 @@ function MyRooms() {
               <h2 className="font-semibold">{r.title}</h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 {r.monthlyRent.toLocaleString("vi-VN")}₫ ·{" "}
-                {r.isActive ? "Đang hiển thị" : "Đã ẩn"}
+                {r.moderationStatus === "pending"
+                  ? "Chờ kiểm duyệt"
+                  : r.moderationStatus === "rejected"
+                    ? "Bị từ chối"
+                    : r.isActive
+                      ? "Đang hiển thị"
+                      : "Đã ẩn"}
               </p>
             </div>
             <div className="flex gap-2">

@@ -54,7 +54,7 @@ public sealed class AdminService(IDbConnectionFactory factory)
     public async Task<bool> ReviewReportAsync(Guid id, Guid reviewer, ReviewReportRequest request, CancellationToken ct)
     {
         await using var c = await factory.OpenConnectionAsync(ct); await using var cmd = c.CreateCommand();
-        cmd.CommandText = "UPDATE user_reports SET status=@status, resolution_note=@note, reviewed_by=@reviewer, reviewed_at=now() WHERE id=@id AND status='open'";
+        cmd.CommandText = "WITH updated AS (UPDATE user_reports SET status=@status, resolution_note=@note, reviewed_by=@reviewer, reviewed_at=now() WHERE id=@id AND status='open' RETURNING id) INSERT INTO staff_audit_logs(actor_id,action,target_id,note) SELECT @reviewer,'report.'||@status,id,COALESCE(@note,'') FROM updated";
         cmd.AddParameter("status", request.Status).AddParameter("note", request.ResolutionNote).AddParameter("reviewer", reviewer).AddParameter("id", id);
         return await cmd.ExecuteNonQueryAsync(ct) == 1;
     }
@@ -73,6 +73,10 @@ public sealed class AdminService(IDbConnectionFactory factory)
             profile.AddParameter("user", user);
             await profile.ExecuteNonQueryAsync(ct);
         }
+        await using var audit=c.CreateCommand();audit.Transaction=tx;
+        audit.CommandText="INSERT INTO staff_audit_logs(actor_id,action,target_id,note) VALUES(@actor,@action,@id,@note)";
+        audit.AddParameter("actor",reviewer).AddParameter("action","verification."+request.Status).AddParameter("id",id).AddParameter("note",request.RejectionReason??"Đã duyệt xác minh");
+        await audit.ExecuteNonQueryAsync(ct);
         await tx.CommitAsync(ct); return true;
     }
 

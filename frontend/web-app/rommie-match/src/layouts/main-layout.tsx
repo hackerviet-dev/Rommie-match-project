@@ -30,7 +30,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import { AccountMenu, useAuthStore } from "@/features/auth";
+import { AccountMenu, getActorHome, useAuthStore } from "@/features/auth";
 import { HeaderSearch } from "@/components/common/header-search";
 import { tokenStorage } from "@/services/token-storage";
 
@@ -99,6 +99,7 @@ const nav = [
 ];
 
 export function Logo({ className = "" }: { className?: string }) {
+  const role = useAuthStore((s) => s.user?.role);
   const hasSession = useAuthStore(
     (s) => s.isInitialized && s.isAuthenticated && Boolean(s.user),
   );
@@ -111,10 +112,11 @@ export function Logo({ className = "" }: { className?: string }) {
   const navigate = useNavigate();
   return (
     <Link
-      to={isMember ? "/dashboard" : "/"}
+      to={isMember ? getActorHome(role) : "/"}
       onClick={(event) => {
         if (
           !isMember ||
+          getActorHome(role) !== "/dashboard" ||
           location.pathname !== "/dashboard" ||
           event.button !== 0 ||
           event.metaKey ||

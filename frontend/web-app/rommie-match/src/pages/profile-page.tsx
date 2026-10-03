@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { MapPin, Briefcase, ShieldCheck } from "lucide-react";
 import { AppShell, CompatRing } from "@/layouts/main-layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -109,136 +110,213 @@ export default function ProfilePage() {
       </Link>
       <QueryState query={profile} />
       {p && (
-        <>
-          <Card className="mt-5 rounded-3xl p-6 sm:p-8">
-            <div className="flex flex-wrap items-center gap-5">
-              {p.avatarUrl ? (
-                <img
-                  src={p.avatarUrl}
-                  alt={p.displayName}
-                  className="h-24 w-24 rounded-2xl bg-mint/30"
-                />
-              ) : (
-                <div className="grid h-24 w-24 place-items-center rounded-2xl bg-mint/30 text-3xl">
-                  {p.displayName.slice(0, 1)}
+        <div className="mt-5 grid items-start gap-6 lg:grid-cols-3">
+          <Card className="overflow-hidden rounded-2xl border-0 p-0 shadow-sm lg:sticky lg:top-24">
+            <div className="gradient-brand h-32" />
+            <div className="relative p-6 pt-0">
+              <div className="flex flex-col items-center gap-4 text-center">
+                {p.avatarUrl ? (
+                  <img
+                    src={p.avatarUrl}
+                    alt={p.displayName}
+                    className="-mt-12 h-24 w-24 rounded-2xl bg-mint ring-4 ring-white"
+                  />
+                ) : (
+                  <div className="-mt-12 grid h-24 w-24 place-items-center rounded-2xl bg-mint text-3xl ring-4 ring-white">
+                    {p.displayName.slice(0, 1)}
+                  </div>
+                )}
+                <div className="flex-1">
+                  <h1 className="text-3xl font-display font-bold">
+                    {p.displayName}
+                  </h1>
+                  <p className="mt-2 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <Briefcase className="h-4 w-4" />
+                    {p.occupation || "Chưa cập nhật công việc"}
+                  </p>
+                  <p className="mt-2 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <MapPin className="h-4 w-4" />
+                    {[p.district, p.city].filter(Boolean).join(" · ")}
+                  </p>
+                  {p.isVerified && (
+                    <p className="mt-2 flex items-center justify-center gap-1 text-sm text-teal">
+                      <ShieldCheck className="h-4 w-4" />
+                      Đã xác minh
+                    </p>
+                  )}
+                </div>
+                {detail.data && (
+                  <CompatRing score={detail.data.match.score} size={90} />
+                )}
+              </div>
+              {id !== me && (
+                <div className="mt-6 grid grid-cols-2 gap-2">
+                  <Button
+                    className="col-span-2"
+                    disabled={chat.isPending}
+                    onClick={() => chat.mutate()}
+                  >
+                    Nhắn tin
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="col-span-2"
+                    disabled={
+                      saved.query.isPending ||
+                      saved.query.isError ||
+                      saved.mutation.isPending
+                    }
+                    onClick={() =>
+                      saved.mutation.mutate(
+                        { id, saved: !saved.ids.includes(id) },
+                        { onError: (e) => toast.error(e.message) },
+                      )
+                    }
+                  >
+                    {saved.ids.includes(id) ? "Bỏ lưu hồ sơ" : "Lưu hồ sơ"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={request.isPending}
+                    onClick={() => request.mutate()}
+                  >
+                    Đề nghị ở ghép
+                  </Button>
+                  <Button variant="outline" onClick={() => setReportOpen(true)}>
+                    Báo cáo
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    disabled={block.isPending}
+                    onClick={() => block.mutate()}
+                  >
+                    Chặn
+                  </Button>
                 </div>
               )}
-              <div className="flex-1">
-                <h1 className="text-3xl font-display font-bold">
-                  {p.displayName}
-                </h1>
-                <p className="mt-2 text-muted-foreground">
-                  {[p.occupation, p.district, p.city]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-                {p.isVerified && <p className="mt-1 text-teal">Đã xác minh</p>}
-              </div>
-              {detail.data && (
-                <CompatRing score={detail.data.match.score} size={90} />
+              {[chat, request, block].map(
+                (m, i) =>
+                  m.isError && (
+                    <p role="alert" key={i} className="mt-3 text-destructive">
+                      {m.error.message}
+                    </p>
+                  ),
+              )}
+              {id !== me && (
+                <Link
+                  to={`/disputes?respondent=${id}`}
+                  className="mt-4 inline-block text-xs text-teal underline"
+                >
+                  Yêu cầu hỗ trợ tranh chấp
+                </Link>
               )}
             </div>
-            <p className="mt-6 whitespace-pre-wrap">
-              {p.bio || "Chưa có giới thiệu."}
-            </p>
-            {id !== me && (
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Button disabled={chat.isPending} onClick={() => chat.mutate()}>
-                  Nhắn tin
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={
-                    saved.query.isPending ||
-                    saved.query.isError ||
-                    saved.mutation.isPending
-                  }
-                  onClick={() =>
-                    saved.mutation.mutate(
-                      { id, saved: !saved.ids.includes(id) },
-                      { onError: (e) => toast.error(e.message) },
-                    )
-                  }
-                >
-                  {saved.ids.includes(id) ? "Bỏ lưu hồ sơ" : "Lưu hồ sơ"}
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={request.isPending}
-                  onClick={() => request.mutate()}
-                >
-                  Đề nghị ở ghép
-                </Button>
-                <Button variant="outline" onClick={() => setReportOpen(true)}>
-                  Báo cáo
-                </Button>
-                <Button
-                  variant="destructive"
-                  disabled={block.isPending}
-                  onClick={() => block.mutate()}
-                >
-                  Chặn
-                </Button>
-              </div>
-            )}
-            {[chat, request, block].map(
-              (m, i) =>
-                m.isError && (
-                  <p role="alert" key={i} className="mt-3 text-destructive">
-                    {m.error.message}
-                  </p>
-                ),
-            )}
           </Card>
-          <QueryState query={detail} />
-          {detail.data && (
-            <Card className="mt-5 rounded-3xl p-6">
-              <h2 className="text-xl font-semibold">Mức độ phù hợp</h2>
-              <p className="mt-2 text-muted-foreground">
-                {detail.data.match.explanation}
-              </p>
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                {detail.data.match.breakdown.map((b) => (
-                  <div key={b.key} className="rounded-xl bg-muted/50 p-4">
-                    <p className="text-sm">{b.label}</p>
-                    <strong className="text-xl text-navy">{b.value}%</strong>
-                  </div>
-                ))}
-              </div>
-              {detail.data.comparisonLocked ? (
-                <p className="mt-5">
-                  <Link to="/premium" className="text-teal underline">
-                    Premium
-                  </Link>{" "}
-                  mở so sánh chi tiết hai hồ sơ.
-                </p>
-              ) : (
-                <table className="mt-5 w-full text-sm">
-                  <thead>
-                    <tr>
-                      <th className="text-left">Tiêu chí</th>
-                      <th>Bạn</th>
-                      <th>{p.displayName}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {detail.data.comparison?.map((c) => (
-                      <tr key={c.key} className="border-t">
-                        <td className="py-3">{c.label}</td>
-                        <td className="text-center">{c.mine}</td>
-                        <td className="text-center">{c.theirs}</td>
-                      </tr>
+          <div className="space-y-6 lg:col-span-2">
+            {detail.data && (
+              <div className="grid gap-6 sm:grid-cols-2">
+                <Card className="rounded-3xl border-0 p-6 shadow-sm">
+                  <h2 className="font-display text-lg font-bold">
+                    Sở thích & đam mê
+                  </h2>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {detail.data.match.interests.map((interest) => (
+                      <span
+                        key={interest}
+                        className="rounded-full bg-mint/30 px-3 py-1.5 text-sm text-navy"
+                      >
+                        {interest}
+                      </span>
                     ))}
-                  </tbody>
-                </table>
-              )}
-              <p className="mt-4 text-xs text-muted-foreground">
-                Tính lúc{" "}
-                {new Date(detail.data.calculatedAt).toLocaleString("vi-VN")}
+                  </div>
+                  {!detail.data.match.interests.length && (
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      Chưa có sở thích được chia sẻ.
+                    </p>
+                  )}
+                </Card>
+                <Card className="rounded-3xl border-0 p-6 shadow-sm">
+                  <h2 className="font-display text-lg font-bold">
+                    Mong muốn nơi ở
+                  </h2>
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    Khu vực:{" "}
+                    {[detail.data.match.district, detail.data.match.city]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Ngân sách:{" "}
+                    {detail.data.match.budgetMin.toLocaleString("vi-VN")}–
+                    {detail.data.match.budgetMax.toLocaleString("vi-VN")}₫/tháng
+                  </p>
+                </Card>
+              </div>
+            )}
+            <Card className="rounded-2xl border-0 p-6 shadow-sm">
+              <h2 className="font-display text-xl font-bold">Giới thiệu</h2>
+              <p className="mt-4 whitespace-pre-wrap leading-relaxed text-muted-foreground">
+                {p.bio || "Chưa có giới thiệu."}
               </p>
             </Card>
-          )}
-        </>
+            <QueryState query={detail} />
+            {detail.data && (
+              <Card className="rounded-2xl border-0 p-6 shadow-sm">
+                <h2 className="text-xl font-semibold">Mức độ phù hợp</h2>
+                <p className="mt-2 text-muted-foreground">
+                  {detail.data.match.explanation}
+                </p>
+                <div className="mt-5 space-y-4">
+                  {detail.data.match.breakdown.map((b) => (
+                    <div key={b.key}>
+                      <div className="flex justify-between text-sm">
+                        <p>{b.label}</p>
+                        <strong className="text-navy">{b.value}%</strong>
+                      </div>
+                      <div className="mt-2 h-2 rounded-full bg-muted">
+                        <div
+                          className="gradient-brand h-full rounded-full"
+                          style={{ width: `${b.value}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {detail.data.comparisonLocked ? (
+                  <p className="mt-5">
+                    <Link to="/premium" className="text-teal underline">
+                      Premium
+                    </Link>{" "}
+                    mở so sánh chi tiết hai hồ sơ.
+                  </p>
+                ) : (
+                  <table className="mt-5 w-full text-sm">
+                    <thead>
+                      <tr>
+                        <th className="text-left">Tiêu chí</th>
+                        <th>Bạn</th>
+                        <th>{p.displayName}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detail.data.comparison?.map((c) => (
+                        <tr key={c.key} className="border-t">
+                          <td className="py-3">{c.label}</td>
+                          <td className="text-center">{c.mine}</td>
+                          <td className="text-center">{c.theirs}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                <p className="mt-4 text-xs text-muted-foreground">
+                  Tính lúc{" "}
+                  {new Date(detail.data.calculatedAt).toLocaleString("vi-VN")}
+                </p>
+              </Card>
+            )}
+          </div>
+        </div>
       )}
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogContent>

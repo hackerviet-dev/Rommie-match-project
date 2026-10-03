@@ -1,4 +1,5 @@
 import { AuthGuard } from "./auth-guard";
+import { ActorEntry } from "./actor-entry";
 import { OnboardingGate } from "@/features/onboarding";
 import { useAuthSession } from "@/features/auth";
 import { Route, Routes, useLocation } from "react-router-dom";
@@ -28,6 +29,8 @@ import SettingsPage from "@/pages/settings-page";
 import RoomDetailPage from "@/pages/room-detail-page";
 import RoomEditorPage from "@/pages/room-editor-page";
 import RoomsPage from "@/pages/rooms-page";
+import GroupsPage from "@/pages/groups-page";
+import DisputesPage from "@/pages/disputes-page";
 
 export function AppRouter() {
   useAuthSession();
@@ -36,9 +39,30 @@ export function AppRouter() {
     <OnboardingGate>
       <PageTransition>
         <Routes>
-          <Route path={ROUTES.landing} element={<LandingPage />} />
-          <Route path={ROUTES.login} element={<LoginPage />} />
-          <Route path={ROUTES.register} element={<RegisterPage />} />
+          <Route
+            path={ROUTES.landing}
+            element={
+              <ActorEntry>
+                <LandingPage />
+              </ActorEntry>
+            }
+          />
+          <Route
+            path={ROUTES.login}
+            element={
+              <ActorEntry>
+                <LoginPage />
+              </ActorEntry>
+            }
+          />
+          <Route
+            path={ROUTES.register}
+            element={
+              <ActorEntry>
+                <RegisterPage />
+              </ActorEntry>
+            }
+          />
           <Route
             path={ROUTES.onboarding}
             element={
@@ -58,7 +82,7 @@ export function AppRouter() {
           <Route
             path={ROUTES.dashboard}
             element={
-              <AuthGuard>
+              <AuthGuard memberHome>
                 <DashboardPage />
               </AuthGuard>
             }
@@ -130,10 +154,26 @@ export function AppRouter() {
             }
           />
           <Route
-            path={ROUTES.admin}
+            path="/admin/*"
             element={
               <AuthGuard staff>
                 <AdminPage />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/groups"
+            element={
+              <AuthGuard>
+                <GroupsPage />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/disputes"
+            element={
+              <AuthGuard>
+                <DisputesPage />
               </AuthGuard>
             }
           />
@@ -148,9 +188,9 @@ export function AppRouter() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </PageTransition>
-      {pathname !== ROUTES.chat && pathname !== ROUTES.onboarding && (
-        <AIChatbox />
-      )}
+      {pathname !== ROUTES.chat &&
+        pathname !== ROUTES.onboarding &&
+        !pathname.startsWith("/admin") && <AIChatbox />}
     </OnboardingGate>
   );
 }

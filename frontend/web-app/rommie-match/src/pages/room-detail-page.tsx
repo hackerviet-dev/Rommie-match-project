@@ -34,8 +34,19 @@ export default function RoomDetailPage() {
       {r && (
         <Card className="mt-5 rounded-3xl p-6 sm:p-8">
           <p className="text-teal">
-            {r.isActive ? "Đang tìm người ở ghép" : "Tin đã ẩn"}
+            {r.moderationStatus === "pending"
+              ? "Tin đang chờ kiểm duyệt"
+              : r.moderationStatus === "rejected"
+                ? "Tin chưa được duyệt"
+                : r.isActive
+                  ? "Đang tìm người ở ghép"
+                  : "Tin đã ẩn"}
           </p>
+          {r.ownerUserId === me && r.moderationNote && (
+            <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+              Ghi chú kiểm duyệt: {r.moderationNote}
+            </p>
+          )}
           <h1 className="mt-2 text-3xl font-display font-bold">{r.title}</h1>
           <p className="mt-3 text-muted-foreground">
             {r.address}, {r.district}, {r.city}
