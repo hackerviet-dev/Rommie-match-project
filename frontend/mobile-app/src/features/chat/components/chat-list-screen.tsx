@@ -1,4 +1,3 @@
-import { router } from "expo-router";
 import { MessageCircle, Search } from "lucide-react-native";
 import { useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, Text, View } from "react-native";
@@ -12,6 +11,7 @@ import { normalizeSearch } from "@/utils/normalize-search";
 import { formatChatTime } from "../format-time";
 import { CHAT_STATUS_LABEL, useChatStatus } from "../hooks/use-chat-realtime";
 import { openConversation, useConversations } from "../hooks/use-conversations";
+import { goToTab } from "@/components/stack-header";
 
 export function ChatListScreen() {
   const status = useChatStatus((state) => state.status);
@@ -145,11 +145,7 @@ export function ChatListScreen() {
                 : "Không có hội thoại phù hợp."}
             </Text>
             {all.length === 0 ? (
-              <Button
-                action="primary"
-                variant="outline"
-                onPress={() => router.navigate("/matches")}
-              >
+              <Button action="primary" variant="outline" onPress={() => goToTab("/matches")}>
                 <ButtonText>Tìm người ở ghép</ButtonText>
               </Button>
             ) : null}

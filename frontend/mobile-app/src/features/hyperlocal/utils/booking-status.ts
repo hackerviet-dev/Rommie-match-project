@@ -12,6 +12,10 @@ export function bookingStatusLabel(status: string) {
 export function formatBookingTime(value: string) {
   const date = new Date(value);
   const time = date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-  const day = date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const day = date.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
   return `${time}, ${day}`;
 }

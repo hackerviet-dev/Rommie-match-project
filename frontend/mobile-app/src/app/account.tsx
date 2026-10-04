@@ -9,6 +9,7 @@ import {
   LogOut,
   type LucideIcon,
   MonitorSmartphone,
+  Receipt,
   UserPlus,
 } from "lucide-react-native";
 import { Pressable, Text, View } from "react-native";
@@ -21,7 +22,7 @@ import { useAuthStore, useSignOut } from "@/features/auth";
 import { colors } from "@/theme/colors";
 
 const MENU: {
-  href: "/my-rooms" | "/bookings" | "/saved" | "/requests" | "/quiz";
+  href: "/my-rooms" | "/bookings" | "/saved" | "/requests" | "/quiz" | "/payments";
   label: string;
   hint: string;
   icon: LucideIcon;
@@ -35,6 +36,12 @@ const MENU: {
   },
   { href: "/saved", label: "Hồ sơ đã lưu", hint: "Người ở ghép bạn quan tâm", icon: Bookmark },
   { href: "/requests", label: "Đề nghị ở ghép", hint: "Đã gửi và đã nhận", icon: UserPlus },
+  {
+    href: "/payments",
+    label: "Gói & thanh toán",
+    hint: "Gói hiện tại, lịch sử giao dịch",
+    icon: Receipt,
+  },
   {
     href: "/quiz",
     label: "Khảo sát lối sống",

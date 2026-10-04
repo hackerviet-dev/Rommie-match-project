@@ -25,3 +25,12 @@ export function StackHeader({ title, right }: { title: string; right?: ReactNode
     </View>
   );
 }
+
+type TabHref = "/" | "/matches" | "/rooms" | "/chat" | "/services" | "/premium";
+
+// Về một tab từ bất kỳ màn nào. router.navigate từ màn chồng lên tab (hồ sơ, giao dịch…)
+// sẽ đẩy thêm cả bộ tab mới vào stack; dismissTo đóng các màn đó để quay về đúng tab cũ.
+export function goToTab(href: TabHref) {
+  if (router.canDismiss()) router.dismissTo(href);
+  else router.navigate(href);
+}

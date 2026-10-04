@@ -1,10 +1,9 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { router } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { QueryState } from "@/components/query-state";
-import { StackHeader } from "@/components/stack-header";
+import { StackHeader, goToTab } from "@/components/stack-header";
 import { Button, ButtonText } from "@/components/ui/button";
 import { UserAvatar } from "@/components/user-avatar";
 import { useAuthStore } from "@/features/auth";
@@ -39,11 +38,7 @@ export function SavedProfilesScreen() {
           query.isSuccess ? (
             <View className="items-center gap-3 py-10">
               <Text className="text-center text-sm text-slate-500">Chưa có hồ sơ đã lưu.</Text>
-              <Button
-                action="primary"
-                variant="outline"
-                onPress={() => router.navigate("/matches")}
-              >
+              <Button action="primary" variant="outline" onPress={() => goToTab("/matches")}>
                 <ButtonText>Khám phá ở ghép</ButtonText>
               </Button>
             </View>

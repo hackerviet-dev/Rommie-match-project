@@ -4,7 +4,7 @@ import { ChevronRight } from "lucide-react-native";
 import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { QueryState } from "@/components/query-state";
-import { StackHeader } from "@/components/stack-header";
+import { StackHeader, goToTab } from "@/components/stack-header";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Button, ButtonText } from "@/components/ui/button";
 import { useAuthStore } from "@/features/auth";
@@ -38,11 +38,7 @@ export function MyBookingsScreen() {
           query.isSuccess ? (
             <View className="items-center gap-3 py-10">
               <Text className="text-sm text-slate-500">Chưa có lịch đặt.</Text>
-              <Button
-                action="primary"
-                variant="outline"
-                onPress={() => router.navigate("/services")}
-              >
+              <Button action="primary" variant="outline" onPress={() => goToTab("/services")}>
                 <ButtonText>Khám phá dịch vụ</ButtonText>
               </Button>
             </View>
@@ -59,9 +55,7 @@ export function MyBookingsScreen() {
               <Text className="text-base font-bold text-ink" numberOfLines={1}>
                 {item.serviceName}
               </Text>
-              <Text className="text-sm text-slate-500">
-                {formatBookingTime(item.scheduledAt)}
-              </Text>
+              <Text className="text-sm text-slate-500">{formatBookingTime(item.scheduledAt)}</Text>
               <View className="flex-row">
                 <Badge action={bookingStatusAction(item.status)} size="sm">
                   <BadgeText action={bookingStatusAction(item.status)}>

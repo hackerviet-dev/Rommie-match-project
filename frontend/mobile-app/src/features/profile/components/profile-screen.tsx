@@ -16,7 +16,7 @@ import { Text, View } from "react-native";
 import { FormScreen } from "@/components/form-screen";
 import { MatchScore } from "@/components/match-score";
 import { QueryState } from "@/components/query-state";
-import { StackHeader } from "@/components/stack-header";
+import { StackHeader, goToTab } from "@/components/stack-header";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Button, ButtonIcon, ButtonText } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -257,10 +257,7 @@ export function ProfileScreen({ id }: { id: string }) {
                 <View className="flex-row items-center gap-2 rounded-xl bg-mint/20 p-3">
                   <Lock color={colors.navy} size={16} />
                   <Text className="flex-1 text-sm text-navy">
-                    <Text
-                      className="font-bold underline"
-                      onPress={() => router.navigate("/premium")}
-                    >
+                    <Text className="font-bold underline" onPress={() => goToTab("/premium")}>
                       Premium
                     </Text>{" "}
                     mở so sánh chi tiết hai hồ sơ.

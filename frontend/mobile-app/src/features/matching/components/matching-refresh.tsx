@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { router } from "expo-router";
 import { Sparkles } from "lucide-react-native";
 import { Text, View } from "react-native";
 import { QueryState } from "@/components/query-state";
@@ -9,6 +8,7 @@ import { FormError } from "@/components/ui/form-field";
 import { useAuthStore } from "@/features/auth";
 import { colors } from "@/theme/colors";
 import { matchingApi } from "../services/matching-api";
+import { goToTab } from "@/components/stack-header";
 
 // Quét lại người phù hợp (POST /api/matching/me/recalculate); gói miễn phí có giới hạn lượt.
 export function MatchingRefresh({ openResults = false }: { openResults?: boolean }) {
@@ -22,7 +22,7 @@ export function MatchingRefresh({ openResults = false }: { openResults?: boolean
     mutationFn: matchingApi.recalculate,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["matching"] });
-      if (openResults) router.navigate("/matches");
+      if (openResults) goToTab("/matches");
     },
   });
   const outOfScans = usage.data?.scansRemaining === 0;
@@ -64,7 +64,7 @@ export function MatchingRefresh({ openResults = false }: { openResults?: boolean
           action="primary"
           variant="outline"
           className="h-11"
-          onPress={() => router.navigate("/premium")}
+          onPress={() => goToTab("/premium")}
         >
           <ButtonText>Hết lượt quét · Xem Premium</ButtonText>
         </Button>

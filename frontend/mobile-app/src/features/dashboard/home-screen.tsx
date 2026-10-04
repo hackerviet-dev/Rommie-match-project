@@ -20,6 +20,7 @@ import { MatchingRefresh } from "@/features/matching/components/matching-refresh
 import { profileApi, savedProfilesApi } from "@/features/profile";
 import { useMyQuiz } from "@/features/quiz";
 import { colors } from "@/theme/colors";
+import { goToTab } from "@/components/stack-header";
 
 // Bản mobile của DashboardScreen trên web (phần ghép đôi). Tin nhắn, dịch vụ và gói thành viên
 // được thêm ở các giai đoạn sau.
@@ -69,11 +70,7 @@ export function HomeScreen() {
         <Text className="mt-2 text-sm leading-5 text-slate-200">
           Tìm người phù hợp và theo dõi hành trình ở ghép của bạn.
         </Text>
-        <Button
-          action="secondary"
-          className="mt-5 rounded-2xl"
-          onPress={() => router.navigate("/matches")}
-        >
+        <Button action="secondary" className="mt-5 rounded-2xl" onPress={() => goToTab("/matches")}>
           <ButtonText>Khám phá ở ghép</ButtonText>
           <ButtonIcon as={ChevronRight} />
         </Button>
@@ -141,7 +138,7 @@ export function HomeScreen() {
 
       <View className="flex-row items-center justify-between px-1">
         <Text className="text-lg font-bold text-ink">Gợi ý cho bạn</Text>
-        <Pressable onPress={() => router.navigate("/matches")}>
+        <Pressable onPress={() => goToTab("/matches")}>
           <Text className="font-semibold text-teal">Xem tất cả</Text>
         </Pressable>
       </View>

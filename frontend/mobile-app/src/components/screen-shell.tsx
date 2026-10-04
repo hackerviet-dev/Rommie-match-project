@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LogoMark } from "@/components/logo-mark";
+import { goToTab } from "@/components/stack-header";
 import { UserAvatar } from "@/components/user-avatar";
 import { useAuthStore } from "@/features/auth";
 import { colors } from "@/theme/colors";
@@ -28,7 +29,7 @@ export function ScreenShell({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Về trang chính"
-              onPress={() => router.navigate("/")}
+              onPress={() => goToTab("/")}
             >
               <LogoMark />
             </Pressable>
