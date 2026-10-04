@@ -21,6 +21,25 @@
 // while history stays readable, then lifting when the block is soft-deleted.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { mkdir } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+
+const root = fileURLToPath(new URL('../', import.meta.url));
+const require = createRequire(root + 'frontend/web-app/rommie-match/package.json');
+const { HubConnectionBuilder, LogLevel } = require('@microsoft/signalr');
+await mkdir(root + 'tmp/chat-url', { recursive: true });
+for (const [name, env, expected] of [
+  ['primary', { VITE_API_BASE_URL: 'http://localhost:5000/', VITE_API_URL: 'https://unused.example' }, 'http://localhost:5000'],
+  ['fallback', { VITE_API_URL: 'http://localhost:5000/' }, 'http://localhost:5000'],
+  ['proxy', {}, ''],
+]) {
+  const outfile = root + `tmp/chat-url/${name}.cjs`;
+  await require('esbuild').build({ entryPoints: [root + 'frontend/web-app/rommie-match/src/services/api-client.ts'],
+    bundle: true, platform: 'node', format: 'cjs', outfile,
+    define: { 'import.meta.env': JSON.stringify(env) } });
+  assert.equal(require(outfile).API_BASE_URL, expected);
+}
 
 const baseUrl = (process.argv[2] ?? process.env.API_URL ?? 'http://localhost:5000').replace(/\/+$/, '');
 const container = process.env.POSTGRES_CONTAINER ?? 'roomiematch-postgres-1';
@@ -143,6 +162,25 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const health = await call('GET', '/health');
 assert.equal(health.status, 200, `API ${baseUrl} is not healthy (${health.status})`);
 
+// A browser only allows credentialed cross-origin negotiation with an exact origin.
+const origin = process.env.CHAT_WEB_ORIGIN ?? 'http://localhost:5173';
+const preflight = await fetch(baseUrl + '/hubs/chat/negotiate?negotiateVersion=1', {
+  method: 'OPTIONS', headers: { Origin: origin, 'Access-Control-Request-Method': 'POST',
+    'Access-Control-Request-Headers': 'authorization,x-signalr-user-agent' },
+});
+assert.equal(preflight.status, 204);
+assert.equal(preflight.headers.get('access-control-allow-origin'), origin);
+assert.equal(preflight.headers.get('access-control-allow-credentials'), 'true');
+const denied = await fetch(baseUrl + '/hubs/chat/negotiate', {
+  method: 'OPTIONS', headers: { Origin: 'https://unapproved.example', 'Access-Control-Request-Method': 'POST' },
+});
+assert.equal(denied.headers.get('access-control-allow-origin'), null);
+const anonymous = await fetch(baseUrl + '/hubs/chat/negotiate?negotiateVersion=1', {
+  method: 'POST', headers: { Origin: origin },
+});
+assert.equal(anonymous.status, 401);
+assert.equal(anonymous.headers.get('access-control-allow-origin'), origin);
+
 const stamp = Date.now();
 const testEmails = [];
 const hubs = [];
@@ -154,11 +192,31 @@ async function register(label) {
   });
   assert.ok(status === 200 || status === 201, `register ${label} returned ${status}: ${JSON.stringify(json)}`);
   testEmails.push(email);
+  const onboarding = await call('PUT', '/api/users/me/onboarding', {
+    token: json.accessToken,
+    body: {
+      name: `Chat ${label}`, age: '24', gender: 'Nam', employment: 'Đang đi làm',
+      orgName: 'Chat QA', hideOrg: false, city: 'TP.HCM', bio: 'Isolated chat regression fixture',
+      sleep: '22h–0h', env: 'Yên tĩnh', yn: { smoke: 'Không', drink: 'Không', pets: 'Có' },
+      cleanliness: 4, extroversion: 60, budgetMin: 3, budgetMax: 7,
+      hasRoom: 'no', distance: '2–5 km', roomType: 'Phòng riêng',
+      moveInDate: new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh',
+        year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()),
+      amenities: [],
+    },
+  });
+  assert.equal(onboarding.status, 200, `onboarding ${label}: ${onboarding.text}`);
   return { token: json.accessToken, id: json.user.id, email };
 }
 
 try {
   const a = await register('a');
+  // The same official JS client used by the web app negotiates against an absolute API URL.
+  const client = new HubConnectionBuilder().withUrl(`${baseUrl}/hubs/chat`, {
+    accessTokenFactory: () => a.token, headers: { Origin: origin },
+  }).configureLogging(LogLevel.None).build();
+  try { await client.start(); assert.equal(client.state, 'Connected'); }
+  finally { await client.stop(); }
   const b = await register('b');
   const outsider = await register('c');
   const hidden = await register('hidden');
@@ -336,5 +394,5 @@ try {
   }
 }
 
-console.log('PASS: chat REST + SignalR - 401 anonymous (REST and hub), start conversation idempotent from both sides, self/unknown/hidden/staff recipients 403, outsider 404 everywhere, send trimmed with 400 for blank/too long, MessageReceived to every connection of both members and none to outsiders, hub SendMessage/MarkRead results and HubException errors, Typing to the other side only, list lastMessage/unreadCount, keyset history beforeId/limit/hasMore, mark read readAt + ConversationRead, block in either direction locks sending/typing/new conversations while history stays readable, soft-deleted block lifts it, test data cleaned up.');
+console.log('PASS: API base URL primary/fallback/proxy, cross-origin credentialed CORS and denied origin, official SignalR JS client negotiation; chat REST + SignalR authentication/isolation/messages/read/typing/history/blocking; test data cleaned up.');
 process.exit(0);
