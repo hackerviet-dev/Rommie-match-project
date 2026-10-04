@@ -116,6 +116,18 @@ writes are gated on the `role` claim in the token rather than on ownership. A
 member's token gets `403`, no token gets `401`. `DELETE` is a soft delete via
 `deleted_at`, same as rooms.
 
+Staff booking processing (`admin` or `moderator`, Bearer token required):
+
+- `GET /api/hyperlocal/staff/bookings?page=1&pageSize=20` lists bookings across accounts.
+- `POST /api/hyperlocal/staff/bookings/{bookingId}/confirm` changes a future `pending` booking to `confirmed`.
+- `POST /api/hyperlocal/staff/bookings/{bookingId}/complete` changes a `confirmed` booking to `completed` once its scheduled time has arrived.
+
+The two actions have no request body and return the updated booking (`200`).
+A missing booking returns `404`; an invalid state/time or repeated action returns
+`409` with `booking_not_confirmable` or `booking_not_completable`.
+Concurrent actions enforce the same state checks in the database. Members continue
+to read and cancel only their own bookings; confirmed future bookings remain cancellable.
+
 Roles live in `users.role` and are not settable through the API. Promote the
 first curator directly in the database, then have them sign in again — the role
 is baked into the token when it is issued:

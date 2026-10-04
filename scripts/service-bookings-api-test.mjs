@@ -6,9 +6,11 @@
 //   GET  /api/hyperlocal/me/bookings
 //   GET  /api/hyperlocal/me/bookings/{bookingId}
 //   POST /api/hyperlocal/me/bookings/{bookingId}/cancel
+//   GET  /api/hyperlocal/staff/bookings
+//   POST /api/hyperlocal/staff/bookings/{bookingId}/confirm | /complete
 // Usage: node scripts/service-bookings-api-test.mjs http://localhost:5000
-// Requires the local PostgreSQL container for role promotion, for moving a booking into the past
-// or to "completed" (there is no staff API for that yet), and for cleanup (override the container
+// Requires the local PostgreSQL container for role promotion, for moving a booking
+// into the past to exercise completion timing, and for cleanup (override the container
 // with POSTGRES_CONTAINER).
 // Covers: list -> detail -> book -> my list -> my detail -> cancel end to end, 401 for anonymous
 // callers, 201 with a Location header and status pending, the 30-minute/60-day scheduling window
@@ -63,6 +65,16 @@ async function register(label, role) {
   });
   assert.ok(status === 200 || status === 201, `register ${label} returned ${status}: ${JSON.stringify(json)}`);
   testEmails.push(email);
+  const onboarding = await call('PUT', '/api/users/me/onboarding', {
+    token: json.accessToken,
+    body: { name: `Booking ${label}`, age: '24', gender: 'Nam', employment: 'Đang đi làm',
+      orgName: 'Booking QA', hideOrg: false, city: 'TP.HCM', bio: '', sleep: '22h–0h', env: 'Yên tĩnh',
+      yn: { smoke: 'Không', drink: 'Không', pets: 'Có' }, cleanliness: 4, extroversion: 60,
+      budgetMin: 3, budgetMax: 7, hasRoom: 'no', distance: '2–5 km', roomType: 'Phòng riêng',
+      moveInDate: new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric',
+        month: '2-digit', day: '2-digit' }).format(new Date()), amenities: [] },
+  });
+  assert.equal(onboarding.status, 200, onboarding.text);
   if (role === undefined) {
     return json.accessToken;
   }
@@ -85,6 +97,7 @@ try {
   const memberA = await register('a');
   const memberB = await register('b');
   const admin = await register('admin', 'admin');
+  const moderator = await register('moderator', 'moderator');
 
   // 1. A member finds a service in the public list and opens its detail.
   const list = await call('GET', '/api/hyperlocal/services?city=TP.HCM&pageSize=10');
@@ -214,13 +227,53 @@ try {
     assert.equal(result.json?.code, 'booking_not_cancellable', `${label} code was ${result.json?.code}`);
   };
   await expectNotCancellable(booking.id, 'second cancel');
-  // There is no staff API to complete a booking or let time pass, so move the rows by hand.
+  // Move only time in fixtures; state changes must go through the staff API.
   sql(`UPDATE service_bookings SET scheduled_at = now() - interval '1 hour' WHERE id = '${blankNote.json.id}'`);
   await expectNotCancellable(blankNote.json.id, 'past booking');
-  sql(`UPDATE service_bookings SET status = 'completed' WHERE id = '${beforeDelete.json.id}'`);
+  const staffPaths = [['GET', '/api/hyperlocal/staff/bookings'],
+    ['POST', `/api/hyperlocal/staff/bookings/${beforeDelete.json.id}/confirm`],
+    ['POST', `/api/hyperlocal/staff/bookings/${beforeDelete.json.id}/complete`]];
+  for (const [method, path] of staffPaths) {
+    assert.equal((await call(method, path)).status, 401);
+    assert.equal((await call(method, path, { token: memberA })).status, 403);
+    assert.equal((await call(method, path, { token: memberB })).status, 403);
+  }
+  for (const token of [admin, moderator]) {
+    const staffList = await call('GET', '/api/hyperlocal/staff/bookings?pageSize=50', { token });
+    assert.equal(staffList.status, 200);
+    assert.ok(staffList.json.items.some(b => b.id === beforeDelete.json.id));
+    for (const action of ['confirm', 'complete']) {
+      assert.equal((await call('POST', `/api/hyperlocal/staff/bookings/${someId}/${action}`, { token })).status, 404);
+    }
+  }
+  assert.equal((await call('GET', '/api/hyperlocal/staff/bookings?pageSize=51', { token: admin })).status, 400);
+  const action = (id, name, token = admin) => call('POST', `/api/hyperlocal/staff/bookings/${id}/${name}`, { token });
+  const rejected = async (id, name) => {
+    const r = await action(id, name);
+    assert.equal(r.status, 409);
+    assert.equal(r.json.code, name === 'confirm' ? 'booking_not_confirmable' : 'booking_not_completable');
+  };
+  await rejected(booking.id, 'confirm'); // cancelled
+  await rejected(booking.id, 'complete');
+  await rejected(blankNote.json.id, 'confirm'); // pending but past
+  await rejected(blankNote.json.id, 'complete'); // still pending
+  await rejected(beforeDelete.json.id, 'complete'); // must first confirm
+  const confirmations = await Promise.all([action(beforeDelete.json.id, 'confirm'), action(beforeDelete.json.id, 'confirm', moderator)]);
+  assert.deepEqual(confirmations.map(r => r.status).sort(), [200, 409]);
+  assert.equal(confirmations.find(r => r.status === 200).json.status, 'confirmed');
+  assert.equal((await call('GET', `/api/hyperlocal/me/bookings/${beforeDelete.json.id}`, { token: memberA })).json.status, 'confirmed');
+  await rejected(beforeDelete.json.id, 'complete'); // future
+  sql(`UPDATE service_bookings SET scheduled_at = now() - interval '1 hour' WHERE id = '${beforeDelete.json.id}'`);
+  const completions = await Promise.all([action(beforeDelete.json.id, 'complete'), action(beforeDelete.json.id, 'complete', moderator)]);
+  assert.deepEqual(completions.map(r => r.status).sort(), [200, 409]);
+  assert.equal(completions.find(r => r.status === 200).json.status, 'completed');
   await expectNotCancellable(beforeDelete.json.id, 'completed booking');
-  sql(`UPDATE service_bookings SET status = 'confirmed' WHERE id = '${beforeDelete.json.id}'`);
-  const confirmedCancel = await call('POST', `/api/hyperlocal/me/bookings/${beforeDelete.json.id}/cancel`, { token: memberA });
+  await rejected(beforeDelete.json.id, 'confirm');
+  await rejected(beforeDelete.json.id, 'complete');
+  const cancellable = await call('POST', `/api/hyperlocal/services/${service.id}/bookings`, { token: memberA, body: bookingBody() });
+  assert.equal(cancellable.status, 201);
+  assert.equal((await action(cancellable.json.id, 'confirm', moderator)).status, 200);
+  const confirmedCancel = await call('POST', `/api/hyperlocal/me/bookings/${cancellable.json.id}/cancel`, { token: memberA });
   assert.equal(confirmedCancel.status, 200, 'a confirmed future booking must be cancellable');
   assert.equal(confirmedCancel.json.status, 'cancelled');
 } finally {
@@ -233,4 +286,4 @@ try {
   }
 }
 
-console.log('PASS: hyperlocal booking flow - list -> detail -> book -> my list -> my detail -> cancel, 401 anonymous, 201 pending with Location, 30-minute/60-day window and field validation 400, unknown/soft-deleted service 404, booking of a deleted service still readable, my list paged newest first and caller-scoped, other member 404 for read/cancel, cancel sets cancelledAt, second/past/completed cancel 409 booking_not_cancellable, confirmed future booking cancellable, test data cleaned up.');
+console.log('PASS: member booking regression; admin/moderator staff list, confirm/complete; 401/403/404, pagination, state/time guards, concurrent transitions (one 200/one 409), member sees updated status, terminal states preserved and confirmed cancellation; fixtures cleaned.');
