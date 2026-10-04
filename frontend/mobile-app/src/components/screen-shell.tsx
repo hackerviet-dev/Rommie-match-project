@@ -1,13 +1,16 @@
+import { router } from "expo-router";
 import { Bell } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LogoMark } from "@/components/logo-mark";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/user-avatar";
+import { useAuthStore } from "@/features/auth";
 import { colors } from "@/theme/colors";
 
 // Khung chung của các tab: header thương hiệu + nội dung cuộn.
 export function ScreenShell({ title, children }: { title: string; children: ReactNode }) {
+  const user = useAuthStore((state) => state.user);
   return (
     <SafeAreaView className="flex-1 bg-paper" edges={["top", "left", "right"]}>
       <View className="flex-1 px-4 pt-2">
@@ -27,9 +30,19 @@ export function ScreenShell({ title, children }: { title: string; children: Reac
             <Pressable className="h-10 w-10 items-center justify-center rounded-full bg-white">
               <Bell color={colors.navy} size={19} />
             </Pressable>
-            <Avatar size="sm" className="border-2 border-mint bg-mint/30">
-              <AvatarFallback className="text-sm text-navy">ME</AvatarFallback>
-            </Avatar>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Tài khoản"
+              onPress={() => router.push("/account")}
+            >
+              <UserAvatar
+                size="sm"
+                name={user?.displayName}
+                avatarUrl={user?.avatarUrl}
+                className="border-2 border-mint"
+                textClassName="text-sm"
+              />
+            </Pressable>
           </View>
         </View>
         <ScrollView

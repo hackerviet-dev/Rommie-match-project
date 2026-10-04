@@ -5,9 +5,11 @@ import { Badge, BadgeText } from "@/components/ui/badge";
 import { Button, ButtonGroup, ButtonIcon, ButtonText } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MatchScore } from "@/components/match-score";
+import { getGivenName, useAuthStore } from "@/features/auth";
 import { roommates } from "@/mocks/mock-data";
 
 export function HomeScreen({ onOpenMatches }: { onOpenMatches: () => void }) {
+  const name = useAuthStore((state) => getGivenName(state.user?.displayName));
   return (
     <View className="gap-4">
       <Card className="border-0 bg-navy p-5">
@@ -17,7 +19,7 @@ export function HomeScreen({ onOpenMatches }: { onOpenMatches: () => void }) {
               <BadgeText action="success">✨ Ghép đôi bằng AI</BadgeText>
             </Badge>
             <Text className="mt-4 text-3xl font-bold leading-9 text-white">
-              Chào mừng trở lại, Linh 👋
+              Chào mừng trở lại, {name} 👋
             </Text>
             <Text className="mt-2 text-sm leading-5 text-slate-200">
               Hồ sơ của bạn đang được 24 người phù hợp quan tâm.

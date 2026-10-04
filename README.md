@@ -169,6 +169,13 @@ npm run start      # scan the QR code with Expo Go (same Wi-Fi as the computer)
 npm run typecheck
 ```
 
+The app talks to the .NET API on port 5000 of the computer running `npm run start`: it reads
+that computer's LAN IP from Expo, so with the Docker stack up (`docker compose up -d`) a phone on
+the same Wi-Fi reaches the API with no configuration. Set `EXPO_PUBLIC_API_BASE_URL` in
+`frontend/mobile-app/.env` (see `.env.example`) when using `npx expo start --tunnel` or an API on
+another machine. Sessions are stored with `expo-secure-store`; admin and moderator accounts are
+directed to the web app.
+
 Add dependencies with `npx expo install <package>` so their versions match the SDK, and only
 use libraries bundled with Expo Go. The tracked `android/` and `ios/` folders are left over
 from the earlier React Native CLI setup; Expo Go does not use them.
