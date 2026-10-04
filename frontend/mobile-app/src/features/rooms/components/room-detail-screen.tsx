@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { MapPin, Pencil } from "lucide-react-native";
+import { MapPin, MessageCircle, Pencil } from "lucide-react-native";
 import { Linking, Text, View } from "react-native";
 import { FormScreen } from "@/components/form-screen";
 import { QueryState } from "@/components/query-state";
@@ -9,7 +9,9 @@ import { Badge, BadgeText } from "@/components/ui/badge";
 import { Button, ButtonIcon, ButtonText } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { UserAvatar } from "@/components/user-avatar";
+import { FormError } from "@/components/ui/form-field";
 import { useAuthStore } from "@/features/auth";
+import { useStartChat } from "@/features/chat";
 import { openProfile } from "@/features/matching/components/match-card";
 import { formatDate, formatVnd, propertyTypeLabel, roomStatus } from "../room-labels";
 import { roomsApi } from "../services/rooms-api";
@@ -21,6 +23,7 @@ export function RoomDetailScreen({ id }: { id: string }) {
     queryFn: () => roomsApi.get(id),
     enabled: Boolean(id),
   });
+  const chat = useStartChat();
   const room = query.isError ? undefined : query.data;
   const isOwner = room?.ownerUserId === me;
   const status = room ? roomStatus(room) : null;
@@ -125,6 +128,18 @@ export function RoomDetailScreen({ id }: { id: string }) {
           ) : null}
 
           <View className="gap-2">
+            {!isOwner ? (
+              <Button
+                action="primary"
+                className="h-12"
+                loading={chat.isPending}
+                onPress={() => chat.mutate(room.ownerUserId)}
+              >
+                <ButtonIcon as={MessageCircle} />
+                <ButtonText>Liên hệ {room.ownerDisplayName}</ButtonText>
+              </Button>
+            ) : null}
+            <FormError message={chat.error?.message} />
             {isOwner ? (
               <Button
                 action="primary"

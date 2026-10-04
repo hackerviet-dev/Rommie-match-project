@@ -7,6 +7,7 @@ import App from "@/App";
 import { LogoMark } from "@/components/logo-mark";
 import { Button, ButtonText } from "@/components/ui/button";
 import { isStaffRole, useAuthSession, useAuthStore } from "@/features/auth";
+import { useChatRealtime } from "@/features/chat";
 import { onboardingApi } from "@/features/onboarding";
 import { colors } from "@/theme/colors";
 
@@ -32,6 +33,8 @@ function RootNavigator() {
     enabled: isMember,
     retry: false,
   });
+  const onboarded = Boolean(onboarding.data?.isComplete);
+  useChatRealtime(isMember && onboarded);
 
   if (!isInitialized) return <BootScreen error={bootError} onRetry={retry} onSkip={skip} />;
   if (isMember && onboarding.isError)
@@ -45,7 +48,6 @@ function RootNavigator() {
   if (isMember && onboarding.isPending)
     return <BootScreen error={null} message="Đang kiểm tra hồ sơ…" onRetry={retry} onSkip={skip} />;
 
-  const onboarded = Boolean(onboarding.data?.isComplete);
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={!isAuthenticated}>
@@ -64,6 +66,7 @@ function RootNavigator() {
         <Stack.Screen name="rooms/new" />
         <Stack.Screen name="rooms/edit/[id]" />
         <Stack.Screen name="my-rooms" />
+        <Stack.Screen name="chat/[id]" />
       </Stack.Protected>
       <Stack.Protected guard={isMember}>
         <Stack.Screen name="quiz" />

@@ -6,6 +6,7 @@ import {
   Flag,
   Lock,
   MapPin,
+  MessageCircle,
   ShieldCheck,
   Slash,
   UserPlus,
@@ -23,6 +24,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormError } from "@/components/ui/form-field";
 import { UserAvatar } from "@/components/user-avatar";
 import { useAuthStore } from "@/features/auth";
+import { useStartChat } from "@/features/chat";
 import { BreakdownBars } from "@/features/matching/components/breakdown-bars";
 import { matchingApi } from "@/features/matching/services/matching-api";
 import { ApiError } from "@/services/api-error";
@@ -62,6 +64,7 @@ export function ProfileScreen({ id }: { id: string }) {
     },
     enabled: Boolean(id) && !isMe,
   });
+  const chat = useStartChat();
   const request = useMutation({
     mutationFn: () => matchingApi.request(id),
     onSuccess: () => {
@@ -145,6 +148,15 @@ export function ProfileScreen({ id }: { id: string }) {
             {!isMe ? (
               <View className="mt-4 w-full gap-2">
                 <Button
+                  action="primary"
+                  className="h-11"
+                  loading={chat.isPending}
+                  onPress={() => chat.mutate(id)}
+                >
+                  <ButtonIcon as={MessageCircle} />
+                  <ButtonText>Nhắn tin</ButtonText>
+                </Button>
+                <Button
                   action={isSaved ? "primary" : "secondary"}
                   variant={isSaved ? "outline" : "solid"}
                   className="h-11"
@@ -186,7 +198,11 @@ export function ProfileScreen({ id }: { id: string }) {
                   </Button>
                 </View>
                 {notice ? <Text className="text-center text-sm text-teal">{notice}</Text> : null}
-                <FormError message={request.error?.message ?? saved.mutation.error?.message} />
+                <FormError
+                  message={
+                    chat.error?.message ?? request.error?.message ?? saved.mutation.error?.message
+                  }
+                />
               </View>
             ) : null}
           </Card>

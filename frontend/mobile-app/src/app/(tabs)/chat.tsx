@@ -1,9 +1,9 @@
 import { ScreenShell } from "@/components/screen-shell";
-import { ChatListScreen } from "@/features/chat/chat-list-screen";
+import { ChatListScreen } from "@/features/chat/components/chat-list-screen";
 
 export default function ChatRoute() {
   return (
-    <ScreenShell title="Tin nhắn">
+    <ScreenShell title="Tin nhắn" scroll={false}>
       <ChatListScreen />
     </ScreenShell>
   );
