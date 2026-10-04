@@ -1,5 +1,11 @@
 import { router } from "expo-router";
-import { ArrowLeft, LogOut, MonitorSmartphone } from "lucide-react-native";
+import {
+  ArrowLeft,
+  ChevronRight,
+  ClipboardList,
+  LogOut,
+  MonitorSmartphone,
+} from "lucide-react-native";
 import { Pressable, Text, View } from "react-native";
 import { FormScreen } from "@/components/form-screen";
 import { UserAvatar } from "@/components/user-avatar";
@@ -51,6 +57,17 @@ export default function AccountScreen() {
           />
         </View>
       </Card>
+
+      <Pressable accessibilityRole="button" onPress={() => router.push("/quiz")}>
+        <Card className="mt-3 flex-row items-center gap-3">
+          <ClipboardList color={colors.teal} size={22} />
+          <View className="flex-1">
+            <Text className="text-base font-bold text-ink">Khảo sát lối sống</Text>
+            <Text className="text-sm text-slate-500">Xem kết quả hoặc làm lại bài khảo sát.</Text>
+          </View>
+          <ChevronRight color={colors.teal} size={20} />
+        </Card>
+      </Pressable>
 
       <View className="mt-6 gap-3">
         <FormError

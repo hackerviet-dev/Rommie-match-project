@@ -1,11 +1,13 @@
 import "../../global.css";
 
+import { useQuery } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { ActivityIndicator, Text, View } from "react-native";
 import App from "@/App";
 import { LogoMark } from "@/components/logo-mark";
 import { Button, ButtonText } from "@/components/ui/button";
 import { isStaffRole, useAuthSession, useAuthStore } from "@/features/auth";
+import { onboardingApi } from "@/features/onboarding";
 import { colors } from "@/theme/colors";
 
 export default function RootLayout() {
@@ -16,23 +18,48 @@ export default function RootLayout() {
   );
 }
 
-// Thay cho AuthGuard/ActorEntry của web: mỗi nhóm route chỉ tồn tại khi guard đúng, nên
-// đăng nhập/đăng xuất tự chuyển màn hình. Tài khoản admin/moderator chỉ dùng web.
+// Thay cho AuthGuard/ActorEntry/OnboardingGate của web: mỗi nhóm route chỉ tồn tại khi
+// guard đúng, nên đăng nhập, đăng xuất hay lưu onboarding tự chuyển màn hình. Khi nhiều màn
+// cùng hợp lệ, màn khai báo trước được mở đầu tiên. Admin/moderator chỉ dùng web.
 function RootNavigator() {
   const { bootError, retry, skip } = useAuthSession();
   const { user, isAuthenticated, isInitialized } = useAuthStore();
+  const isStaff = isAuthenticated && isStaffRole(user?.role);
+  const isMember = isAuthenticated && !isStaff;
+  const onboarding = useQuery({
+    queryKey: ["onboarding", user?.id],
+    queryFn: onboardingApi.getStatus,
+    enabled: isMember,
+    retry: false,
+  });
 
   if (!isInitialized) return <BootScreen error={bootError} onRetry={retry} onSkip={skip} />;
+  if (isMember && onboarding.isError)
+    return (
+      <BootScreen
+        error={`Không thể kiểm tra hồ sơ. ${onboarding.error.message}`}
+        onRetry={() => void onboarding.refetch()}
+        onSkip={skip}
+      />
+    );
+  if (isMember && onboarding.isPending)
+    return <BootScreen error={null} message="Đang kiểm tra hồ sơ…" onRetry={retry} onSkip={skip} />;
 
-  const isStaff = isAuthenticated && isStaffRole(user?.role);
+  const onboarded = Boolean(onboarding.data?.isComplete);
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={!isAuthenticated}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
-      <Stack.Protected guard={isAuthenticated && !isStaff}>
+      <Stack.Protected guard={isMember && !onboarded}>
+        <Stack.Screen name="onboarding" />
+      </Stack.Protected>
+      <Stack.Protected guard={isMember && onboarded}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="account" />
+      </Stack.Protected>
+      <Stack.Protected guard={isMember}>
+        <Stack.Screen name="quiz" />
       </Stack.Protected>
       <Stack.Protected guard={isStaff}>
         <Stack.Screen name="staff" />
@@ -43,10 +70,12 @@ function RootNavigator() {
 
 function BootScreen({
   error,
+  message = "Đang kiểm tra phiên đăng nhập…",
   onRetry,
   onSkip,
 }: {
   error: string | null;
+  message?: string;
   onRetry: () => void;
   onSkip: () => void;
 }) {
@@ -66,7 +95,7 @@ function BootScreen({
       ) : (
         <>
           <ActivityIndicator color={colors.teal} />
-          <Text className="text-sm text-slate-500">Đang kiểm tra phiên đăng nhập…</Text>
+          <Text className="text-sm text-slate-500">{message}</Text>
         </>
       )}
     </View>

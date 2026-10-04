@@ -9,10 +9,7 @@ type CardProps = ViewProps & {
 export function Card({ className, ...props }: CardProps) {
   return (
     <View
-      className={cn(
-        "rounded-3xl border border-slate-100 bg-white p-4",
-        className,
-      )}
+      className={cn("rounded-3xl border border-slate-100 bg-white p-4", className)}
       {...props}
     />
   );
@@ -31,16 +28,9 @@ type CardTextProps = TextProps & {
 };
 
 export function CardTitle({ className, ...props }: CardTextProps) {
-  return (
-    <Text className={cn("text-xl font-bold text-ink", className)} {...props} />
-  );
+  return <Text className={cn("text-xl font-bold text-ink", className)} {...props} />;
 }
 
 export function CardDescription({ className, ...props }: CardTextProps) {
-  return (
-    <Text
-      className={cn("text-sm leading-5 text-slate-500", className)}
-      {...props}
-    />
-  );
+  return <Text className={cn("text-sm leading-5 text-slate-500", className)} {...props} />;
 }
