@@ -37,8 +37,8 @@ const MASCOT_GREETING_SEQUENCE = [0, 1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1];
 function reply(q: string): string {
   const s = q.toLowerCase();
   if (s.includes("ghép") || s.includes("match")) return "Để tăng điểm ghép đôi: hoàn thành 100% hồ sơ, làm trắc nghiệm 5 phút, và cập nhật sở thích lối sống thường xuyên nhé!";
-  if (s.includes("báo cáo") || s.includes("report")) return "Vào hồ sơ người dùng → nhấn 'Báo cáo' để xem biểu mẫu. Tính năng gửi báo cáo và chặn người dùng đang được hoàn thiện; hiện chưa gửi dữ liệu tới đội hỗ trợ.";
-  if (s.includes("premium") || s.includes("phí") || s.includes("giá") || s.includes("free") || s.includes("gói")) return "Gói Free: 0₫, gồm ghép đôi cơ bản, trò chuyện và 5 lượt quét/tháng. Premium: 20.000₫/tháng hoặc 180.000₫/năm, tiết kiệm 60.000₫ (25%). Xem quyền lợi tại trang Premium.";
+  if (s.includes("báo cáo") || s.includes("report")) return "Vào hồ sơ người dùng → nhấn 'Báo cáo' để xem biểu mẫu. Báo cáo được gửi qua API; bạn có thể chặn người dùng tại hồ sơ.";
+  if (s.includes("premium") || s.includes("phí") || s.includes("giá") || s.includes("free") || s.includes("gói")) return "Xem giá gói, quyền lợi và hạn mức hiện tại tại trang Premium. Thông tin trên trang đó được lấy từ API; trợ lý minh họa không kiểm tra giao dịch hay gói tài khoản.";
   if (s.includes("hồ sơ") || s.includes("profile")) return "Mẹo: ảnh rõ mặt, viết phần giới thiệu chân thật (~150 chữ), nêu thói quen sinh hoạt và kỳ vọng về bạn cùng phòng.";
   if (s.includes("dịch vụ") || s.includes("service")) return "Trang Dịch vụ có Giặt ủi, Dọn phòng, Chuyển nhà, Sửa chữa... Bạn cũng có thể đăng dịch vụ của mình tại đó.";
   if (s.includes("chat") || s.includes("tin nhắn")) return "Sau khi ghép đôi thành công, bạn có thể nhắn tin trực tiếp trong tab Tin nhắn.";
@@ -82,7 +82,7 @@ export function AIChatbox() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [msgs, setMsgs] = useState<Msg[]>([
-    { role: "bot", text: "Chào bạn! Mình là trợ lý AI của RoomieMatch. Bạn cần hỗ trợ gì hôm nay?" },
+    { role: "bot", text: "Chào bạn! Đây là trợ lý minh họa của RoomieMatch, trả lời theo kịch bản có sẵn. Bạn cần hỗ trợ gì hôm nay?" },
   ]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -147,7 +147,7 @@ export function AIChatbox() {
               </div>
               <div>
                 <div className="font-display font-bold text-sm">Trợ lý RoomieMatch</div>
-                <div className="text-[11px] opacity-90">Trực tuyến</div>
+                <div className="text-[11px] opacity-90">Mock · Kịch bản mẫu, chưa nối AI</div>
               </div>
             </div>
             <button aria-label="Đóng trợ lý" onClick={close} className="hover:bg-white/10 rounded-lg p-1"><X className="h-4 w-4" /></button>

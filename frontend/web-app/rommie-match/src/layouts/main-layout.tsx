@@ -1,11 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { chatApi } from "@/features/chat/services/chat-api";
-import { QueryState } from "@/components/common/query-state";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { DataSourceNotice } from "@/components/common/data-source-notice";
+import { NotificationBell } from "@/features/notifications";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
@@ -15,7 +9,6 @@ import {
   Settings,
   Sparkles,
   Menu,
-  Bell,
   TrendingUp,
   Crown,
   House,
@@ -33,62 +26,6 @@ import {
 import { AccountMenu, getActorHome, useAuthStore } from "@/features/auth";
 import { HeaderSearch } from "@/components/common/header-search";
 import { tokenStorage } from "@/services/token-storage";
-
-function NotificationBell() {
-  const me = useAuthStore((s) => s.user?.id),
-    query = useQuery({
-      queryKey: ["chat", "notifications", me],
-      queryFn: () => chatApi.list(),
-      enabled: Boolean(me),
-      refetchInterval: 15000,
-    });
-  const unread = query.data?.items.reduce((n, c) => n + c.unreadCount, 0) ?? 0;
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Thông báo tin nhắn"
-          className="relative rounded-full"
-        >
-          <Bell className="h-5 w-5" />
-          {unread > 0 && (
-            <span className="absolute -right-1 -top-1 rounded-full bg-teal px-1.5 text-xs text-white">
-              {unread}
-            </span>
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 rounded-2xl p-4">
-        <h2 className="font-semibold">Tin nhắn chưa đọc</h2>
-        <QueryState query={query} />
-        {query.data && !unread && (
-          <p className="py-5 text-sm text-muted-foreground">
-            Không có tin nhắn chưa đọc trong danh sách gần đây.
-          </p>
-        )}
-        {query.data?.items
-          .filter((c) => c.unreadCount > 0)
-          .map((c) => (
-            <Link
-              key={c.id}
-              to={`/chat?conversation=${c.id}`}
-              className="mt-3 block rounded-xl bg-mint/15 p-3"
-            >
-              <strong className="text-sm">
-                {c.partner.displayName} · {c.unreadCount}
-              </strong>
-              <p className="mt-1 truncate text-xs">{c.lastMessage?.content}</p>
-            </Link>
-          ))}
-        <Link to="/chat" className="mt-4 block text-center text-sm text-teal">
-          Mở tất cả hội thoại
-        </Link>
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 const nav = [
   { to: "/matches", label: "Ở ghép", icon: Heart },
@@ -378,11 +315,12 @@ export function AppShell({
         tabIndex={-1}
         className={
           fullHeight
-            ? "min-h-0 flex-1 overflow-hidden"
+            ? "flex min-h-0 flex-1 flex-col overflow-hidden"
             : "mx-auto max-w-7xl px-4 sm:px-6 pb-28 lg:pb-10 pt-8 sm:pt-10"
         }
       >
-        {children}
+        <DataSourceNotice />
+        {fullHeight ? <div className="min-h-0 flex-1">{children}</div> : children}
       </main>
 
       {!hideHeader && showNavigation && !fullHeight && (

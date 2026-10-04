@@ -1,15 +1,6 @@
-import { Routes, Route, Navigate, Link } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import {
-  Users,
-  Building2,
-  Scale,
-  Flag,
-  ShieldCheck,
-  UsersRound,
-  ArrowUpRight,
-} from "lucide-react";
 import { useAuthStore } from "@/features/auth";
 import { AdminLayout } from "@/features/admin/components/admin-layout";
 import {
@@ -26,7 +17,7 @@ import { ServiceManager } from "@/features/admin/components/service-manager";
 import { GroupsPanel } from "@/features/workspaces/components/groups-panel";
 import { DisputesPanel } from "@/features/workspaces/components/disputes-panel";
 import { staffApi } from "@/features/admin/services/staff-api";
-import { adminApi } from "@/features/admin/services/admin-api";
+import { AdminOverview } from "@/features/admin/components/admin-overview";
 import { Card } from "@/components/ui/card";
 import { QueryState, Pagination } from "@/components/common/query-state";
 import { useState } from "react";
@@ -35,161 +26,6 @@ function AdminOnly({ children }: { children: ReactNode }) {
     children
   ) : (
     <Navigate to="/admin" replace />
-  );
-}
-function Overview() {
-  const me = useAuthStore((s) => s.user),
-    query = useQuery({
-      queryKey: ["staff", "overview", me?.id],
-      queryFn: staffApi.overview,
-    }),
-    stats = useQuery({
-      queryKey: ["admin", "stats", me?.id],
-      queryFn: adminApi.stats,
-      enabled: me?.role === "admin",
-    });
-  const cards = [
-    {
-      label: "Tin đăng chờ duyệt",
-      value: query.data?.pendingRooms,
-      path: "rooms",
-      icon: Building2,
-      color: "text-indigo-600 bg-indigo-50",
-    },
-    {
-      label: "Tranh chấp cần xử lý",
-      value: query.data?.openDisputes,
-      path: "disputes",
-      icon: Scale,
-      color: "text-orange-600 bg-orange-50",
-    },
-    {
-      label: "Báo cáo đang mở",
-      value: query.data?.openReports,
-      path: "reports",
-      icon: Flag,
-      color: "text-rose-600 bg-rose-50",
-    },
-    {
-      label: "Xác minh chờ duyệt",
-      value: query.data?.pendingVerifications,
-      path: "verifications",
-      icon: ShieldCheck,
-      color: "text-emerald-600 bg-emerald-50",
-    },
-  ];
-  return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display text-2xl font-bold">
-            Tổng quan {me?.role === "admin" ? "quản trị" : "kiểm duyệt"}
-          </h1>
-          <p className="mt-2 text-sm text-slate-500">
-            Theo dõi công việc cần xử lý và hoạt động của cộng đồng.
-          </p>
-        </div>
-        <span className="rounded-full border bg-white px-3 py-2 text-xs text-slate-500">
-          {new Date().toLocaleDateString("vi-VN")}
-        </span>
-      </div>
-      <QueryState query={query} />
-      <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        {cards.map((c) => (
-          <Link key={c.path} to={`/admin/${c.path}`}>
-            <Card className="h-full rounded-2xl border-slate-200 p-6 shadow-none transition-shadow hover:shadow-sm">
-              <div
-                className={`grid h-12 w-12 place-items-center rounded-xl ${c.color}`}
-              >
-                <c.icon className="h-6 w-6" />
-              </div>
-              <p className="mt-5 text-3xl font-semibold">
-                {query.isError ? "—" : (c.value ?? "…")}
-              </p>
-              <div className="mt-2 flex items-center justify-between gap-2 text-sm text-slate-500">
-                {c.label}
-                <ArrowUpRight className="h-4 w-4" />
-              </div>
-            </Card>
-          </Link>
-        ))}
-      </div>
-      <div className="mt-6 grid gap-6 xl:grid-cols-3">
-        <Card className="rounded-2xl border-slate-200 p-6 shadow-none xl:col-span-2">
-          <h2 className="font-semibold">Không gian cộng đồng</h2>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <Link
-              to="/admin/groups"
-              className="flex items-center gap-4 rounded-xl bg-slate-50 p-5"
-            >
-              <UsersRound className="h-6 w-6 text-indigo-500" />
-              <div>
-                <p className="text-2xl font-semibold">
-                  {query.data?.groups ?? "…"}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">Nhóm ở ghép</p>
-              </div>
-            </Link>
-            <Link
-              to="/admin/users"
-              className="flex items-center gap-4 rounded-xl bg-slate-50 p-5"
-            >
-              <Users className="h-6 w-6 text-emerald-500" />
-              <div>
-                <p className="text-sm font-semibold">Tra cứu thành viên</p>
-                <p className="mt-1 text-xs text-slate-500">
-                  Hồ sơ, trạng thái và quyền
-                </p>
-              </div>
-            </Link>
-          </div>
-          {me?.role === "admin" && (
-            <>
-              <QueryState query={stats} />
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                {[
-                  ["Tài khoản hoạt động", stats.data?.activeUsers],
-                  ["Đăng ký trong 30 ngày", stats.data?.newUsersLast30Days],
-                  ["Hồ sơ đã xác minh", stats.data?.verifiedProfiles],
-                ].map(([label, value]) => (
-                  <div key={String(label)} className="rounded-xl border p-4">
-                    <p className="text-xl font-semibold">{value ?? "…"}</p>
-                    <p className="mt-2 text-xs text-slate-500">{label}</p>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </Card>
-        <Card className="rounded-2xl border-slate-200 p-6 shadow-none">
-          <h2 className="font-semibold">Quy trình xử lý</h2>
-          <ol className="mt-5 space-y-5 text-sm text-slate-600">
-            <li>
-              <span className="mr-2 rounded-full bg-indigo-50 px-2 py-1 text-indigo-600">
-                1
-              </span>
-              Đọc hồ sơ và nội dung liên quan
-            </li>
-            <li>
-              <span className="mr-2 rounded-full bg-indigo-50 px-2 py-1 text-indigo-600">
-                2
-              </span>
-              Thu thập phản hồi, kiểm tra căn cứ
-            </li>
-            <li>
-              <span className="mr-2 rounded-full bg-indigo-50 px-2 py-1 text-indigo-600">
-                3
-              </span>
-              Ghi rõ lý do và kết quả xử lý
-            </li>
-          </ol>
-          <p className="mt-6 border-t pt-4 text-xs leading-relaxed text-slate-500">
-            Quyền nhóm ở ghép chỉ có hiệu lực trong nhóm. Premium không cấp
-            quyền quản trị hệ thống.
-          </p>
-        </Card>
-      </div>
-    </div>
   );
 }
 function AuditLog() {
@@ -265,7 +101,7 @@ export default function AdminPage() {
   return (
     <AdminLayout>
       <Routes>
-        <Route index element={<Overview />} />
+        <Route index element={<AdminOverview />} />
         <Route path="users" element={<StaffUsers />} />
         <Route path="users/:id" element={<StaffUserDetail />} />
         <Route

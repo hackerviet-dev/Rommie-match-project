@@ -61,7 +61,9 @@ export async function apiClient<T>(path: string, options: ApiOptions = {}): Prom
         ? String(details.detail)
         : typeof details === "object" && details !== null && "errors" in details
           ? Object.values(details.errors as Record<string, string[]>).flat().join(" ")
-          : `Yêu cầu thất bại (${response.status}).`;
+          : response.status >= 500
+            ? "Máy chủ đang gặp sự cố hoặc chưa sẵn sàng. Vui lòng kiểm tra kết nối và thử lại."
+            : `Yêu cầu thất bại (${response.status}).`;
     throw new ApiError(message, response.status, details);
   }
 

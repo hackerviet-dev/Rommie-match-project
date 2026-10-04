@@ -3,7 +3,7 @@ import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { AppShell } from "@/layouts/main-layout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { billingApi } from "@/features/billing";
+import { billingApi, PaymentModeNotice } from "@/features/billing";
 import { useAuthStore } from "@/features/auth";
 
 export default function PremiumResultPage() {
@@ -29,15 +29,16 @@ export default function PremiumResultPage() {
         : payment.isError
           ? payment.error.message
           : status === "paid"
-            ? "Thanh toán thành công. Gói Premium đã được kích hoạt."
+            ? payment.data?.provider === "mock" ? "Thanh toán giả lập thành công. Gói Premium được kích hoạt để kiểm thử." : "Thanh toán thành công. Gói Premium đã được kích hoạt."
             : status === "pending"
-              ? "Đơn đang chờ payOS xác nhận. Trang này sẽ tự cập nhật."
+              ? payment.data?.provider === "mock" ? "Đơn giả lập đang chờ xác nhận. Trang này sẽ tự cập nhật." : "Đơn đang chờ cổng thanh toán xác nhận. Trang này sẽ tự cập nhật."
               : "Đơn chưa được thanh toán. Bạn có thể thử lại từ trang Premium.";
 
   return (
     <AppShell>
       <Card className="mx-auto max-w-lg p-8 text-center">
         <h1 className="text-2xl font-display font-bold">Kết quả thanh toán</h1>
+        <PaymentModeNotice provider={payment.data?.provider} />
         <p role="status" className="mt-4 text-muted-foreground">{message}</p>
         <div className="mt-6 flex justify-center gap-3">
           {!isMember && paymentId ? (
