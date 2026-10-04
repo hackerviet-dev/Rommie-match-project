@@ -36,17 +36,14 @@ export function Badge({
   variant = "solid",
   ...props
 }: BadgeProps) {
-  const sizeClass =
-    size === "sm" ? "px-2 py-1" : size === "lg" ? "px-3 py-1.5" : "px-2.5 py-1";
+  const sizeClass = size === "sm" ? "px-2 py-1" : size === "lg" ? "px-3 py-1.5" : "px-2.5 py-1";
 
   return (
     <View
       className={cn(
         "self-start rounded-full",
         sizeClass,
-        variant === "solid"
-          ? solidByAction[action]
-          : "border border-slate-200 bg-white",
+        variant === "solid" ? solidByAction[action] : "border border-slate-200 bg-white",
         className,
       )}
       {...props}
@@ -59,15 +56,8 @@ type BadgeTextProps = TextProps & {
   className?: string;
 };
 
-export function BadgeText({
-  action = "success",
-  className,
-  ...props
-}: BadgeTextProps) {
+export function BadgeText({ action = "success", className, ...props }: BadgeTextProps) {
   return (
-    <Text
-      className={cn("text-xs font-semibold", textByAction[action], className)}
-      {...props}
-    />
+    <Text className={cn("text-xs font-semibold", textByAction[action], className)} {...props} />
   );
 }

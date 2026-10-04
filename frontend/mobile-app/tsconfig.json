@@ -1,16 +1,23 @@
 {
+  "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "allowJs": true,
-    "esModuleInterop": true,
-    "jsx": "react-jsx",
-    "lib": ["es2020"],
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "noEmit": true,
-    "skipLibCheck": true,
     "strict": true,
-    "target": "es2020",
-    "types": ["react", "nativewind/types"]
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    }
   },
-  "include": ["index.js", "src", "nativewind-env.d.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "nativewind-env.d.ts",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "android",
+    "ios"
+  ]
 }
