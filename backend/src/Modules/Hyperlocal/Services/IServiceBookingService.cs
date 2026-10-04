@@ -4,8 +4,8 @@ using RoomieMatch.Shared.Paging;
 
 namespace RoomieMatch.Modules.Hyperlocal.Services;
 
-// Bookings are always the caller's own: the user id comes from the token, never the
-// request, and another member's booking answers 404 as if it did not exist.
+// Member methods take the caller's id from the token, never the request. Staff
+// listing/transitions are exposed only by endpoints authorized for admin/moderator.
 public interface IServiceBookingService
 {
     Task<ServiceBookingDto?> CreateAsync(
@@ -22,7 +22,15 @@ public interface IServiceBookingService
     Task<ServiceBookingDto?> GetMineAsync(Guid userId, Guid bookingId, CancellationToken cancellationToken);
 
     Task<BookingCancelResult> CancelAsync(Guid userId, Guid bookingId, CancellationToken cancellationToken);
+
+    Task<PagedResult<ServiceBookingDto>> GetForStaffAsync(PageQuery paging, CancellationToken cancellationToken);
+
+    Task<BookingTransitionResult> TransitionAsync(Guid bookingId, bool complete, CancellationToken cancellationToken);
 }
+
+public enum BookingTransitionError { None, NotFound, InvalidState }
+
+public sealed record BookingTransitionResult(BookingTransitionError Error, ServiceBookingDto? Booking);
 
 public enum BookingCancelError
 {

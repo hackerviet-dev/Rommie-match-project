@@ -89,6 +89,52 @@ public sealed class ServiceBookingService(IDbConnectionFactory connectionFactory
         return await ReadBookingAsync(connection, userId, bookingId, cancellationToken);
     }
 
+    public async Task<PagedResult<ServiceBookingDto>> GetForStaffAsync(
+        PageQuery paging, CancellationToken cancellationToken)
+    {
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        await using var count = connection.CreateCommand();
+        count.CommandText = "SELECT count(*) FROM service_bookings";
+        var total = (int)(long)(await count.ExecuteScalarAsync(cancellationToken))!;
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"""
+            SELECT {BookingColumns} {BookingFrom}
+            ORDER BY b.created_at DESC, b.id LIMIT @limit OFFSET @offset
+            """;
+        command.AddParameter("limit", paging.PageSize).AddParameter("offset", paging.Offset);
+        return new(await ReadBookingsAsync(command, cancellationToken), paging.Page, paging.PageSize, total);
+    }
+
+    public async Task<BookingTransitionResult> TransitionAsync(
+        Guid bookingId, bool complete, CancellationToken cancellationToken)
+    {
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        // Return the changed row from the same statement; concurrent cancellation or
+        // repeated staff actions cannot pass the state check twice.
+        command.CommandText = $"""
+            WITH changed AS (
+                UPDATE service_bookings SET status = @next_status
+                WHERE id = @booking_id AND status = @expected_status
+                  AND CASE WHEN @complete THEN scheduled_at <= now() ELSE scheduled_at > now() END
+                RETURNING *
+            )
+            SELECT {BookingColumns} FROM changed b
+            INNER JOIN local_services s ON s.id = b.service_id
+            """;
+        command.AddParameter("booking_id", bookingId)
+            .AddParameter("next_status", complete ? "completed" : "confirmed")
+            .AddParameter("expected_status", complete ? "confirmed" : "pending")
+            .AddParameter("complete", complete);
+        var bookings = await ReadBookingsAsync(command, cancellationToken);
+        if (bookings.Count > 0) return new(BookingTransitionError.None, bookings[0]);
+        await using var exists = connection.CreateCommand();
+        exists.CommandText = "SELECT EXISTS(SELECT 1 FROM service_bookings WHERE id = @booking_id)";
+        exists.AddParameter("booking_id", bookingId);
+        return new((bool)(await exists.ExecuteScalarAsync(cancellationToken))!
+            ? BookingTransitionError.InvalidState : BookingTransitionError.NotFound, null);
+    }
+
     // Only a booking that has not happened yet and was not already finished can be
     // cancelled. The checks sit in the UPDATE itself so two concurrent requests
     // cannot both pass them.
