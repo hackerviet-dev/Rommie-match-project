@@ -1,13 +1,14 @@
 import type { BottomTabBarProps } from "expo-router/tabs";
-import { Heart, Home, type LucideIcon, MessageCircle, Sparkles, Store } from "lucide-react-native";
+import { Heart, House, type LucideIcon, MessageCircle, Sparkles, Store } from "lucide-react-native";
 import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { cn } from "@/lib/cn";
 import { colors } from "@/theme/colors";
 
+// Cùng thứ tự với menu của web. Trang chính (index) không nằm trên thanh tab: mở bằng logo.
 const tabs: Record<string, { icon: LucideIcon; label: string }> = {
-  index: { icon: Home, label: "Trang chính" },
-  matches: { icon: Heart, label: "Ghép đôi" },
+  matches: { icon: Heart, label: "Ở ghép" },
+  rooms: { icon: House, label: "Tìm phòng" },
   chat: { icon: MessageCircle, label: "Tin nhắn" },
   services: { icon: Store, label: "Dịch vụ" },
   premium: { icon: Sparkles, label: "Premium" },

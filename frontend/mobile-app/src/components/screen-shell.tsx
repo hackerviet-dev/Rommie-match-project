@@ -25,7 +25,13 @@ export function ScreenShell({
       <View className="flex-1 px-4 pt-2">
         <View className="mb-5 flex-row items-center justify-between gap-3">
           <View className="min-w-0 flex-1 flex-row items-center gap-3">
-            <LogoMark />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Về trang chính"
+              onPress={() => router.navigate("/")}
+            >
+              <LogoMark />
+            </Pressable>
             <View className="min-w-0 flex-1">
               <Text className="text-xs font-bold uppercase tracking-wider text-teal">
                 RoomieMatch

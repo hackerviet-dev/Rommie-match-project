@@ -3,7 +3,7 @@ import { MatchesScreen } from "@/features/matching/components/matches-screen";
 
 export default function MatchesRoute() {
   return (
-    <ScreenShell title="Ghép đôi" scroll={false}>
+    <ScreenShell title="Ở ghép" scroll={false}>
       <MatchesScreen />
     </ScreenShell>
   );

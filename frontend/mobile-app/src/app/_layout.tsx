@@ -60,6 +60,10 @@ function RootNavigator() {
         <Stack.Screen name="profile/[id]" />
         <Stack.Screen name="saved" />
         <Stack.Screen name="requests" />
+        <Stack.Screen name="rooms/[id]" />
+        <Stack.Screen name="rooms/new" />
+        <Stack.Screen name="rooms/edit/[id]" />
+        <Stack.Screen name="my-rooms" />
       </Stack.Protected>
       <Stack.Protected guard={isMember}>
         <Stack.Screen name="quiz" />
