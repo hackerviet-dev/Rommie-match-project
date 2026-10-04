@@ -3,6 +3,7 @@ import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import { useQueryClient } from "@tanstack/react-query";
 import { tokenStorage } from "@/services/token-storage";
 import { useAuthStore } from "@/features/auth";
+import { API_BASE_URL } from "@/services/api-client";
 export function useChatRealtime() {
   const client = useQueryClient(),
     userId = useAuthStore((s) => s.user?.id),
@@ -12,7 +13,7 @@ export function useChatRealtime() {
     let disposed = false;
     let timer: ReturnType<typeof setTimeout>;
     const hub = new HubConnectionBuilder()
-      .withUrl("/hubs/chat", {
+      .withUrl(`${API_BASE_URL}/hubs/chat`, {
         accessTokenFactory: () => tokenStorage.getAccessToken() ?? "",
       })
       .withAutomaticReconnect()

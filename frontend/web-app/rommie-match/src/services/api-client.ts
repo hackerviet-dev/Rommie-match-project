@@ -1,7 +1,7 @@
 import { ApiError } from "./api-error";
 import { tokenStorage } from "./token-storage";
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
 let refreshRequest: Promise<void> | null = null;
 async function refreshSession() {

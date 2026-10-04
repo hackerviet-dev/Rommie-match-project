@@ -139,6 +139,16 @@ events over SignalR at `/hubs/chat`. Clients pass the access token as
 `?access_token=` (the SignalR client's `accessTokenFactory` does this). Events go only
 to the members of the conversation. See `docs/backend-api-summary.md`.
 
+When web and API use separate domains, set `VITE_API_BASE_URL` to the API origin
+(for example `https://roomiematch-api.onrender.com`) before building the web app.
+REST and SignalR both use this base URL; `VITE_API_URL` is supported as a fallback.
+On the API, set `Cors__AllowedOrigins__0` to the exact web origin, without a
+trailing slash (for example `https://rommie-match.vercel.app`). Add additional
+approved web origins with `Cors__AllowedOrigins__1`, etc. The existing CORS policy
+allows credentials required by SignalR negotiation. The API host/proxy must
+forward `/hubs/chat` and support WebSocket upgrades. With no API base URL,
+the Vite/nginx same-origin proxies continue to handle REST and SignalR.
+
 ## Web app
 
 ```bash
