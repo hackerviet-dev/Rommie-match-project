@@ -57,6 +57,9 @@ function RootNavigator() {
       <Stack.Protected guard={isMember && onboarded}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="account" />
+        <Stack.Screen name="profile/[id]" />
+        <Stack.Screen name="saved" />
+        <Stack.Screen name="requests" />
       </Stack.Protected>
       <Stack.Protected guard={isMember}>
         <Stack.Screen name="quiz" />

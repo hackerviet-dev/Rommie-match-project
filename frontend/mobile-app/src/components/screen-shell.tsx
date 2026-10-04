@@ -9,7 +9,16 @@ import { useAuthStore } from "@/features/auth";
 import { colors } from "@/theme/colors";
 
 // Khung chung của các tab: header thương hiệu + nội dung cuộn.
-export function ScreenShell({ title, children }: { title: string; children: ReactNode }) {
+export function ScreenShell({
+  title,
+  children,
+  scroll = true,
+}: {
+  title: string;
+  children: ReactNode;
+  /** false khi màn tự cuộn bằng FlatList (tránh lồng danh sách trong ScrollView). */
+  scroll?: boolean;
+}) {
   const user = useAuthStore((state) => state.user);
   return (
     <SafeAreaView className="flex-1 bg-paper" edges={["top", "left", "right"]}>
@@ -45,13 +54,17 @@ export function ScreenShell({ title, children }: { title: string; children: Reac
             </Pressable>
           </View>
         </View>
-        <ScrollView
-          className="flex-1"
-          contentContainerStyle={{ paddingBottom: 22 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {children}
-        </ScrollView>
+        {scroll ? (
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ paddingBottom: 22 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {children}
+          </ScrollView>
+        ) : (
+          <View className="flex-1">{children}</View>
+        )}
       </View>
     </SafeAreaView>
   );
