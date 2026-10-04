@@ -19,7 +19,8 @@ export function SelectSheet({
 }: {
   title: string;
   placeholder: string;
-  options: readonly string[];
+  /** Chuỗi (nhãn = giá trị) hoặc { label, value } khi cần hiển thị khác giá trị gửi đi. */
+  options: readonly (string | { label: string; value: string })[];
   value: string | null | undefined;
   onChange: (value: string) => void;
   invalid?: boolean;
@@ -27,10 +28,18 @@ export function SelectSheet({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const items = useMemo(
+    () =>
+      options.map((option) =>
+        typeof option === "string" ? { label: option, value: option } : option,
+      ),
+    [options],
+  );
   const filtered = useMemo(() => {
     const needle = normalizeSearch(query);
-    return needle ? options.filter((option) => normalizeSearch(option).includes(needle)) : options;
-  }, [options, query]);
+    return needle ? items.filter((item) => normalizeSearch(item.label).includes(needle)) : items;
+  }, [items, query]);
+  const selectedLabel = items.find((item) => item.value === value)?.label;
 
   function close() {
     setOpen(false);
@@ -49,7 +58,7 @@ export function SelectSheet({
         )}
       >
         <Text className={cn("text-base", value ? "text-ink" : "text-slate-400")}>
-          {value || placeholder}
+          {selectedLabel || value || placeholder}
         </Text>
         <ChevronDown color={colors.slate500} size={18} />
       </Pressable>
@@ -73,26 +82,26 @@ export function SelectSheet({
           ) : null}
           <FlatList
             data={filtered}
-            keyExtractor={(item) => item}
+            keyExtractor={(item) => item.value}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
             ListEmptyComponent={
               <Text className="py-6 text-center text-slate-500">Không tìm thấy kết quả.</Text>
             }
             renderItem={({ item }) => {
-              const selected = item === value;
+              const selected = item.value === value;
               return (
                 <Pressable
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   onPress={() => {
-                    onChange(item);
+                    onChange(item.value);
                     close();
                   }}
                   className="flex-row items-center justify-between border-b border-slate-100 py-3.5"
                 >
                   <Text className={cn("text-base", selected ? "font-bold text-teal" : "text-ink")}>
-                    {item}
+                    {item.label}
                   </Text>
                   {selected ? <Check color={colors.teal} size={18} /> : null}
                 </Pressable>

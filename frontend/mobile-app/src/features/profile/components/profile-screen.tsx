@@ -198,6 +198,15 @@ export function ProfileScreen({ id }: { id: string }) {
                   </Button>
                 </View>
                 {notice ? <Text className="text-center text-sm text-teal">{notice}</Text> : null}
+                <Text
+                  accessibilityRole="link"
+                  onPress={() =>
+                    router.push({ pathname: "/disputes/new", params: { respondent: id } })
+                  }
+                  className="mt-1 text-center text-xs text-teal underline"
+                >
+                  Yêu cầu hỗ trợ tranh chấp
+                </Text>
                 <FormError
                   message={
                     chat.error?.message ?? request.error?.message ?? saved.mutation.error?.message
@@ -304,7 +313,7 @@ export function ProfileScreen({ id }: { id: string }) {
           <ConfirmDialog
             open={blockOpen}
             title={`Chặn ${p?.displayName ?? "thành viên"}?`}
-            description="Hai bạn sẽ không thấy nhau trong kết quả ghép đôi và không nhắn tin được. Bạn có thể bỏ chặn sau."
+            description="Hai bạn sẽ không thấy nhau trong kết quả ghép đôi và không nhắn tin được. Bạn có thể bỏ chặn trong Cài đặt & bảo mật."
             confirmLabel="Chặn"
             destructive
             loading={block.isPending}

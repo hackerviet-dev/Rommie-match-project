@@ -13,6 +13,10 @@ import type { Quiz } from "../types/quiz-types";
 import { QuizResultDetails } from "./quiz-result-details";
 
 const goHome = () => (router.canGoBack() ? router.back() : router.replace("/"));
+// Lần đầu (sau onboarding) chưa có tab nào trong stack nên thay màn quiz bằng tab; khi mở lại
+// từ Hồ sơ của tôi thì đóng các màn chồng lên để không đẩy thêm một bộ tab mới.
+const openMatches = () =>
+  router.canDismiss() ? router.dismissTo("/matches") : router.replace("/matches");
 
 export function QuizScreen() {
   const quiz = useQuiz();
@@ -46,7 +50,7 @@ export function QuizScreen() {
         <Text className="text-2xl font-bold text-ink">Kết quả khảo sát đã lưu</Text>
         <QuizResultDetails result={saved.data} />
         <View className="gap-3">
-          <Button action="primary" className="h-12" onPress={() => router.replace("/matches")}>
+          <Button action="primary" className="h-12" onPress={openMatches}>
             <ButtonText>Khám phá ở ghép</ButtonText>
           </Button>
           <Button

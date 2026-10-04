@@ -152,7 +152,18 @@ export function OnboardingFlow() {
   return (
     <FormScreen scrollRef={scroll}>
       <View className="flex-row items-center justify-between">
-        <BrandHeader />
+        {router.canGoBack() ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Quay lại"
+            onPress={() => router.back()}
+            className="h-10 w-10 items-center justify-center rounded-full bg-white"
+          >
+            <ArrowLeft color={colors.navy} size={20} />
+          </Pressable>
+        ) : (
+          <BrandHeader />
+        )}
         <Text className="text-sm text-slate-500">
           Bước {step}/{TOTAL_STEPS}
         </Text>

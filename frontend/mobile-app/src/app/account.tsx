@@ -10,6 +10,10 @@ import {
   type LucideIcon,
   MonitorSmartphone,
   Receipt,
+  Scale,
+  Settings,
+  UserRound,
+  UsersRound,
   UserPlus,
 } from "lucide-react-native";
 import { Pressable, Text, View } from "react-native";
@@ -22,11 +26,27 @@ import { useAuthStore, useSignOut } from "@/features/auth";
 import { colors } from "@/theme/colors";
 
 const MENU: {
-  href: "/my-rooms" | "/bookings" | "/saved" | "/requests" | "/quiz" | "/payments";
+  href:
+    | "/my-profile"
+    | "/my-rooms"
+    | "/bookings"
+    | "/saved"
+    | "/requests"
+    | "/quiz"
+    | "/payments"
+    | "/groups"
+    | "/disputes"
+    | "/settings";
   label: string;
   hint: string;
   icon: LucideIcon;
 }[] = [
+  {
+    href: "/my-profile",
+    label: "Hồ sơ của tôi",
+    hint: "Thông tin cá nhân, lối sống",
+    icon: UserRound,
+  },
   { href: "/my-rooms", label: "Phòng của tôi", hint: "Tin phòng đã đăng", icon: House },
   {
     href: "/bookings",
@@ -47,6 +67,14 @@ const MENU: {
     label: "Khảo sát lối sống",
     hint: "Xem kết quả hoặc làm lại",
     icon: ClipboardList,
+  },
+  { href: "/groups", label: "Nhóm ở ghép", hint: "Nhóm, lời mời, thành viên", icon: UsersRound },
+  { href: "/disputes", label: "Yêu cầu hoà giải", hint: "Hỗ trợ khi có tranh chấp", icon: Scale },
+  {
+    href: "/settings",
+    label: "Cài đặt & bảo mật",
+    hint: "Người đã chặn, đăng xuất",
+    icon: Settings,
   },
 ];
 

@@ -53,9 +53,6 @@ function RootNavigator() {
       <Stack.Protected guard={!isAuthenticated}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
-      <Stack.Protected guard={isMember && !onboarded}>
-        <Stack.Screen name="onboarding" />
-      </Stack.Protected>
       <Stack.Protected guard={isMember && onboarded}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="account" />
@@ -72,8 +69,19 @@ function RootNavigator() {
         <Stack.Screen name="bookings/[id]" />
         <Stack.Screen name="payments/index" />
         <Stack.Screen name="payments/[id]" />
+        <Stack.Screen name="my-profile" />
+        <Stack.Screen name="settings" />
+        <Stack.Screen name="guidelines" />
+        <Stack.Screen name="groups/index" />
+        <Stack.Screen name="groups/[id]" />
+        <Stack.Screen name="disputes/index" />
+        <Stack.Screen name="disputes/new" />
+        <Stack.Screen name="disputes/[id]" />
       </Stack.Protected>
+      {/* Sau (tabs): thành viên đã onboarding vẫn mở lại được để sửa lối sống, nhưng màn đầu
+          tiên của họ là các tab; người chưa onboarding chỉ có onboarding và quiz. */}
       <Stack.Protected guard={isMember}>
+        <Stack.Screen name="onboarding" />
         <Stack.Screen name="quiz" />
       </Stack.Protected>
       <Stack.Protected guard={isStaff}>
