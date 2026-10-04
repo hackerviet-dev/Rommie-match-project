@@ -1,10 +1,15 @@
 import { router } from "expo-router";
 import {
   ArrowLeft,
+  Bookmark,
+  CalendarCheck,
   ChevronRight,
   ClipboardList,
+  House,
   LogOut,
+  type LucideIcon,
   MonitorSmartphone,
+  UserPlus,
 } from "lucide-react-native";
 import { Pressable, Text, View } from "react-native";
 import { FormScreen } from "@/components/form-screen";
@@ -14,6 +19,29 @@ import { Card } from "@/components/ui/card";
 import { FormError } from "@/components/ui/form-field";
 import { useAuthStore, useSignOut } from "@/features/auth";
 import { colors } from "@/theme/colors";
+
+const MENU: {
+  href: "/my-rooms" | "/bookings" | "/saved" | "/requests" | "/quiz";
+  label: string;
+  hint: string;
+  icon: LucideIcon;
+}[] = [
+  { href: "/my-rooms", label: "Phòng của tôi", hint: "Tin phòng đã đăng", icon: House },
+  {
+    href: "/bookings",
+    label: "Lịch đặt dịch vụ",
+    hint: "Xem, huỷ lịch đã đặt",
+    icon: CalendarCheck,
+  },
+  { href: "/saved", label: "Hồ sơ đã lưu", hint: "Người ở ghép bạn quan tâm", icon: Bookmark },
+  { href: "/requests", label: "Đề nghị ở ghép", hint: "Đã gửi và đã nhận", icon: UserPlus },
+  {
+    href: "/quiz",
+    label: "Khảo sát lối sống",
+    hint: "Xem kết quả hoặc làm lại",
+    icon: ClipboardList,
+  },
+];
 
 export default function AccountScreen() {
   const user = useAuthStore((state) => state.user);
@@ -58,16 +86,23 @@ export default function AccountScreen() {
         </View>
       </Card>
 
-      <Pressable accessibilityRole="button" onPress={() => router.push("/quiz")}>
-        <Card className="mt-3 flex-row items-center gap-3">
-          <ClipboardList color={colors.teal} size={22} />
-          <View className="flex-1">
-            <Text className="text-base font-bold text-ink">Khảo sát lối sống</Text>
-            <Text className="text-sm text-slate-500">Xem kết quả hoặc làm lại bài khảo sát.</Text>
-          </View>
-          <ChevronRight color={colors.teal} size={20} />
-        </Card>
-      </Pressable>
+      <Card className="mt-3 p-0">
+        {MENU.map((item, index) => (
+          <Pressable
+            key={item.href}
+            accessibilityRole="button"
+            onPress={() => router.push(item.href)}
+            className={`flex-row items-center gap-3 px-4 py-3.5 ${index ? "border-t border-slate-100" : ""}`}
+          >
+            <item.icon color={colors.teal} size={20} />
+            <View className="flex-1">
+              <Text className="text-base font-semibold text-ink">{item.label}</Text>
+              <Text className="text-xs text-slate-500">{item.hint}</Text>
+            </View>
+            <ChevronRight color={colors.teal} size={18} />
+          </Pressable>
+        ))}
+      </Card>
 
       <View className="mt-6 gap-3">
         <FormError

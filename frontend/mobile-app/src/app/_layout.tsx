@@ -67,6 +67,9 @@ function RootNavigator() {
         <Stack.Screen name="rooms/edit/[id]" />
         <Stack.Screen name="my-rooms" />
         <Stack.Screen name="chat/[id]" />
+        <Stack.Screen name="services/[id]" />
+        <Stack.Screen name="bookings/index" />
+        <Stack.Screen name="bookings/[id]" />
       </Stack.Protected>
       <Stack.Protected guard={isMember}>
         <Stack.Screen name="quiz" />
