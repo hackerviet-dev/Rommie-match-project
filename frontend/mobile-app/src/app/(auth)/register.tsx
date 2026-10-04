@@ -1,15 +1,16 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "expo-router";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { Text, View } from "react-native";
+import { Keyboard, Text, View } from "react-native";
 import { BrandHeader } from "@/components/brand-header";
 import { FormScreen } from "@/components/form-screen";
 import { Button, ButtonText } from "@/components/ui/button";
 import { ChoiceChips } from "@/components/ui/choice-chips";
 import { FormError, FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { PendingHint } from "@/components/ui/pending-hint";
 import { SelectSheet } from "@/components/ui/select-sheet";
 import { VN_LOCATIONS } from "@/constants/locations";
 import { authApi, registerSchema, useAuthStore } from "@/features/auth";
@@ -30,6 +31,8 @@ export default function RegisterScreen() {
   const [gender, setGender] = useState<GenderChoice | null>(null);
   const login = useAuthStore((state) => state.login);
   const queryClient = useQueryClient();
+  // Gọi sớm để đánh thức máy chủ (Render) trong lúc người dùng còn đang điền form.
+  useQuery({ queryKey: ["auth", "health"], queryFn: authApi.health, retry: false });
   const register = useMutation({
     mutationFn: authApi.register,
     onSuccess: (session) => {
@@ -41,7 +44,9 @@ export default function RegisterScreen() {
   const city = form.watch("city");
   const canSubmit = Boolean(gender && city);
 
+  const hasFieldErrors = Object.keys(errors).length > 0;
   const submit = form.handleSubmit((values) => {
+    Keyboard.dismiss();
     if (!canSubmit || register.isPending) return;
     register.mutate({ ...values, gender: gender === "undisclosed" ? null : gender });
   });
@@ -126,15 +131,20 @@ export default function RegisterScreen() {
           />
         </FormField>
 
+        {hasFieldErrors ? (
+          <FormError message="Vui lòng kiểm tra các mục được đánh dấu đỏ phía trên." />
+        ) : null}
         <FormError message={register.error?.message} />
         <Button
           action="primary"
           className="mt-2 h-12 rounded-xl"
-          disabled={!canSubmit || register.isPending}
+          disabled={!canSubmit}
+          loading={register.isPending}
           onPress={submit}
         >
           <ButtonText>{register.isPending ? "Đang tạo tài khoản…" : "Tạo tài khoản"}</ButtonText>
         </Button>
+        <PendingHint active={register.isPending} />
         {!canSubmit ? (
           <Text className="text-center text-xs text-slate-500">
             Vui lòng chọn giới tính và thành phố để tiếp tục.

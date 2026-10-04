@@ -10,6 +10,7 @@ import { ChoiceChips } from "@/components/ui/choice-chips";
 import { DateField } from "@/components/ui/date-field";
 import { FormError, FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { PendingHint } from "@/components/ui/pending-hint";
 import { SelectSheet } from "@/components/ui/select-sheet";
 import { SliderField } from "@/components/ui/slider-field";
 import { Stepper } from "@/components/ui/stepper";
@@ -626,7 +627,7 @@ export function OnboardingFlow() {
             <Button
               action="primary"
               className="h-12 flex-1"
-              disabled={save.isPending}
+              loading={save.isPending}
               onPress={handleNext}
             >
               <ButtonText>
@@ -635,6 +636,7 @@ export function OnboardingFlow() {
               <ButtonIcon as={ArrowRight} />
             </Button>
           </View>
+          <PendingHint active={save.isPending} />
         </View>
       )}
     </FormScreen>

@@ -2,12 +2,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "expo-router";
 import { Controller, useForm } from "react-hook-form";
-import { Text, View } from "react-native";
+import { Keyboard, Text, View } from "react-native";
 import { BrandHeader } from "@/components/brand-header";
 import { FormScreen } from "@/components/form-screen";
 import { Button, ButtonText } from "@/components/ui/button";
 import { FormError, FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { PendingHint } from "@/components/ui/pending-hint";
 import { authApi, loginSchema, useAuthStore } from "@/features/auth";
 import { API_BASE_URL } from "@/services/api-client";
 
@@ -28,6 +29,10 @@ export default function LoginScreen() {
     },
   });
   const errors = form.formState.errors;
+  const submit = form.handleSubmit((values) => {
+    Keyboard.dismiss();
+    if (!signIn.isPending) signIn.mutate(values);
+  });
 
   return (
     <FormScreen>
@@ -80,7 +85,7 @@ export default function LoginScreen() {
                 textContentType="password"
                 placeholder="••••••••"
                 returnKeyType="go"
-                onSubmitEditing={form.handleSubmit((values) => signIn.mutate(values))}
+                onSubmitEditing={submit}
               />
             )}
           />
@@ -89,11 +94,12 @@ export default function LoginScreen() {
         <Button
           action="primary"
           className="mt-2 h-12 rounded-xl"
-          disabled={signIn.isPending}
-          onPress={form.handleSubmit((values) => signIn.mutate(values))}
+          loading={signIn.isPending}
+          onPress={submit}
         >
           <ButtonText>{signIn.isPending ? "Đang đăng nhập…" : "Đăng nhập"}</ButtonText>
         </Button>
+        <PendingHint active={signIn.isPending} />
       </View>
 
       <View className="mt-8 flex-row justify-center">

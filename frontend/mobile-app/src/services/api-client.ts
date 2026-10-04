@@ -4,7 +4,8 @@ import { tokenStorage } from "./token-storage";
 
 export { API_BASE_URL };
 
-const REQUEST_TIMEOUT_MS = 15_000;
+// Gói miễn phí của Render ngủ khi không có người dùng, lần gọi đầu mất 30–60 giây để khởi động.
+const REQUEST_TIMEOUT_MS = 75_000;
 
 // fetch có giới hạn thời gian: trên điện thoại, sai IP thường treo thay vì lỗi ngay.
 async function send(input: string, init: RequestInit) {

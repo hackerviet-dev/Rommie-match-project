@@ -1,4 +1,4 @@
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -59,6 +59,8 @@ type ButtonProps = PressableProps & {
   action?: ButtonAction;
   className?: string;
   isDisabled?: boolean;
+  /** Hiện vòng quay và khoá nút trong lúc chờ máy chủ. */
+  loading?: boolean;
   size?: ButtonSize;
   variant?: ButtonVariant;
 };
@@ -68,11 +70,17 @@ export function Button({
   className,
   disabled,
   isDisabled,
+  loading = false,
   size = "md",
   variant = "solid",
+  children,
+  onPressIn,
+  onPressOut,
   ...props
 }: ButtonProps) {
-  const inactive = disabled || isDisabled;
+  const inactive = disabled || isDisabled || loading;
+  // Phản hồi khi chạm: không có nó, bấm nút trên điện thoại trông như không có gì xảy ra.
+  const [pressed, setPressed] = useState(false);
   const variantClass =
     variant === "solid"
       ? solidByAction[action]
@@ -84,16 +92,33 @@ export function Button({
     <ButtonContext.Provider value={{ action, size, variant }}>
       <Pressable
         accessibilityRole="button"
+        accessibilityState={{ disabled: Boolean(inactive), busy: loading }}
         disabled={inactive}
+        onPressIn={(event) => {
+          setPressed(true);
+          onPressIn?.(event);
+        }}
+        onPressOut={(event) => {
+          setPressed(false);
+          onPressOut?.(event);
+        }}
         className={cn(
           "flex-row items-center justify-center gap-2 rounded-xl",
           sizeByName[size],
           variantClass,
-          inactive && "opacity-50",
+          pressed && "opacity-70",
+          inactive && (loading ? "opacity-80" : "opacity-50"),
           className,
         )}
         {...props}
-      />
+      >
+        {(state) => (
+          <>
+            {loading ? <ButtonSpinner /> : null}
+            {typeof children === "function" ? children(state) : children}
+          </>
+        )}
+      </Pressable>
     </ButtonContext.Provider>
   );
 }

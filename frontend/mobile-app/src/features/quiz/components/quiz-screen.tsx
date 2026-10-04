@@ -192,7 +192,8 @@ function QuizQuestionnaire({
           <Button
             action="primary"
             className="h-12 flex-1"
-            disabled={!answers[question.id] || save.isPending}
+            disabled={!answers[question.id]}
+            loading={save.isPending}
             onPress={handleNext}
           >
             <ButtonText>
