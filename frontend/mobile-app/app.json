@@ -1,4 +1,36 @@
 {
-  "name": "RoomieMatchMobile",
-  "displayName": "RoomieMatch"
+  "expo": {
+    "name": "RoomieMatch",
+    "slug": "roomiematch-mobile",
+    "scheme": "roomiematch",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F7FBFC",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F7FBFC"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "vn.roomiematch.mobile"
+    },
+    "android": {
+      "package": "vn.roomiematch.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#F7FBFC"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/icon.png"
+    },
+    "plugins": ["expo-router", "expo-font"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
 }

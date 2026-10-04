@@ -4,7 +4,7 @@ RoomieMatch is organized as a monorepo with:
 
 - `backend/src`: .NET modular monolith API, including chat (REST + SignalR).
 - `frontend/web-app/rommie-match`: React + Vite RoomieMatch web app.
-- `frontend/mobile-app`: React Native student mobile app.
+- `frontend/mobile-app`: Expo (React Native) student mobile app.
 
 ## Backend
 
@@ -159,11 +159,19 @@ npm run dev
 
 ## Mobile app
 
+The mobile app is an Expo SDK 57 project using Expo Router (`src/app`), NativeWind and
+TypeScript. It runs in the Expo Go app, so no Android Studio or Xcode is needed.
+
 ```bash
 cd frontend/mobile-app
 npm ci
-npm run start
+npm run start      # scan the QR code with Expo Go (same Wi-Fi as the computer)
+npm run typecheck
 ```
+
+Add dependencies with `npx expo install <package>` so their versions match the SDK, and only
+use libraries bundled with Expo Go. The tracked `android/` and `ios/` folders are left over
+from the earlier React Native CLI setup; Expo Go does not use them.
 
 ## Docker development stack
 
