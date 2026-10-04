@@ -1,4 +1,3 @@
-import { DataSourceNotice } from "@/components/common/data-source-notice";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Check, Sparkles } from "lucide-react";
@@ -19,7 +18,6 @@ export function QuizScreen() {
   function handleRetake() { setIsRetaking(true); setAttempt(value => value + 1); }
   return <div className="min-h-screen bg-gradient-to-br from-background to-mint/10 p-4 sm:p-8"><div className="mx-auto max-w-2xl">
     <div className="mb-6 flex items-center justify-between"><Logo /><Link to="/dashboard" className="text-sm text-teal hover:underline">Về dashboard</Link></div>
-    <DataSourceNotice />
     {quiz.isPending || saved.isPending ? <Card className="p-10 text-center" role="status">Đang tải khảo sát…</Card> : quiz.isError || saved.isError ? <Card className="p-10 text-center" role="alert"><p>Không tải được khảo sát. Vui lòng thử lại.</p><Button className="mt-4" onClick={() => { void quiz.refetch(); void saved.refetch(); }}>Thử lại</Button></Card> : !quiz.data?.questions.length ? <p role="alert">Chưa có bộ câu hỏi khảo sát.</p> : saved.data && !isRetaking ? <Card className="p-8 sm:p-10 rounded-3xl border-0 shadow-xl">
       <Sparkles className="h-9 w-9 text-teal" /><h1 className="mt-4 mb-5 text-2xl font-display font-bold">Kết quả khảo sát đã lưu</h1><QuizResultDetails result={saved.data} />
       <QuizMatchingRefresh key={saved.data.updatedAt} />

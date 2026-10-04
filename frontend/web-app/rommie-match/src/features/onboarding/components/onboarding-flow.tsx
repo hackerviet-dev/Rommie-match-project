@@ -1,4 +1,3 @@
-import { DataSourceNotice } from "@/components/common/data-source-notice";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { onboardingApi } from "../services/onboarding-api";
@@ -14,8 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Progress } from "@/components/ui/progress";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowLeft, ArrowRight, CheckCircle2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { vietnamToday } from "@/utils/date-rules";
 
 
@@ -39,13 +37,9 @@ export function OnboardingFlow() {
   const [ageTouched, setAgeTouched] = useState(false);
   const [orgTouched, setOrgTouched] = useState(false);
   const [bioTouched, setBioTouched] = useState(false);
-  const [exitOpen, setExitOpen] = useState(false);
-  const [savedDraft, setSavedDraft] = useState("");
   const form = useForm<OnboardingValues>({ defaultValues: onboardingDefaults });
   const values = form.watch();
   const userId = useAuthStore(state => state.user?.id);
-  const onboardingStatus = useQuery({ queryKey: ["onboarding", userId], queryFn: onboardingApi.getStatus, enabled: Boolean(userId), retry: false });
-  const isEditing = onboardingStatus.data?.isComplete === true;
   const saveOnboarding = useMutation({
     mutationFn: onboardingApi.complete,
     onSuccess: async (status) => {
@@ -65,7 +59,6 @@ export function OnboardingFlow() {
     if (!profile.data || isPrefilled) return;
     form.reset({ ...form.getValues(), ...profileToOnboarding(profile.data) });
     const savedAmenities = profile.data.onboarding?.amenities ?? [];
-    setSavedDraft(JSON.stringify({ values: form.getValues(), amenities: [...savedAmenities].sort() }));
     setSelectedAmenities(savedAmenities);
     setAmenityOptions(current => [...new Set([...current, ...savedAmenities])]);
     setIsPrefilled(true);
@@ -118,16 +111,6 @@ export function OnboardingFlow() {
   const [amenityOptions, setAmenityOptions] = useState<string[]>(DEFAULT_AMENITIES);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [newAmenity, setNewAmenity] = useState("");
-  const hasUnsavedChanges = isPrefilled && (savedDraft !== JSON.stringify({ values, amenities: [...selectedAmenities].sort() }) || Boolean(newAmenity.trim()));
-  useEffect(() => {
-    if (!isEditing || !hasUnsavedChanges || saveOnboarding.isSuccess) return;
-    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", warnBeforeUnload);
-    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
-  }, [isEditing, hasUnsavedChanges, saveOnboarding.isSuccess]);
   // Step 4 - no room
   const distance = values.distance;
   const setDistance = (value: OnboardingValues["distance"]) => form.setValue("distance", value, { shouldDirty: true });
@@ -137,11 +120,6 @@ export function OnboardingFlow() {
   const setMoveInDate = (value: OnboardingValues["moveInDate"]) => form.setValue("moveInDate", value, { shouldDirty: true });
 
   const nav = useNavigate();
-  function requestExit() {
-    if (!isEditing || saveOnboarding.isPending) return;
-    if (hasUnsavedChanges) setExitOpen(true);
-    else nav("/settings?section=profile");
-  }
   const total = 4;
 
   const orgLabel = employment === "Đang đi học" ? "Trường học" : employment === "Đang đi làm" ? "Nơi làm việc" : employment === "Cả hai" ? "Trường / Nơi làm việc" : "Tổ chức (tuỳ chọn)";
@@ -200,22 +178,9 @@ export function OnboardingFlow() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-mint/10 p-4 sm:p-8">
       <div className="mx-auto max-w-2xl">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <div onClickCapture={event => {
-            if (isEditing && (event.target as HTMLElement).closest("a")) {
-              event.preventDefault();
-              event.stopPropagation();
-              requestExit();
-            }
-          }}><Logo /></div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">Bước {step}/{total}</span>
-            {isEditing && <Button type="button" variant="outline" size="sm" disabled={saveOnboarding.isPending || !isPrefilled} onClick={requestExit}><X className="h-4 w-4" aria-hidden="true" />Thoát</Button>}
-          </div>
-        </div>
-        <DataSourceNotice />
+        <div className="flex items-center justify-between mb-6"><Logo /><span className="text-sm text-muted-foreground">Bước {step}/{total}</span></div>
         <Progress value={(step/total)*100} className="h-2 mb-8" />
-        <p className="mb-6 text-sm text-muted-foreground">{isEditing ? "Hoàn thành 4 bước và bấm lưu để cập nhật hồ sơ. Thay đổi chưa lưu sẽ bị bỏ khi bạn thoát." : "Bạn cần hoàn thành 4 bước và lưu hồ sơ trước khi sử dụng các chức năng của RoomieMatch."}</p>
+        <p className="mb-6 text-sm text-muted-foreground">Bạn cần hoàn thành 4 bước và lưu hồ sơ trước khi sử dụng các chức năng của RoomieMatch.</p>
 
         <Card className="p-8 sm:p-10 rounded-3xl border-0 shadow-lg">
           {!isPrefilled && (
@@ -393,7 +358,6 @@ export function OnboardingFlow() {
                 </div>
                 <div>
                   <Label>Mô tả thêm về phòng</Label>
-                  <p className="mt-1 text-xs text-amber-800">Trường minh họa: nội dung này chưa được lưu qua API. Để lưu mô tả, chỉnh sửa tin phòng sau khi hoàn thành hồ sơ.</p>
                   <textarea className="mt-1.5 w-full min-h-24 rounded-xl border bg-background p-3 text-sm" placeholder="Phòng thoáng, gần công viên, khu yên tĩnh..." />
                 </div>
               </div>
@@ -446,18 +410,6 @@ export function OnboardingFlow() {
           </fieldset>
         </Card>
       </div>
-      <AlertDialog open={exitOpen} onOpenChange={setExitOpen}>
-        <AlertDialogContent className="w-[calc(100%-2rem)] rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Thoát mà không lưu thay đổi?</AlertDialogTitle>
-            <AlertDialogDescription>Bạn chưa hoàn tất và lưu các thay đổi. Nếu thoát, những thay đổi này sẽ không được lưu. Hồ sơ đã lưu trước đó vẫn được giữ nguyên.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Tiếp tục chỉnh sửa</AlertDialogCancel>
-            <AlertDialogAction onClick={() => nav("/settings?section=profile")}>Thoát không lưu</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

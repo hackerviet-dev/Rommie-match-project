@@ -1,4 +1,3 @@
-import { DataSourceNotice } from "@/components/common/data-source-notice";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -39,7 +38,6 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-mint/20 via-background to-teal/10 p-4 pl-28 sm:p-8 sm:pl-28 lg:p-8 grid place-items-center">
       <Card className="relative w-full max-w-xl p-8 sm:p-10 rounded-3xl border-0 shadow-xl">
-        <DataSourceNotice />
           <Button
             type="button"
             variant="ghost"

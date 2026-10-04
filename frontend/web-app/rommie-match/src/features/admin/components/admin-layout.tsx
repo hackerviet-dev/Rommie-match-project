@@ -1,4 +1,3 @@
-import { DataSourceNotice } from "@/components/common/data-source-notice";
 import { useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import {
@@ -21,7 +20,6 @@ import { useAuthStore } from "@/features/auth";
 import { useSignOut } from "@/features/auth/hooks/use-sign-out";
 import { Logo } from "@/layouts/main-layout";
 import { Button } from "@/components/ui/button";
-import { NotificationBell } from "@/features/notifications";
 const navigation = [
   { path: "/admin", label: "Tổng quan", icon: LayoutDashboard },
   { path: "/admin/users", label: "Thành viên", icon: Users },
@@ -68,7 +66,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     )
     .at(-1);
   return (
-    <div className="min-h-dvh bg-[#f5f7fb] text-slate-800">
+    <div className="min-h-dvh bg-slate-50 text-slate-800">
       <a href="#admin-content" className="sr-only focus:not-sr-only">
         Đến nội dung quản trị
       </a>
@@ -104,29 +102,18 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-3 py-4"
         >
           {items.map((n) => (
-            <div key={n.path}>
-              {["/admin", "/admin/rooms", "/admin/staff"].includes(n.path) && (
-                <p className="px-3 pb-2 pt-4 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-                  {n.path === "/admin"
-                    ? "Cộng đồng"
-                    : n.path === "/admin/rooms"
-                      ? "Kiểm duyệt & an toàn"
-                      : "Vận hành hệ thống"}
-                </p>
-              )}
-              <NavLink
-                key={n.path}
-                to={n.path}
-                end={n.path === "/admin"}
-                onClick={() => setOpen(false)}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium ${isActive ? "bg-indigo-600 text-white shadow-sm shadow-indigo-200" : "text-slate-600 hover:bg-slate-50"}`
-                }
-              >
-                <n.icon className="h-5 w-5 shrink-0" />
-                {n.label}
-              </NavLink>
-            </div>
+            <NavLink
+              key={n.path}
+              to={n.path}
+              end={n.path === "/admin"}
+              onClick={() => setOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium ${isActive ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:bg-slate-50"}`
+              }
+            >
+              <n.icon className="h-5 w-5 shrink-0" />
+              {n.label}
+            </NavLink>
           ))}
         </nav>
         <div className="shrink-0 border-t bg-white p-4">
@@ -164,16 +151,11 @@ export function AdminLayout({ children }: { children: ReactNode }) {
               {active?.label ?? "Tổng quan"}
             </p>
           </div>
-          <NotificationBell />
           <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
             {user?.role === "admin" ? "Admin" : "Moderator"}
           </span>
         </div>
-        <main
-          id="admin-content"
-          className="mx-auto min-w-0 max-w-[1500px] p-5 lg:p-8"
-        >
-          <DataSourceNotice />
+        <main id="admin-content" className="mx-auto min-w-0 max-w-[1500px] p-5 lg:p-8">
           {children}
         </main>
       </div>

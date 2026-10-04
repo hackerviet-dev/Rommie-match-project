@@ -31,7 +31,6 @@ import RoomEditorPage from "@/pages/room-editor-page";
 import RoomsPage from "@/pages/rooms-page";
 import GroupsPage from "@/pages/groups-page";
 import DisputesPage from "@/pages/disputes-page";
-import NotificationsPage from "@/pages/notifications-page";
 
 export function AppRouter() {
   useAuthSession();
@@ -170,7 +169,6 @@ export function AppRouter() {
               </AuthGuard>
             }
           />
-          <Route path="/notifications" element={<AuthGuard><NotificationsPage /></AuthGuard>} />
           <Route
             path="/disputes"
             element={

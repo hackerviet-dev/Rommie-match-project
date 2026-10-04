@@ -5,7 +5,7 @@ import { AppShell } from "@/layouts/main-layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { QueryState } from "@/components/common/query-state";
-import { billingApi, PaymentModeNotice } from "@/features/billing";
+import { billingApi } from "@/features/billing";
 import { useAuthStore } from "@/features/auth";
 export default function PaymentDetailPage() {
   const { id = "" } = useParams(),
@@ -37,7 +37,6 @@ export default function PaymentDetailPage() {
           <h1 className="text-2xl font-display font-bold">
             Chi tiết giao dịch
           </h1>
-          <PaymentModeNotice provider={p.provider} />
           <dl className="mt-5 space-y-3">
             <div>
               <dt className="text-sm text-muted-foreground">Mã giao dịch</dt>
@@ -68,7 +67,8 @@ export default function PaymentDetailPage() {
             <div className="mt-6 border-t pt-5">
               <h2 className="font-semibold">Yêu cầu hoàn tiền</h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                {p.provider === "mock" ? "Hoàn tiền giả lập chỉ cập nhật trạng thái kiểm thử, không chuyển tiền thật." : "Giao dịch payOS được hoàn bằng chuyển khoản thủ công sau khi quản trị xử lý yêu cầu."}
+                Giao dịch payOS được hoàn bằng chuyển khoản thủ công sau khi
+                quản trị xử lý yêu cầu.
               </p>
               <textarea
                 aria-label="Lý do hoàn tiền"

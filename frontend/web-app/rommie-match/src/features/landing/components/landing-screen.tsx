@@ -1,4 +1,3 @@
-import { DataSourceNotice } from "@/components/common/data-source-notice";
 import "../landing.css";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -115,7 +114,6 @@ export function LandingScreen() {
   return (
     <div className="landing-home min-h-screen bg-background">
       <Nav />
-      <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-8"><DataSourceNotice /></div>
 
       {/* HERO */}
       <section className="landing-hero relative">

@@ -1,4 +1,3 @@
-import { DataSourceNotice } from "@/components/common/data-source-notice";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -81,7 +80,6 @@ export default function LoginPage() {
 
       <div className="flex items-center justify-center p-6 sm:p-12">
         <Card className="w-full max-w-md p-8 rounded-3xl border-0 shadow-lg lg:shadow-none lg:border-0">
-          <DataSourceNotice />
           <div className="lg:hidden mb-8">
             <Logo />
             <Button
@@ -103,10 +101,9 @@ export default function LoginPage() {
           </p>
 
           {health.isError && (
-            <div role="alert" className="mt-4 text-sm text-destructive">
-              <p>Không kết nối được máy chủ. Vui lòng thử lại sau.</p>
-              <Button type="button" variant="outline" size="sm" className="mt-2" disabled={health.isFetching} onClick={() => void health.refetch()}>Kiểm tra kết nối</Button>
-            </div>
+            <p role="status" className="mt-4 text-sm text-destructive">
+              Không kết nối được máy chủ. Vui lòng thử lại sau.
+            </p>
           )}
           <form
             className="mt-8 space-y-4"

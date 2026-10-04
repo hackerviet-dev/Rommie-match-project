@@ -1,4 +1,3 @@
-import { PaymentModeNotice } from "@/features/billing";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -258,7 +257,6 @@ function MyBilling() {
             )}
           </div>
           <Button asChild variant="outline">
-            <PaymentModeNotice provider={p.provider} />
             <Link to={`/payments/${p.id}`}>Chi tiết</Link>
           </Button>
         </Card>
