@@ -9,7 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { vietnamToday } from "@/utils/date-rules";
+import { useState } from "react";
+import { LocationPicker } from "@/features/location/components/location-picker";
+import { RoomPhotoEditor } from "./room-photo-editor";
 export function RoomEditor({ room }: { room?: Room }) {
+  const [isLocationPending, setIsLocationPending] = useState(false), [isUploading, setIsUploading] = useState(false);
   const navigate = useNavigate(),
     client = useQueryClient(),
     form = useForm<RoomFormValues>({
@@ -33,6 +37,7 @@ export function RoomEditor({ room }: { room?: Room }) {
         longitude: room?.longitude?.toString() ?? "",
         amenities: room?.amenities.join(", ") ?? "",
         isActive: room?.isActive ?? true,
+        photoUrls: room?.photoUrls ?? [],
       },
     });
   const save = useMutation({
@@ -69,16 +74,21 @@ export function RoomEditor({ room }: { room?: Room }) {
     ["bedrooms", "Số phòng ngủ", "number"],
     ["areaM2", "Diện tích (m²)", "number"],
     ["availableFrom", "Ngày có thể dọn vào *", "date"],
-    ["latitude", "Vĩ độ", "number"],
-    ["longitude", "Kinh độ", "number"],
     ["amenities", "Tiện ích (cách nhau bằng dấu phẩy)", "text"],
   ];
   return (
     <form
       noValidate
-      onSubmit={form.handleSubmit((v) => save.mutate(v))}
+      onSubmit={form.handleSubmit((v) => { if (!isLocationPending && !isUploading) save.mutate(v); })}
       className="grid gap-5 sm:grid-cols-2"
     >
+      <div className="sm:col-span-2"><LocationPicker initialPosition={room?.latitude != null && room.longitude != null ? { latitude: room.latitude, longitude: room.longitude } : undefined} onPendingChange={setIsLocationPending} onConfirm={location => {
+        form.setValue("address", location.address, { shouldDirty: true, shouldValidate: true });
+        form.setValue("city", location.city, { shouldDirty: true, shouldValidate: true });
+        form.setValue("district", location.district, { shouldDirty: true, shouldValidate: true });
+        form.setValue("latitude", String(location.latitude), { shouldDirty: true });
+        form.setValue("longitude", String(location.longitude), { shouldDirty: true });
+      }} /></div>
       {fields.map(([key, label, type]) => (
         <div key={key}>
           <Label htmlFor={key}>{label}</Label>
@@ -87,7 +97,7 @@ export function RoomEditor({ room }: { room?: Room }) {
             type={type}
             step={type === "number" ? "any" : undefined}
             min={type === "date" ? vietnamToday() : undefined}
-            {...form.register(key)}
+            {...form.register(key, { onChange: () => { if (["address", "district", "city"].includes(key)) { form.setValue("latitude", "", { shouldDirty: true }); form.setValue("longitude", "", { shouldDirty: true }); } } })}
             aria-invalid={Boolean(form.formState.errors[key])}
             className="mt-2"
           />
@@ -112,6 +122,7 @@ export function RoomEditor({ room }: { room?: Room }) {
           <option value="dormitory">Ký túc xá</option>
         </select>
       </div>
+      <RoomPhotoEditor urls={form.watch("photoUrls")} onChange={urls => form.setValue("photoUrls", urls, { shouldDirty: true, shouldValidate: true })} onBusyChange={setIsUploading} />
       <div className="sm:col-span-2">
         <Label htmlFor="description">Mô tả phòng</Label>
         <textarea
@@ -131,15 +142,15 @@ export function RoomEditor({ room }: { room?: Room }) {
         Hiển thị tin phòng
       </label>
       <p className="text-xs text-muted-foreground">
-        Có thể lấy tọa độ từ Google Maps để ghim đúng vị trí trên bản đồ.
+        Chọn vị trí trên bản đồ rồi xác nhận; nếu sửa địa chỉ thủ công, hãy chọn lại ghim để giữ vị trí chính xác.
       </p>
       {save.isError && (
         <p role="alert" className="text-destructive sm:col-span-2">
           {save.error.message}
         </p>
       )}
-      <Button type="submit" disabled={save.isPending} className="sm:col-span-2">
-        {save.isPending ? "Đang lưu…" : room ? "Lưu thay đổi" : "Đăng phòng"}
+      <Button type="submit" disabled={save.isPending || isLocationPending || isUploading} className="sm:col-span-2">
+        {save.isPending ? "Đang lưu…" : isUploading ? "Chờ upload ảnh…" : isLocationPending ? "Xác nhận vị trí trước khi gửi" : room ? "Lưu và gửi kiểm duyệt lại" : "Gửi kiểm duyệt"}
       </Button>
     </form>
   );

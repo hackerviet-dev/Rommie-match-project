@@ -35,7 +35,8 @@ export async function apiClient<T>(path: string, options: ApiOptions = {}): Prom
   const { body, authenticated = false, headers, ...requestOptions } = options;
   const requestHeaders = new Headers(headers);
 
-  if (body !== undefined) requestHeaders.set("Content-Type", "application/json");
+  const isMultipart = body instanceof FormData;
+  if (body !== undefined && !isMultipart) requestHeaders.set("Content-Type", "application/json");
   if (authenticated) {
     const accessToken = tokenStorage.getAccessToken();
     if (accessToken) requestHeaders.set("Authorization", `Bearer ${accessToken}`);
@@ -44,7 +45,7 @@ export async function apiClient<T>(path: string, options: ApiOptions = {}): Prom
   const send = () => fetch(`${API_BASE_URL}${path}`, {
     ...requestOptions,
     headers: requestHeaders,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : isMultipart ? body : JSON.stringify(body),
   });
 
   let response = await send();

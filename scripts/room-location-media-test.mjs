@@ -1,0 +1,88 @@
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { writeFileSync, mkdirSync } from 'node:fs';
+
+const base = process.env.API_URL ?? 'http://localhost:5000';
+const users = [];
+const sql = query => execFileSync('docker', ['compose', 'exec', '-T', 'postgres', 'psql', '-U', 'roomiematch', '-d', 'roomiematch', '-v', 'ON_ERROR_STOP=1', '-t', '-A', '-c', query], { encoding: 'utf8' }).trim();
+async function call(path, token, method = 'GET', body, expected = 200) {
+  const response = await fetch(base + path, { method, headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(body !== undefined && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}) }, body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body) });
+  const text = await response.text();
+  assert.equal(response.status, expected, `${method} ${path}: ${text.slice(0, 400)}`);
+  return text ? JSON.parse(text) : null;
+}
+let keep = false;
+try {
+  for (let i = 0; i < 3; i++) {
+    const email = `room-location-${randomUUID()}@example.test`, password = randomUUID() + 'Aa1!';
+    const user = await call('/api/auth/register', null, 'POST', { email, password, displayName: `Room location QA ${i}`, gender: 'male', city: 'TP.HCM' });
+    users.push({ ...user, email, password });
+  }
+  const [owner, resident, outsider] = users;
+  const id = owner.user.id, token = owner.accessToken;
+  // Geo must work during incomplete onboarding; all other room operations remain gated.
+  const config = await call('/api/geo/config', token);
+  assert.equal(typeof config.browserApiKey, 'string'); assert.ok(!('serverApiKey' in config));
+  await call('/api/geo/config', null, 'GET', undefined, 401);
+  await call('/api/geo/reverse?latitude=91&longitude=100', token, 'GET', undefined, 400);
+  for (const link of ['http://www.google.com/maps?q=x', 'https://127.0.0.1/maps?q=x', 'https://google.com.evil.test/maps?q=x', 'https://www.google.com:444/maps?q=x', 'https://user:pass@www.google.com/maps?q=x'])
+    await call('/api/geo/resolve-link', token, 'POST', { link }, 400);
+  await call('/api/geo/resolve-link', token, 'POST', { link: 'https://www.google.com/maps/@10.7769,106.7009,16z' }, 422);
+  if (!config.geocodingEnabled) {
+    await call('/api/geo/reverse?latitude=10.7769&longitude=106.7009', token, 'GET', undefined, 503);
+    await call('/api/geo/resolve-link', token, 'POST', { link: 'https://www.google.com/maps/search/?api=1&query=10.7769,106.7009' }, 503);
+    await call('/api/geo/resolve-link', token, 'POST', { link: 'https://www.google.com/maps/search/?api=1&query=room&query_place_id=test-place' }, 503);
+  }
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const onboarding = { name: 'Room location QA', age: '24', gender: 'Nam', employment: 'Khác', orgName: '', hideOrg: false, city: 'TP.HCM', bio: 'Dữ liệu kiểm tra sẽ được xóa', sleep: '22h–0h', env: 'Yên tĩnh', yn: { smoke: 'Không', drink: 'Không', pets: 'Có' }, cleanliness: 4, extroversion: 60, budgetMin: 3, budgetMax: 7, hasRoom: 'yes', addr: 'Địa chỉ QA', district: 'Khu vực QA', roomCity: 'Thành phố phòng QA', latitude: 10.7769, longitude: 106.7009, bedrooms: '1', area: '25', rent: '3500000', needed: '1', moveIn: today, houseType: 'Studio', amenities: [] };
+  for (const user of users) await call('/api/users/me/onboarding', user.accessToken, 'PUT', onboarding);
+  const mine = await call('/api/users/me/profile', token); assert.equal(mine.onboarding.roomCity, onboarding.roomCity); assert.equal(mine.onboarding.latitude, 10.7769);
+  const invalidPhoto = new FormData(); invalidPhoto.append('photo', new Blob(['not an image'], { type: 'image/png' }), 'invalid.png');
+  const invalidUpload = await fetch(base + '/api/rooms/photos', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: invalidPhoto });
+  assert.ok([400, 503].includes(invalidUpload.status), 'Reject invalid image or explicitly report unconfigured Cloudinary'); await invalidUpload.text();
+  await call(`/api/users/${resident.user.id}/lifestyle`, token);
+  const body = { title: 'Phòng kiểm tra vị trí', address: onboarding.addr, district: onboarding.district, city: onboarding.roomCity, monthlyRent: 3500000, deposit: 1000000, availableFrom: today, maxOccupants: 3, roommatesNeeded: 1, bedrooms: 1, areaM2: 25, propertyType: 'studio', amenities: ['Wi-Fi'], latitude: 10.7769, longitude: 106.7009, isActive: true, photoUrls: [] };
+  const room = await call('/api/rooms', token, 'POST', body, 201);
+  assert.deepEqual(room.photoUrls, []); assert.equal(room.moderationStatus, 'pending');
+  await call(`/api/rooms/${room.id}/residents`, null, 'GET', undefined, 404);
+  const photo = `https://res.cloudinary.com/qa/image/upload/${randomUUID()}.jpg`;
+  sql(`INSERT INTO room_photo_assets(owner_user_id,url,public_id) VALUES('${id}','${photo}','${randomUUID()}');`);
+  const updated = await call(`/api/rooms/${room.id}`, token, 'PUT', { ...body, photoUrls: [photo] }); assert.deepEqual(updated.photoUrls, [photo]);
+  const legacy = { ...body }; delete legacy.photoUrls;
+  assert.deepEqual((await call(`/api/rooms/${room.id}`, token, 'PUT', legacy)).photoUrls, [photo]);
+  await call('/api/rooms', outsider.accessToken, 'POST', { ...body, photoUrls: [photo] }, 400);
+  await call(`/api/rooms/${room.id}`, token, 'PUT', { ...body, photoUrls: Array(11).fill(photo) }, 400);
+  await call(`/api/rooms/${room.id}`, token, 'PUT', { ...body, photoUrls: [null] }, 400);
+  const group = randomUUID();
+  sql(`UPDATE rooms SET moderation_status='approved' WHERE id='${room.id}'; INSERT INTO housing_groups(id,name,room_id,created_by) VALUES('${group}','QA room group','${room.id}','${id}'); INSERT INTO housing_group_members(group_id,user_id,role,status) VALUES('${group}','${id}','owner','active'),('${group}','${resident.user.id}','member','active'),('${group}','${outsider.user.id}','member','invited');`);
+  assert.equal((await call(`/api/rooms/${room.id}/residents`)).residents.length, 0);
+  await call(`/api/rooms/${room.id}/residents/visibility`, outsider.accessToken, 'PUT', { share: true }, 403);
+  await call(`/api/rooms/${room.id}/residents/visibility`, resident.accessToken, 'PUT', { share: true }, 204);
+  const shared = await call(`/api/rooms/${room.id}/residents`); assert.equal(shared.residents[0].userId, resident.user.id); assert.deepEqual(Object.keys(shared.residents[0]).sort(), ['avatarUrl', 'displayName', 'userId']);
+  sql(`UPDATE profiles SET is_public=false WHERE user_id='${resident.user.id}';`);
+  assert.equal((await call(`/api/rooms/${room.id}/residents`)).residents.length, 0);
+  await call(`/api/users/${resident.user.id}/lifestyle`, token, 'GET', undefined, 404);
+  sql(`UPDATE profiles SET is_public=true WHERE user_id='${resident.user.id}'; INSERT INTO user_blocks(blocker_id,blocked_id) VALUES('${id}','${resident.user.id}');`);
+  assert.equal((await call(`/api/rooms/${room.id}/residents`, token)).residents.length, 0);
+  await call(`/api/users/${resident.user.id}/lifestyle`, token, 'GET', undefined, 404);
+  await call(`/api/rooms/${room.id}/residents/visibility`, resident.accessToken, 'PUT', { share: false }, 204);
+  assert.equal((await call(`/api/rooms/${room.id}/residents`)).residents.length, 0);
+  sql(`DELETE FROM user_blocks WHERE blocker_id='${id}';`);
+  const visibleLifestyle = await call(`/api/users/${resident.user.id}/lifestyle`, token);
+  assert.equal(visibleLifestyle.sleepSchedule, 'normal'); assert.ok(!('budgetMin' in visibleLifestyle));
+  sql(`UPDATE rooms SET moderation_status='pending' WHERE id='${room.id}';`);
+  await call(`/api/rooms/${room.id}/residents`, outsider.accessToken, 'GET', undefined, 404);
+  console.log('PASS: onboarding geo access, invalid Maps hosts/center-only links, missing-key errors, persisted coordinates/photos, legacy photo preservation, photo ownership/limits, resident opt-in/opt-out/invitations, private/blocked profile rules, safe lifestyle fields. Live Maps/Cloudinary success requires configured credentials; not tested.');
+  if (process.env.KEEP_UI_FIXTURES === '1') {
+    keep = true; mkdirSync('tmp/room-location', { recursive: true });
+    // No credentials persisted; UI inspection uses a public approved fixture.
+    sql(`UPDATE rooms SET moderation_status='approved',photo_urls='{}' WHERE id='${room.id}';`);
+    writeFileSync('tmp/room-location/fixture.json', JSON.stringify({ roomId: room.id, users: users.map(u => ({ id: u.user.id, email: u.email })) }));
+  }
+} finally {
+  if (!keep) {
+    for (const u of users) sql(`DELETE FROM housing_groups WHERE created_by='${u.user.id}'; DELETE FROM users WHERE id='${u.user.id}' AND email='${u.email}';`);
+    console.log('Temporary room/location fixtures cleaned; existing accounts untouched.');
+  }
+}

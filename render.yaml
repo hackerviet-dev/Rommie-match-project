@@ -38,3 +38,15 @@ services:
         value: https://roomiematch-api.onrender.com
       - key: Billing__Provider
         value: ""
+      - key: Maps__BrowserApiKey
+        sync: false
+      - key: Maps__ServerApiKey
+        sync: false
+      - key: Maps__MapId
+        sync: false
+      - key: Cloudinary__CloudName
+        sync: false
+      - key: Cloudinary__ApiKey
+        sync: false
+      - key: Cloudinary__ApiSecret
+        sync: false

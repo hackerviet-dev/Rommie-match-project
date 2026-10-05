@@ -13,6 +13,10 @@ function toQuery(search: RoomSearch) {
 }
 
 export const roomsApi = {
+  uploadPhoto: (photo: File) => {
+    const body = new FormData(); body.append("photo", photo);
+    return apiClient<{ url: string }>("/api/rooms/photos", { method: "POST", body, authenticated: true });
+  },
   search: (search: RoomSearch = {}) =>
     apiClient<Page<Room>>(`/api/rooms${toQuery(search)}`, {
       authenticated: Boolean(tokenStorage.getAccessToken()),

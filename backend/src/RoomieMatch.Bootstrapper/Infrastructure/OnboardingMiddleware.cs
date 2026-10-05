@@ -13,7 +13,7 @@ public sealed class OnboardingMiddleware(RequestDelegate next)
         if (context.User.Identity?.IsAuthenticated == true && context.User.GetUserId() is { } id
             && !context.User.IsInRole("admin") && !context.User.IsInRole("moderator")
             && (path.StartsWithSegments("/api") || path.StartsWithSegments("/hubs"))
-            && !path.StartsWithSegments("/api/auth") && !onboarding && !ownProfile
+            && !path.StartsWithSegments("/api/auth") && !path.StartsWithSegments("/api/geo") && !onboarding && !ownProfile
             && !await service.IsCompleteAsync(id, context.RequestAborted))
         {
             context.Response.StatusCode = StatusCodes.Status403Forbidden;

@@ -50,6 +50,12 @@ services:
       Jwt__Secret: ${JWT_SECRET:-roomiematch-local-dev-secret-change-me-in-production}
       # Public OAuth audience; no client secret is used for the ID-token popup flow.
       Google__ClientId: ${GOOGLE_CLIENT_ID:-846954543802-u0qa6pm6drq7gugoibi7tlsr4o4hni26.apps.googleusercontent.com}
+      Maps__BrowserApiKey: ${GOOGLE_MAPS_BROWSER_KEY:-}
+      Maps__ServerApiKey: ${GOOGLE_MAPS_SERVER_KEY:-}
+      Maps__MapId: ${GOOGLE_MAPS_MAP_ID:-}
+      Cloudinary__CloudName: ${CLOUDINARY_CLOUD_NAME:-}
+      Cloudinary__ApiKey: ${CLOUDINARY_API_KEY:-}
+      Cloudinary__ApiSecret: ${CLOUDINARY_API_SECRET:-}
       # No payment provider by default. Set BILLING_PROVIDER=mock only for local tests.
       Billing__Provider: ${BILLING_PROVIDER:-}
       Billing__PublicApiBaseUrl: ${BILLING_PUBLIC_API_URL:-http://localhost:5000}

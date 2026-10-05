@@ -80,7 +80,8 @@ public sealed record RoomDto(
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     string ModerationStatus,
-    string? ModerationNote);
+    string? ModerationNote,
+    IReadOnlyList<string> PhotoUrls);
 
 public static class RoomPropertyTypes
 {
@@ -108,13 +109,16 @@ public sealed record SaveRoomRequest(
     [property: Description("Vĩ độ -90 đến 90; phải gửi cùng longitude hoặc bỏ cả hai.")] decimal? Latitude,
     [Range(typeof(decimal), "-180", "180", ParseLimitsInInvariantCulture = true)]
     [property: Description("Kinh độ -180 đến 180; phải gửi cùng latitude hoặc bỏ cả hai.")] decimal? Longitude,
-    [property: Description("Có hiển thị tin phòng hay không; null dùng mặc định của server.")] bool? IsActive) : IValidatableObject
+    [property: Description("Có hiển thị tin phòng hay không; null dùng mặc định của server.")] bool? IsActive,
+    [property: Description("Tối đa 10 URL ảnh đã upload bởi chính người đăng. Bỏ trường khi sửa sẽ giữ ảnh cũ.")] string[]? PhotoUrls = null) : IValidatableObject
 {
     public const int MaxAmenities = 30;
     public const int MaxAmenityLength = 60;
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
+        if (PhotoUrls is { Length: > 10 } || PhotoUrls?.Any(url => url is null || url.Length > 2048 || !Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != "https") == true)
+            yield return new ValidationResult("Tối đa 10 ảnh HTTPS đã upload hợp lệ.", [nameof(PhotoUrls)]);
         if (Latitude is null != Longitude is null)
         {
             yield return new ValidationResult(

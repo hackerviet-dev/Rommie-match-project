@@ -37,6 +37,7 @@ export const roomSchema = z
     longitude: optionalNumber(-180, 180),
     amenities: z.string(),
     isActive: z.boolean(),
+    photoUrls: z.array(z.string().url().startsWith("https://")).max(10, "Tối đa 10 ảnh phòng."),
   })
   .superRefine((v, c) => {
     if (Boolean(v.latitude) !== Boolean(v.longitude))

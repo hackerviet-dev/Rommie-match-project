@@ -5,7 +5,7 @@ import { isValidDate, vietnamToday } from "@/utils/date-rules";
 export const onboardingDefaults = {
   name: "", age: "", gender: "", employment: "", orgName: "", hideOrg: false, city: "", bio: "",
   sleep: "", env: "", yn: {} as Record<string, string>, hasRoom: "",
-  addr: "", district: "", bedrooms: "", area: "", rent: "", needed: "", moveIn: "", houseType: "",
+  addr: "", district: "", roomCity: "", latitude: null as number | null, longitude: null as number | null, bedrooms: "", area: "", rent: "", needed: "", moveIn: "", houseType: "",
   distance: "", roomType: "", moveInDate: "",
   cleanliness: 4, extroversion: 60, budgetMin: 3, budgetMax: 7,
 };

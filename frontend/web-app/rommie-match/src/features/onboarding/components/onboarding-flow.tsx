@@ -18,6 +18,7 @@ import { Slider } from "@/components/ui/slider";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { VN_LOCATIONS } from "@/constants/locations";
+import { LocationPicker } from "@/features/location/components/location-picker";
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { vietnamToday } from "@/utils/date-rules";
 
@@ -38,6 +39,7 @@ function Field({ field, error, children, className = "" }: { field: string; erro
 export function OnboardingFlow() {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
+  const [isLocationPending, setIsLocationPending] = useState(false);
   const [hasAttempted, setHasAttempted] = useState(false);
   const [ageTouched, setAgeTouched] = useState(false);
   const [orgTouched, setOrgTouched] = useState(false);
@@ -105,9 +107,9 @@ export function OnboardingFlow() {
   const setHasRoom = (value: OnboardingValues["hasRoom"]) => form.setValue("hasRoom", value, { shouldDirty: true });
   // Step 4 - has room
   const addr = values.addr;
-  const setAddr = (value: OnboardingValues["addr"]) => form.setValue("addr", value, { shouldDirty: true });
+  const setAddr = (value: OnboardingValues["addr"]) => { form.setValue("addr", value, { shouldDirty: true }); form.setValue("latitude", null, { shouldDirty: true }); form.setValue("longitude", null, { shouldDirty: true }); };
   const district = values.district;
-  const setDistrict = (value: OnboardingValues["district"]) => form.setValue("district", value, { shouldDirty: true });
+  const setDistrict = (value: OnboardingValues["district"]) => { form.setValue("district", value, { shouldDirty: true }); form.setValue("latitude", null, { shouldDirty: true }); form.setValue("longitude", null, { shouldDirty: true }); };
   const bedrooms = values.bedrooms;
   const setBedrooms = (value: OnboardingValues["bedrooms"]) => form.setValue("bedrooms", value, { shouldDirty: true });
   const area = values.area;
@@ -170,6 +172,7 @@ export function OnboardingFlow() {
   }
   const hasErrors = Object.keys(errors).length > 0;
   function handleNext() {
+    if (step === 4 && hasRoom === "yes" && isLocationPending) return;
     const nextErrors = validateOnboardingStep(step, values);
     if (Object.keys(nextErrors).length) {
       setHasAttempted(true);
@@ -190,7 +193,7 @@ export function OnboardingFlow() {
           return;
         }
       }
-      saveOnboarding.mutate({ ...values, amenities: selectedAmenities });
+      saveOnboarding.mutate({ ...values, roomCity: values.roomCity || values.city, amenities: selectedAmenities });
     }
   }
 
@@ -348,6 +351,13 @@ export function OnboardingFlow() {
               <h2 className="text-2xl font-display font-bold">Thông tin phòng hiện tại</h2>
               <p className="text-muted-foreground text-sm mt-1">Giúp bạn cùng phòng tương lai hiểu rõ về chỗ ở của bạn.</p>
               <div className="mt-8 space-y-6">
+                <LocationPicker initialPosition={values.latitude != null && values.longitude != null ? { latitude: values.latitude, longitude: values.longitude } : undefined} onPendingChange={setIsLocationPending} onConfirm={location => {
+                  setAddr(location.address); setDistrict(location.district);
+                  form.setValue("roomCity", location.city, { shouldDirty: true });
+                  form.setValue("latitude", location.latitude, { shouldDirty: true });
+                  form.setValue("longitude", location.longitude, { shouldDirty: true });
+                }} />
+                <div><Label htmlFor="room-city">Thành phố / Tỉnh của phòng</Label><Input id="room-city" value={values.roomCity || values.city} onChange={e => { form.setValue("roomCity", e.target.value, { shouldDirty: true }); form.setValue("latitude", null); form.setValue("longitude", null); }} className="mt-1.5" /></div>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <Field field="addr" error={errors.addr}><Label>Địa chỉ <span className="text-destructive">*</span></Label><Input value={addr} onChange={e=>setAddr(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="123 Nguyễn Huệ" /></Field>
                   <Field field="district" error={errors.district}><Label>Quận / Khu vực <span className="text-destructive">*</span></Label><Input value={district} onChange={e=>setDistrict(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="Quận 1, TP.HCM" /></Field>
@@ -437,7 +447,7 @@ export function OnboardingFlow() {
           <fieldset disabled={saveOnboarding.isPending} className="contents">
             <div className="mt-4 flex justify-between gap-3">
               <Button variant="ghost" disabled={step===1} onClick={()=>{ setHasAttempted(false); setStep(s=>s-1); }} className="rounded-xl"><ArrowLeft className="h-4 w-4 mr-2" /> Quay lại</Button>
-              <Button onClick={handleNext} disabled={!isPrefilled || saveOnboarding.isPending} className="rounded-xl bg-navy hover:bg-navy/90 text-white px-6 disabled:opacity-50 disabled:cursor-not-allowed">
+              <Button onClick={handleNext} disabled={!isPrefilled || saveOnboarding.isPending || (step === 4 && hasRoom === "yes" && isLocationPending)} className="rounded-xl bg-navy hover:bg-navy/90 text-white px-6 disabled:opacity-50 disabled:cursor-not-allowed">
                 {saveOnboarding.isPending ? "Đang lưu…" : step < total ? "Tiếp tục" : "Lưu hồ sơ & tiếp tục"} <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </div>

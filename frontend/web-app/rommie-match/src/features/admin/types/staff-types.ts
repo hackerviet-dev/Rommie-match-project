@@ -34,6 +34,7 @@ export type StaffUserDetail = Omit<
   lifestyle: Record<string, unknown> | null;
 };
 export type StaffRoom = {
+  photoUrls?: string[];
   id: string;
   title: string;
   description: string | null;

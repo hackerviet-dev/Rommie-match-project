@@ -15,7 +15,10 @@ type GoogleSdk = { accounts: { id: {
 } } };
 let sdkPromise: Promise<GoogleSdk> | undefined;
 function loadGoogleSdk() {
-  const getSdk = () => (window as Window & { google?: GoogleSdk }).google;
+  const getSdk = () => {
+    const sdk = (window as unknown as { google?: GoogleSdk }).google;
+    return sdk?.accounts?.id ? sdk : undefined;
+  };
   if (getSdk()) return Promise.resolve(getSdk()!);
   if (!sdkPromise) sdkPromise = new Promise<GoogleSdk>((resolve, reject) => {
     const script = document.createElement("script");

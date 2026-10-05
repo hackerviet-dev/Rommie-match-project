@@ -23,6 +23,9 @@ public sealed class OnboardingRequest : IValidatableObject
     public int BudgetMax { get; set; } = 7;
     public string HasRoom { get; set; } = "";
     public string Addr { get; set; } = "";
+    [StringLength(100)] public string RoomCity { get; set; } = "";
+    [Range(-90d, 90d)] public double? Latitude { get; set; }
+    [Range(-180d, 180d)] public double? Longitude { get; set; }
     public string District { get; set; } = "";
     public string Bedrooms { get; set; } = "";
     public string Area { get; set; } = "";
@@ -38,6 +41,7 @@ public sealed class OnboardingRequest : IValidatableObject
     public IEnumerable<ValidationResult> Validate(ValidationContext context)
     {
         var errors = new List<ValidationResult>();
+        if (Latitude is null != Longitude is null) errors.Add(new("Cần đủ cả hai tọa độ.", [nameof(Latitude), nameof(Longitude)]));
         void Check(bool valid, string field) { if (!valid) errors.Add(new("Thông tin onboarding không hợp lệ.", new[] { field })); }
         bool Text(string? value, int max) => !string.IsNullOrWhiteSpace(value) && value.Length <= max;
         bool Choice(string? value, params string[] choices) => choices.Contains(value);

@@ -11,6 +11,7 @@ import { useAuthStore } from "@/features/auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { QueryState, Pagination } from "@/components/common/query-state";
+import { RoomGallery } from "@/features/rooms/components/room-gallery";
 function RoomReview({ room }: { room: StaffRoom }) {
   const client = useQueryClient(),
     form = useForm<z.infer<typeof schema>>({
@@ -49,6 +50,7 @@ function RoomReview({ room }: { room: StaffRoom }) {
               : "Từ chối / gỡ hiển thị"}
         </span>
       </div>
+      <div className="mt-4"><RoomGallery key={room.id} urls={room.photoUrls ?? []} title={room.title} /></div>
       <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
         <p className="rounded-xl bg-slate-50 p-3">
           Địa chỉ: {room.address}, {room.district}, {room.city}

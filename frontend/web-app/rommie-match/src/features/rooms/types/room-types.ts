@@ -24,6 +24,7 @@ export type Room = {
   updatedAt: string;
   moderationStatus: "pending" | "approved" | "rejected";
   moderationNote: string | null;
+  photoUrls: string[];
 };
 
 export type SaveRoomRequest = Omit<

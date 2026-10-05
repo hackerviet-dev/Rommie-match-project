@@ -12,7 +12,7 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
         r.address, r.district, r.city, r.monthly_rent, r.deposit, r.available_from,
         r.max_occupants, r.amenities, r.latitude, r.longitude, r.is_active,
         r.created_at, r.updated_at, r.property_type, r.bedrooms, r.area_m2, r.roommates_needed,
-        r.moderation_status, r.moderation_note
+        r.moderation_status, r.moderation_note, r.photo_urls
         """;
 
     public object GetModuleStatus()
@@ -133,11 +133,11 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
             INSERT INTO rooms
                 (owner_user_id, title, description, address, district, city, monthly_rent,
                  deposit, available_from, max_occupants, property_type, bedrooms, area_m2,
-                 roommates_needed, amenities, latitude, longitude, is_active)
+                 roommates_needed, amenities, latitude, longitude, is_active, photo_urls)
             VALUES
                 (@owner_user_id, @title, @description, @address, @district, @city, @monthly_rent,
                  @deposit, @available_from, @max_occupants, @property_type, @bedrooms, @area_m2,
-                 @roommates_needed, @amenities, @latitude, @longitude, @is_active)
+                 @roommates_needed, @amenities, @latitude, @longitude, @is_active, coalesce(@photo_urls, '{}'::text[]))
             RETURNING id
             """;
 
@@ -176,7 +176,8 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
                 amenities = @amenities,
                 latitude = @latitude,
                 longitude = @longitude,
-                is_active = @is_active
+                is_active = @is_active,
+                photo_urls = coalesce(@photo_urls, photo_urls)
             WHERE id = @room_id AND owner_user_id = @owner_user_id AND deleted_at IS NULL
             """;
 
@@ -251,7 +252,8 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
             .AddParameter("amenities", NormalizeAmenities(request.Amenities))
             .AddParameter("latitude", request.Latitude)
             .AddParameter("longitude", request.Longitude)
-            .AddParameter("is_active", request.IsActive ?? true);
+            .AddParameter("is_active", request.IsActive ?? true)
+            .AddParameter("photo_urls", request.PhotoUrls);
     }
 
     private static async Task<RoomDto?> ReadRoomAsync(
@@ -306,7 +308,7 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
                 reader.GetBoolean(16),
                 reader.GetFieldValue<DateTimeOffset>(17),
                 reader.GetFieldValue<DateTimeOffset>(18),
-                reader.GetString(23), reader.IsDBNull(24) ? null : reader.GetString(24)));
+                reader.GetString(23), reader.IsDBNull(24) ? null : reader.GetString(24), reader.GetFieldValue<string[]>(25)));
         }
 
         return rooms;

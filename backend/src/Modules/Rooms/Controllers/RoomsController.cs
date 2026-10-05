@@ -10,7 +10,7 @@ namespace RoomieMatch.Modules.Rooms.Controllers;
 
 [ApiController]
 [Route("api/rooms")]
-public sealed class RoomsController(IRoomService roomService) : ControllerBase
+public sealed class RoomsController(IRoomService roomService, RoomPhotoService photos) : ControllerBase
 {
     [EndpointSummary("Thông tin module Rooms")]
     [EndpointDescription("API công khai, không có parameter hoặc body. Trả thông tin cấu hình cố định của module; không kiểm tra database. Kiểm tra kết nối database bằng GET /health.")]
@@ -80,6 +80,7 @@ public sealed class RoomsController(IRoomService roomService) : ControllerBase
             return Unauthorized();
         }
 
+        if (!await photos.Owns(userId, request.PhotoUrls, cancellationToken)) return Problem("Chỉ được dùng ảnh do chính bạn upload.", statusCode: 400);
         var room = await roomService.CreateAsync(userId, request, cancellationToken);
         return CreatedAtAction(nameof(Get), new { roomId = room.Id }, room);
     }
@@ -102,6 +103,7 @@ public sealed class RoomsController(IRoomService roomService) : ControllerBase
             return Unauthorized();
         }
 
+        if (!await photos.Owns(userId, request.PhotoUrls, cancellationToken)) return Problem("Chỉ được dùng ảnh do chính bạn upload.", statusCode: 400);
         var result = await roomService.UpdateAsync(roomId, userId, request, cancellationToken);
         return result.Room is null ? Failure(result.Error) : Ok(result.Room);
     }

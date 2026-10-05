@@ -12,6 +12,15 @@ namespace RoomieMatch.Modules.Users.Controllers;
 [Route("api/users")]
 public sealed class ProfilesController(IUserService userService) : ControllerBase
 {
+    [Authorize, HttpGet("{userId:guid}/lifestyle")]
+    public async Task<IActionResult> GetPublicLifestyle(Guid userId, CancellationToken ct)
+    {
+        if (User.GetUserId() is not { } viewer) return Unauthorized();
+        var profile = viewer == userId ? await userService.GetProfileAsync(userId, ct) : await userService.GetVisibleProfileAsync(viewer, userId, ct);
+        if (profile is null) return NotFound();
+        var value = await userService.GetLifestylePreferencesAsync(userId, ct);
+        return value is null ? NotFound() : Ok(new { value.SleepSchedule, value.Cleanliness, value.SocialStyle, value.Smoking, value.PetFriendly });
+    }
     // Members only: "Hồ sơ công khai" means visible to people on RoomieMatch, not to
     // anonymous scrapers.
     [Authorize]
