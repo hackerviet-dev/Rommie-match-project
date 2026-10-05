@@ -8,6 +8,7 @@ public interface IAuthService
 {
     Task<AuthResult> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken);
     Task<AuthResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken);
+    Task<AuthResult> GoogleLoginAsync(GoogleLoginRequest request, CancellationToken cancellationToken);
     Task<AuthResult> RefreshAsync(RefreshRequest request, CancellationToken cancellationToken);
     Task LogoutAsync(RefreshRequest request, CancellationToken cancellationToken);
 
@@ -24,7 +25,10 @@ public enum AuthError
     AccountDisabled,
     InvalidRefreshToken,
     EmailNotRegistered,
-    PasswordLoginUnavailable
+    PasswordLoginUnavailable,
+    InvalidGoogleToken,
+    GoogleUnavailable,
+    GoogleLinkRequired
 }
 
 public sealed record AuthResult(AuthError Error, AuthSessionDto? Session)
@@ -50,6 +54,10 @@ public sealed record LoginRequest(
 
 public sealed record RefreshRequest(
     [Required, StringLength(500)] [property: Description("Refresh token từ phiên đăng nhập; khi refresh thành công phải thay bằng token mới.")] string RefreshToken);
+
+public sealed record GoogleLoginRequest(
+    [Required, StringLength(10000)] string Credential,
+    [StringLength(200)] string? PasswordToLink = null);
 
 public sealed record AuthSessionDto(
     string AccessToken,

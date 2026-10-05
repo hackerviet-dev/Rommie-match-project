@@ -1,4 +1,5 @@
 import { BlockedUsers } from "./blocked-users";
+import { OnboardingStatus } from "@/features/onboarding";
 import { QuizHistory } from "@/features/quiz";
 import { useQuery } from "@tanstack/react-query";
 import { SavedProfilesList } from "@/features/profile/components/saved-profiles-list";
@@ -165,11 +166,11 @@ export function SettingsScreen() {
     bio: actual?.bio || "Chưa có giới thiệu.",
     avatar: actual?.avatarUrl ?? undefined,
     verified: actual?.isVerified,
-    sleep: life?.sleepSchedule || missing,
+    sleep: ({ early: "Trước 22h", normal: "22h–0h", late: "Sau 0h" } as Record<string, string>)[life?.sleepSchedule ?? ""] ?? life?.sleepSchedule ?? missing,
     cleanliness: life ? `${life.cleanliness}/5` : missing,
     smoke: life ? (life.smoking ? "Có" : "Không") : missing,
     pets: life ? (life.petFriendly ? "Có" : "Không") : missing,
-    social: life?.socialStyle || missing,
+    social: ({ introvert: "Hướng nội", balanced: "Cân bằng", extrovert: "Hướng ngoại" } as Record<string, string>)[life?.socialStyle ?? ""] ?? life?.socialStyle ?? missing,
   };
   const completion = actual?.profileCompletion;
 
@@ -182,6 +183,7 @@ export function SettingsScreen() {
           <>
             {/* Tổng quan hồ sơ */}
             <Card className="mt-6 p-6 rounded-3xl border-0 shadow-sm overflow-hidden">
+              <OnboardingStatus />
               <div className="flex flex-col sm:flex-row sm:items-center gap-5">
                 <Avatar className="h-20 w-20 ring-2 ring-mint shrink-0">
                   <AvatarImage src={p.avatar} />

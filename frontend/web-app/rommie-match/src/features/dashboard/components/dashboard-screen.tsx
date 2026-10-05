@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { OnboardingStatus } from "@/features/onboarding";
 import * as m from "motion/react-m";
 import { Heart, MessageCircle, Bookmark, Store, Sparkles } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
@@ -143,6 +144,7 @@ export function DashboardScreen() {
               </span>
             </div>
             <QueryState query={profile} />
+            <OnboardingStatus />
             {profile.data && (
               <>
                 <p className="mt-2 text-sm text-muted-foreground">

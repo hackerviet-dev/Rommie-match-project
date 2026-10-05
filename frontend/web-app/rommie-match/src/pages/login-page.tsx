@@ -5,6 +5,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Logo } from "@/layouts/main-layout";
 import {
   authApi,
+  GoogleSignIn,
   useAuthStore,
   loginSchema,
   getLoginDestination,
@@ -155,6 +156,7 @@ export default function LoginPage() {
               </p>
             )}
           </form>
+          <GoogleSignIn />
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Chưa có tài khoản?{" "}

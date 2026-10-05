@@ -1,4 +1,5 @@
 export { authApi } from "./services/auth-api";
+export { GoogleSignIn } from "./components/google-sign-in";
 export { useAuthStore } from "./store/auth-store";
 export type {
   AuthSession,

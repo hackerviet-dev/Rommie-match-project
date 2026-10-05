@@ -76,7 +76,7 @@ export function profileToOnboarding(profile: Profile, now = new Date()): Partial
   return {
     ...profile.onboarding,
     name: profile.displayName, city: profile.city, age,
-    gender: profile.gender === "male" ? "Nam" : profile.gender === "female" ? "Nữ" : profile.gender === "other" ? "Khác" : "Không muốn tiết lộ",
+    gender: profile.gender === "male" ? "Nam" : profile.gender === "female" ? "Nữ" : profile.gender === "other" ? "Khác" : profile.onboarding?.gender === "Không muốn tiết lộ" ? "Không muốn tiết lộ" : "",
     bio: profile.bio ?? "", district: profile.district ?? "",
     ...(profile.occupationStatus ? {
       employment: ({ student: "Đang đi học", employed: "Đang đi làm", both: "Cả hai", other: "Khác" } as Record<string, string>)[profile.occupationStatus] ?? "Khác",

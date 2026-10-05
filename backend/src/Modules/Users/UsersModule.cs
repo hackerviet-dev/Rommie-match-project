@@ -31,6 +31,7 @@ public static class UsersModuleExtensions
 
         services.AddSingleton(Options.Create(jwtOptions));
         services.AddSingleton<PasswordHashService>();
+        services.AddSingleton<GoogleIdentityValidator>();
         services.AddSingleton<ITokenService, TokenService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IAuthService, AuthService>();

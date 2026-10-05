@@ -1,4 +1,5 @@
 import { useForm } from "react-hook-form";
+import { GoogleSignIn } from "@/features/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
@@ -113,6 +114,7 @@ export default function RegisterPage() {
             Khi đăng ký, bạn đồng ý với Điều khoản và Chính sách bảo mật.
           </p>
         </form>
+        <GoogleSignIn />
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Đã có tài khoản? <Link to="/login" className="text-teal font-semibold hover:underline">Đăng nhập</Link>

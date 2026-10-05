@@ -48,6 +48,8 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=${POSTGRES_DB:-roomiematch};Username=${POSTGRES_USER:-roomiematch};Password=${POSTGRES_PASSWORD:-roomiematch_dev}
       Jwt__Secret: ${JWT_SECRET:-roomiematch-local-dev-secret-change-me-in-production}
+      # Public OAuth audience; no client secret is used for the ID-token popup flow.
+      Google__ClientId: ${GOOGLE_CLIENT_ID:-846954543802-u0qa6pm6drq7gugoibi7tlsr4o4hni26.apps.googleusercontent.com}
       # No payment provider by default. Set BILLING_PROVIDER=mock only for local tests.
       Billing__Provider: ${BILLING_PROVIDER:-}
       Billing__PublicApiBaseUrl: ${BILLING_PUBLIC_API_URL:-http://localhost:5000}

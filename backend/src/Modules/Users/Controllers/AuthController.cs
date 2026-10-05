@@ -6,12 +6,13 @@ using Microsoft.AspNetCore.RateLimiting;
 using RoomieMatch.Modules.Users.Services;
 using RoomieMatch.Shared.Authentication;
 using RoomieMatch.Shared.Http;
+using RoomieMatch.Modules.Users.Authentication;
 
 namespace RoomieMatch.Modules.Users.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public sealed class AuthController(IAuthService authService, IUserService userService) : ControllerBase
+public sealed class AuthController(IAuthService authService, IUserService userService, GoogleIdentityValidator googleValidator) : ControllerBase
 {
     [EndpointSummary("Thông tin module Auth")]
     [EndpointDescription("API công khai, không có parameter hoặc body. Trả thông tin cấu hình cố định của module; không kiểm tra database. Kiểm tra kết nối database bằng GET /health.")]
@@ -20,6 +21,24 @@ public sealed class AuthController(IAuthService authService, IUserService userSe
     public IActionResult Health()
     {
         return Ok(userService.GetModuleStatus());
+    }
+
+    [HttpGet("google/config")]
+    public IActionResult GoogleConfig() => Ok(new { enabled = !string.IsNullOrWhiteSpace(googleValidator.ClientId), clientId = googleValidator.ClientId });
+
+    [HttpPost("google")]
+    [EnableRateLimiting(RateLimitPolicies.Credentials)]
+    [EndpointSummary("Đăng nhập Google bằng ID token đã ký")]
+    [ProducesResponseType(typeof(AuthSessionDto), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(409)]
+    [ProducesResponseType(503)]
+    public async Task<ActionResult<AuthSessionDto>> GoogleLogin(GoogleLoginRequest request, CancellationToken cancellationToken)
+    {
+        var result = await authService.GoogleLoginAsync(request, cancellationToken);
+        return result.Session is null ? Failure(result.Error) : Ok(result.Session);
     }
 
     [EnableRateLimiting(RateLimitPolicies.Credentials)]
@@ -122,6 +141,10 @@ public sealed class AuthController(IAuthService authService, IUserService userSe
     {
         return error switch
         {
+            AuthError.InvalidGoogleToken => Problem("Google token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập Google lại.", statusCode: 401),
+            AuthError.GoogleUnavailable => Problem("Đăng nhập Google chưa sẵn sàng. Vui lòng thử lại sau hoặc đăng nhập bằng mật khẩu.", statusCode: 503),
+            AuthError.GoogleLinkRequired => Problem("Email này đã có tài khoản RoomieMatch. Nhập mật khẩu hiện tại để xác nhận liên kết Google; nếu đã liên kết Google khác, hãy dùng tài khoản Google đó.", statusCode: 409,
+                extensions: new Dictionary<string, object?> { ["code"] = "google_link_required" }),
             AuthError.EmailNotRegistered => Problem(
                 "Email này chưa được đăng ký. Vui lòng tạo tài khoản trước khi đăng nhập.",
                 statusCode: StatusCodes.Status401Unauthorized,

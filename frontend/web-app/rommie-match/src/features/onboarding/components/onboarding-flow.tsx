@@ -2,9 +2,12 @@ import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { onboardingApi } from "../services/onboarding-api";
 import { profileApi } from "@/features/profile";
-import { useAuthStore } from "@/features/auth";
+import { useAuthStore, useSignOut } from "@/features/auth";
+import { flushSync } from "react-dom";
 import { onboardingDefaults, validateOnboardingStep, profileToOnboarding, isValidOnboardingAge, type OnboardingValues, type OnboardingErrors } from "../schemas/onboarding-schema";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useBlocker } from "react-router-dom";
+import { toast } from "sonner";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { useEffect, useState, type ReactNode, type MouseEventHandler } from "react";
 import { Logo } from "@/layouts/main-layout";
 import { Button } from "@/components/ui/button";
@@ -13,6 +16,8 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { VN_LOCATIONS } from "@/constants/locations";
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { vietnamToday } from "@/utils/date-rules";
 
@@ -40,9 +45,17 @@ export function OnboardingFlow() {
   const form = useForm<OnboardingValues>({ defaultValues: onboardingDefaults });
   const values = form.watch();
   const userId = useAuthStore(state => state.user?.id);
+  const status = useQuery({ queryKey: ["onboarding", userId], queryFn: onboardingApi.getStatus, enabled: Boolean(userId) });
+  const [hasSaved, setHasSaved] = useState(false);
+  const [isExitRequested, setIsExitRequested] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
+  const signOut = useSignOut();
   const saveOnboarding = useMutation({
     mutationFn: onboardingApi.complete,
     onSuccess: async (status) => {
+      setHasSaved(true);
+      form.reset(form.getValues());
+      toast.success("Đã lưu hồ sơ và hoàn thành onboarding.");
       queryClient.setQueryData(["onboarding", userId], status);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["profile", "me", userId] }),
@@ -111,6 +124,15 @@ export function OnboardingFlow() {
   const [amenityOptions, setAmenityOptions] = useState<string[]>(DEFAULT_AMENITIES);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [newAmenity, setNewAmenity] = useState("");
+  const hasChanges = form.formState.isDirty || JSON.stringify([...selectedAmenities].sort()) !== JSON.stringify([...(profile.data?.onboarding?.amenities ?? [])].sort());
+  const shouldWarn = isPrefilled && !hasSaved && !isExiting && (hasChanges || !status.data?.isComplete);
+  const blocker = useBlocker(({ currentLocation, nextLocation }) => shouldWarn && currentLocation.pathname !== nextLocation.pathname);
+  useEffect(() => {
+    if (!shouldWarn) return;
+    const beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", beforeUnload);
+    return () => window.removeEventListener("beforeunload", beforeUnload);
+  }, [shouldWarn]);
   // Step 4 - no room
   const distance = values.distance;
   const setDistance = (value: OnboardingValues["distance"]) => form.setValue("distance", value, { shouldDirty: true });
@@ -121,6 +143,17 @@ export function OnboardingFlow() {
 
   const nav = useNavigate();
   const total = 4;
+  function cancelExit() {
+    setIsExitRequested(false);
+    if (blocker.state === "blocked") blocker.reset();
+  }
+  function discardAndSignOut() {
+    // Remove the navigation warning before logout redirects and clears the form.
+    flushSync(() => { setIsExiting(true); setIsExitRequested(false); });
+    if (blocker.state === "blocked") blocker.reset();
+    toast.info("Đã bỏ dữ liệu chưa lưu. Lần đăng nhập sau, bạn cần hoàn thiện hồ sơ trước khi sử dụng hệ thống.");
+    signOut.mutate(false);
+  }
 
   const orgLabel = employment === "Đang đi học" ? "Trường học" : employment === "Đang đi làm" ? "Nơi làm việc" : employment === "Cả hai" ? "Trường / Nơi làm việc" : "Tổ chức (tuỳ chọn)";
   const orgRequired = employment === "Đang đi học" || employment === "Đang đi làm" || employment === "Cả hai";
@@ -178,9 +211,9 @@ export function OnboardingFlow() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-mint/10 p-4 sm:p-8">
       <div className="mx-auto max-w-2xl">
-        <div className="flex items-center justify-between mb-6"><Logo /><span className="text-sm text-muted-foreground">Bước {step}/{total}</span></div>
+        <div className="flex items-center justify-between mb-6"><Logo /><div className="flex items-center gap-3"><span className="text-sm text-muted-foreground">Bước {step}/{total}</span><Button type="button" variant="outline" disabled={saveOnboarding.isPending || signOut.isPending || status.isPending} onClick={() => status.data?.isComplete ? nav("/settings?section=profile") : setIsExitRequested(true)}>Thoát</Button></div></div>
         <Progress value={(step/total)*100} className="h-2 mb-8" />
-        <p className="mb-6 text-sm text-muted-foreground">Bạn cần hoàn thành 4 bước và lưu hồ sơ trước khi sử dụng các chức năng của RoomieMatch.</p>
+        <p role="status" className="mb-6 text-sm text-muted-foreground">{status.data?.isComplete ? "Hồ sơ đã lưu trước đó. Bạn đang chỉnh sửa; thay đổi chỉ được lưu sau khi hoàn thành 4 bước và bấm Lưu hồ sơ & tiếp tục." : "Chưa hoàn thành onboarding. Bạn cần hoàn thành 4 bước và bấm Lưu hồ sơ & tiếp tục trước khi sử dụng hệ thống. Bấm Back không lưu dữ liệu."}{hasChanges && " Có thay đổi chưa lưu."}</p>
 
         <Card className="p-8 sm:p-10 rounded-3xl border-0 shadow-lg">
           {!isPrefilled && (
@@ -192,25 +225,26 @@ export function OnboardingFlow() {
             <>
               <h2 className="text-2xl font-display font-bold">Bổ sung hồ sơ của bạn</h2>
               <p className="text-muted-foreground text-sm mt-1">Chỉ cần thêm vài thông tin để tìm bạn cùng phòng phù hợp.</p>
-              <section aria-label="Thông tin đã đăng ký" className="mt-6 rounded-2xl border border-teal/20 bg-mint/20 p-4 sm:p-5">
+              <section aria-label="Thông tin cơ bản" className="mt-6 rounded-2xl border border-teal/20 bg-mint/20 p-4 sm:p-5">
                 <div className="flex items-center gap-2 text-sm font-semibold text-navy">
                   <CheckCircle2 className="h-4 w-4 text-teal" aria-hidden="true" />
-                  Thông tin đã đăng ký
+                  Thông tin cơ bản
                 </div>
                 <dl className="mt-4 grid gap-4 sm:grid-cols-3">
-                  {[["Họ và tên", registeredInfo.name], ["Giới tính", registeredInfo.gender], ["Thành phố", registeredInfo.city], ...(hasValidRegisteredAge ? [["Tuổi", registeredInfo.age]] : [])].filter(([, value]) => value).map(([label, value]) => (
+                  {[["Họ và tên", registeredInfo.name], ["Giới tính", registeredInfo.gender], ["Thành phố", registeredInfo.city], ["Tuổi", hasValidRegisteredAge ? registeredInfo.age : ""]].map(([label, value]) => (
                     <div key={label} className="min-w-0">
                       <dt className="text-xs text-muted-foreground">{label}</dt>
-                      <dd className="mt-1 break-words text-sm font-medium text-navy">{value}</dd>
+                      <dd className="mt-1 break-words text-sm font-medium text-navy">{value || "Chưa bổ sung"}</dd>
                     </div>
                   ))}
                 </dl>
+                {(!registeredInfo.gender || !registeredInfo.city || !hasValidRegisteredAge) && <p className="mt-4 text-xs text-muted-foreground">Vui lòng bổ sung các mục còn thiếu bên dưới. Đăng nhập Google không cung cấp tuổi, giới tính và thành phố. Thông tin chỉ được lưu khi hoàn thành đủ 4 bước.</p>}
               </section>
               <div className="mt-6 grid sm:grid-cols-2 gap-4">
                 {(!registeredInfo.name || errors.name) && <Field field="name" error={errors.name}><Label>Họ và tên <span className="text-destructive">*</span></Label><Input value={name} onChange={e=>setName(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="Nguyễn Linh" /></Field>}
                 {!hasValidRegisteredAge && <Field field="age" error={errors.age}><Label htmlFor="onboarding-age">Tuổi <span className="text-destructive">*</span></Label><Input id="onboarding-age" aria-invalid={Boolean(errors.age)} aria-describedby={errors.age ? "error-age" : "age-hint"} value={age} onChange={e=>setAge(e.target.value)} onBlur={()=>setAgeTouched(true)} type="number" min={18} max={120} step={1} className={`mt-1.5 h-11 rounded-xl ${errors.age ? "border-destructive" : ""}`} placeholder="Nhập tuổi của bạn" /><p id="age-hint" className="mt-1 text-xs text-muted-foreground">Bạn cần từ 18 tuổi để sử dụng RoomieMatch.</p></Field>}
                 {(!registeredInfo.gender || errors.gender) && <Field field="gender" error={errors.gender}><Label>Giới tính <span className="text-destructive">*</span></Label><select aria-label="Giới tính" value={gender} onChange={e=>setGender(e.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-input bg-card px-3 text-sm"><option value="">Chọn giới tính</option>{["Nam", "Nữ", "Khác", "Không muốn tiết lộ"].map(value => <option key={value} value={value}>{value}</option>)}</select></Field>}
-                {(!registeredInfo.city || errors.city) && <Field field="city" error={errors.city}><Label>Thành phố <span className="text-destructive">*</span></Label><Input value={city} onChange={e=>setCity(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="TP. Hồ Chí Minh" /></Field>}
+                {(!registeredInfo.city || errors.city) && <Field field="city" error={errors.city}><Label htmlFor="onboarding-city">Thành phố / Tỉnh hiện tại <span className="text-destructive">*</span></Label><Select value={city} onValueChange={setCity}><SelectTrigger id="onboarding-city" aria-invalid={Boolean(errors.city)} className="mt-1.5 h-11 rounded-xl"><SelectValue placeholder="Chọn thành phố hoặc tỉnh" /></SelectTrigger><SelectContent className="max-h-72">{VN_LOCATIONS.map(location => <SelectItem key={location} value={location}>{location}</SelectItem>)}</SelectContent></Select></Field>}
                 <Field field="employment" error={errors.employment} className="sm:col-span-2">
                   <Label>Tình trạng hiện tại <span className="text-destructive">*</span></Label>
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -410,6 +444,12 @@ export function OnboardingFlow() {
           </fieldset>
         </Card>
       </div>
+      <AlertDialog open={isExitRequested || blocker.state === "blocked"} onOpenChange={(open) => { if (!open) cancelExit(); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader><AlertDialogTitle>{status.data?.isComplete ? "Thoát khi chưa lưu thay đổi?" : "Thoát và đăng xuất?"}</AlertDialogTitle><AlertDialogDescription>{status.data?.isComplete ? "Dữ liệu thay đổi chưa hoàn thành và chưa lưu sẽ bị bỏ. Hồ sơ đã lưu trước đó vẫn được giữ nguyên." : "Dữ liệu đang nhập sẽ bị bỏ và không được lưu. Bạn sẽ đăng xuất. Lần đăng nhập sau, bạn cần hoàn thiện hồ sơ trước khi sử dụng hệ thống."}</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel onClick={cancelExit}>Tiếp tục chỉnh sửa</AlertDialogCancel>{status.data?.isComplete ? <AlertDialogAction onClick={() => { toast.info("Đã bỏ thay đổi chưa lưu. Hồ sơ đã lưu vẫn được giữ nguyên."); if (blocker.state === "blocked") blocker.proceed(); }}>Bỏ thay đổi và thoát</AlertDialogAction> : <AlertDialogAction disabled={signOut.isPending} onClick={discardAndSignOut}>Thoát và đăng xuất</AlertDialogAction>}</AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

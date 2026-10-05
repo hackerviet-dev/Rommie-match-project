@@ -4,10 +4,11 @@ using RoomieMatch.Shared.Data;
 
 namespace RoomieMatch.Modules.Users.Services;
 
-public sealed class AuthService(
+public sealed partial class AuthService(
     IDbConnectionFactory connectionFactory,
     PasswordHashService passwordHashService,
-    ITokenService tokenService) : IAuthService
+    ITokenService tokenService,
+    GoogleIdentityValidator googleIdentityValidator) : IAuthService
 {
     public async Task<AuthResult> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken)
     {
