@@ -20,7 +20,6 @@ import {
   MessageCircle,
   Home,
   Check,
-  Star,
   ArrowRight,
   Droplet,
   Shirt,
@@ -29,7 +28,9 @@ import {
   ArrowDown,
   Menu,
 } from "lucide-react";
-import { CompatRing } from "@/layouts/main-layout";
+import { useQuery } from "@tanstack/react-query";
+import { billingApi } from "@/features/billing";
+import { QueryState } from "@/components/common/query-state";
 
 function Nav() {
   const headerRef = useRef<HTMLElement>(null);
@@ -111,6 +112,7 @@ function Nav() {
 }
 
 export function LandingScreen() {
+  const plans = useQuery({ queryKey: ["billing", "plans"], queryFn: billingApi.plans });
   return (
     <div className="landing-home min-h-screen bg-background">
       <Nav />
@@ -124,7 +126,7 @@ export function LandingScreen() {
             transition={{ duration: 0.55 }}
           >
             <Badge className="rounded-full bg-mint/30 text-navy border-0 hover:bg-mint/30 px-3 py-1.5">
-              <Sparkles className="h-3 w-3 mr-1.5" /> Ghép đôi bằng AI · v2.0
+              <Sparkles className="h-3 w-3 mr-1.5" /> Ghép đôi theo lối sống
             </Badge>
             <h1 className="landing-hero-title font-display font-extrabold text-navy text-balance">
               Tìm bạn cùng phòng&nbsp;thật sự{" "}
@@ -146,22 +148,9 @@ export function LandingScreen() {
                 </Button>
               </Link>
             </div>
-            <div className="mt-10 flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-sm text-muted-foreground">
-              <div className="flex shrink-0 -space-x-2">
-                {["A", "B", "C", "D"].map((s) => (
-                  <img
-                    key={s}
-                    alt="Ảnh đại diện minh họa thành viên"
-                    src={`https://api.dicebear.com/9.x/avataaars/svg?seed=${s}&backgroundColor=8FD3C1,15A9B8`}
-                    className="h-9 w-9 rounded-full ring-2 ring-background"
-                  />
-                ))}
-              </div>
-              <div>
-                <span className="font-semibold text-foreground">12.400+</span> bạn cùng phòng đã
-                được ghép
-              </div>
-            </div>
+            <p className="mt-10 text-sm text-muted-foreground">
+              Hoàn thiện hồ sơ để khám phá những người có lối sống phù hợp.
+            </p>
           </m.div>
 
           <a href="#features" className="landing-discover mt-12 inline-flex flex-col items-center gap-3 text-sm font-medium text-navy">
@@ -182,13 +171,13 @@ export function LandingScreen() {
             {[
               {
                 i: Brain,
-                t: "Điểm hợp nhau bằng AI",
-                d: "Chấm điểm đa chiều trên 12 đặc điểm lối sống.",
+                t: "Điểm tương thích lối sống",
+                d: "So sánh thói quen sinh hoạt và câu trả lời khảo sát.",
               },
               {
                 i: Shield,
                 t: "Hồ sơ đã xác minh",
-                d: "Xác minh CMND/CCCD và trường học để an toàn.",
+                d: "Trạng thái xác minh hiển thị khi yêu cầu được kiểm duyệt.",
               },
               {
                 i: MessageCircle,
@@ -208,7 +197,7 @@ export function LandingScreen() {
               {
                 i: Sparkles,
                 t: "Tăng độ hiển thị Premium",
-                d: "Hiện lên đầu, mở khoá bộ lọc nâng cao và insights.",
+                d: "Xem quyền lợi hiện tại của từng gói trong bảng giá.",
               },
             ].map((f, i) => (
               <Card
@@ -239,9 +228,9 @@ export function LandingScreen() {
           </p>
           <div className="mt-10 grid md:grid-cols-3 gap-5">
             {[
-              { stat: "68%", text: "người thuê hối hận sau 3 tháng ở chung" },
-              { stat: "42%", text: "nói sạch sẽ là nguyên nhân mâu thuẫn số 1" },
-              { stat: "5h+", text: "mỗi tuần lướt group tìm phòng" },
+              { stat: "Giờ giấc", text: "Trao đổi về giờ ngủ và thời gian sinh hoạt chung." },
+              { stat: "Việc nhà", text: "Thống nhất mức sạch sẽ và cách chia việc nhà." },
+              { stat: "Chi phí", text: "Làm rõ tiền thuê, tiền cọc và các khoản dùng chung." },
             ].map((s) => (
               <Card key={s.stat} className="p-6 rounded-2xl border-0 shadow-sm text-left">
                 <div className="text-4xl font-display font-extrabold text-gradient-brand">
@@ -265,7 +254,7 @@ export function LandingScreen() {
               Hợp tính cách, không chỉ hợp lịch trống.
             </h2>
             <p className="mt-4 text-muted-foreground">
-              Bài trắc nghiệm 60 giây + AI ghép đôi = bạn cùng phòng bạn thật sự muốn ở chung.
+              Hồ sơ và khảo sát lối sống giúp bạn hiểu thêm về người ở ghép.
             </p>
           </div>
           <div className="landing-how-content">
@@ -284,7 +273,7 @@ export function LandingScreen() {
               {
                 n: "03",
                 t: "Nhận kết quả",
-                d: "AI xếp hạng những người hợp gần bạn nhất và giải thích lý do hợp nhau.",
+                d: "Xem điểm tương thích được tính từ hồ sơ và câu trả lời khảo sát.",
               },
             ].map((s) => (
               <Card
@@ -306,50 +295,15 @@ export function LandingScreen() {
             <div className="absolute -inset-6 gradient-brand opacity-10 rounded-[3rem] blur-2xl" />
             <Card className="relative p-6 sm:p-8 rounded-2xl shadow-2xl border-0 bg-card text-foreground">
               <div className="flex items-center gap-4">
-                <img
-                  alt="Ảnh đại diện minh họa Nguyễn Linh"
-                  src="https://api.dicebear.com/9.x/avataaars/svg?seed=Linh&backgroundColor=8FD3C1"
-                  className="h-16 w-16 rounded-2xl bg-mint/30"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="font-display font-bold text-lg">Nguyễn Linh, 23</div>
-                  <div className="text-sm text-muted-foreground">Nhà thiết kế UX · Quận 1</div>
-                </div>
-                <CompatRing score={96} size={72} />
+                <div className="h-16 w-16 rounded-2xl bg-mint/30 grid place-items-center"><Heart className="h-8 w-8 text-teal" /></div>
+                <div><h3 className="font-display font-bold text-lg">Hiểu nhau trước khi ở chung</h3><p className="text-sm text-muted-foreground">Những điều nên trao đổi</p></div>
               </div>
               <div className="mt-5 space-y-3">
-                {[
-                  { l: "Giờ giấc ngủ", v: 95 },
-                  { l: "Sạch sẽ", v: 98 },
-                  { l: "Phong cách xã hội", v: 88 },
-                  { l: "Ngân sách", v: 92 },
-                ].map((b) => (
-                  <div key={b.l}>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-muted-foreground">{b.l}</span>
-                      <span className="font-semibold">{b.v}%</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full gradient-brand rounded-full"
-                        style={{ width: `${b.v}%` }}
-                      />
-                    </div>
-                  </div>
+                {["Giờ ngủ và mức chịu ồn", "Sạch sẽ và chia việc nhà", "Khách đến chơi và thú cưng", "Ngân sách và chia chi phí"].map((label) => (
+                  <div key={label} className="flex items-center gap-3 rounded-xl bg-muted p-3 text-sm"><Check className="h-4 w-4 text-teal" />{label}</div>
                 ))}
               </div>
-              <Button className="mt-5 w-full rounded-full bg-teal hover:bg-teal/90 text-white">
-                <MessageCircle className="mr-2 h-4 w-4" /> Chào nào
-              </Button>
-            </Card>
-            <Card className="absolute -bottom-6 -left-6 hidden sm:block p-3 pr-4 rounded-2xl shadow-xl border-0 bg-card text-foreground">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-mint/40 grid place-items-center">✨</div>
-                <div className="text-sm">
-                  <div className="font-semibold">Ghép đôi mới!</div>
-                  <div className="text-xs text-muted-foreground">92% với Minh</div>
-                </div>
-              </div>
+              <Button asChild className="mt-5 w-full rounded-full bg-teal hover:bg-teal/90 text-white"><Link to="/matches">Khám phá ở ghép <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
             </Card>
           </m.div>
           </div>
@@ -360,51 +314,21 @@ export function LandingScreen() {
       <section id="premium" className="landing-premium">
         <div className="landing-section-heading mx-auto max-w-7xl px-4 sm:px-6"><h2 className="font-display font-bold">Premium</h2></div>
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <QueryState query={plans} />
+          {plans.isSuccess && plans.data.length === 0 && <p className="py-6 text-muted-foreground">Chưa có gói được công bố.</p>}
           <div className="grid gap-5 lg:grid-cols-3">
-            {[
-              {
-                name: "Free", price: "0đ", period: "/ mãi mãi", icon: Home,
-                description: "Bắt đầu ghép đôi và trò chuyện miễn phí.",
-                action: "Bắt đầu miễn phí", to: "/register", premium: false,
-                features: ["Ghép đôi cơ bản", "Trò chuyện trong ứng dụng", "5 lượt quét/tháng", "Bộ lọc tiêu chuẩn"],
-              },
-              {
-                name: "Premium", price: "20.000₫", period: "/ tháng", icon: Sparkles,
-                description: "Rẻ hơn ly cà phê. Đáng giá hơn nhiều.",
-                action: "Chọn gói tháng", to: "/premium", premium: true,
-                features: ["Phân tích hợp nhau nâng cao", "Quét hợp nhau không giới hạn", "Bộ lọc nâng cao (ngân sách, khu vực, lối sống)", "Hiển thị ưu tiên khi Boost", "Boost hồ sơ theo hạn mức của gói"],
-              },
-              {
-                name: "Premium năm", price: "180.000đ", period: "/ năm", icon: Star,
-                description: "Tiết kiệm 60.000đ so với trả theo tháng.",
-                action: "Chọn gói năm", to: "/premium", premium: true,
-                features: ["Tất cả tính năng Premium tháng", "Quét hợp nhau không giới hạn", "Bộ lọc nâng cao theo khu vực và lối sống", "Ưu tiên hiển thị cả năm", "Boost hồ sơ định kỳ"],
-              },
-            ].map((plan) => (
-              <Card key={plan.name} className="landing-plan-card" data-featured={plan.name === "Premium"}>
+            {plans.data?.map((plan) => (
+              <Card key={plan.code} className="landing-plan-card" data-featured={plan.tier === "premium"}>
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-semibold text-navy">{plan.name}</h3>
-                    {plan.name === "Premium năm" && <Badge className="rounded-full bg-mint/40 text-navy border-0">Tiết kiệm</Badge>}
-                  </div>
-                  <div className="landing-plan-icon" aria-hidden="true"><plan.icon className="h-6 w-6" /></div>
+                  <h3 className="font-semibold text-navy">{plan.name}</h3>
+                  <div className="landing-plan-icon" aria-hidden="true"><Sparkles className="h-6 w-6" /></div>
                 </div>
                 <div className="mt-5 flex flex-wrap items-baseline gap-2">
-                  <span className="text-4xl font-extrabold">{plan.price}</span>
-                  <span className="text-muted-foreground">{plan.period}</span>
+                  <span className="text-4xl font-extrabold">{plan.price.toLocaleString("vi-VN")} {plan.currency}</span>
+                  {plan.durationMonths > 0 && <span className="text-muted-foreground">/ {plan.durationMonths} tháng</span>}
                 </div>
-                <p className="landing-plan-description mt-3 text-sm text-muted-foreground">{plan.description}</p>
-                <ul className="landing-plan-features">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-3">
-                      <div className="mt-0.5 h-5 w-5 shrink-0 rounded-full bg-mint grid place-items-center"><Check className="h-3 w-3 text-navy" /></div>
-                      <span className="text-sm">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button asChild size="lg" variant={plan.premium ? "default" : "outline"} className={plan.premium ? "mt-6 w-full rounded-full bg-teal hover:bg-teal/90 text-white" : "mt-6 w-full rounded-full"}>
-                  <Link to={plan.to}>{plan.action}</Link>
-                </Button>
+                <ul className="mt-6 space-y-2 text-sm text-muted-foreground">{plan.features.map((feature) => <li key={feature} className="flex gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-teal" />{feature}</li>)}</ul>
+                <Button asChild className="mt-6 w-full rounded-full bg-navy hover:bg-navy/90 text-white"><Link to={plan.tier === "premium" ? "/premium" : "/register"}>Xem gói {plan.name}</Link></Button>
               </Card>
             ))}
           </div>
@@ -445,60 +369,23 @@ export function LandingScreen() {
                   <s.i className="h-5 w-5" />
                 </div>
                 <div className="mt-3 font-semibold">{s.t}</div>
-                <div className="text-xs text-muted-foreground mt-1">Từ 0,4 km</div>
+                <div className="text-xs text-muted-foreground mt-1">Khám phá dịch vụ</div>
               </Card>
             ))}
           </div>
         </div>
       </section>
 
-      {/* TESTIMONIALS */}
+      {/* COMMUNITY GUIDANCE */}
       <section className="landing-testimonials">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <h2 className="text-4xl font-display font-bold">12.000+ bạn cùng phòng đã tin dùng.</h2>
-          </div>
+          <div className="text-center max-w-2xl mx-auto mb-12"><h2 className="text-4xl font-display font-bold">Chủ động trước khi quyết định ở chung.</h2></div>
           <div className="grid md:grid-cols-3 gap-5">
             {[
-              {
-                n: "Anh T.",
-                r: "Sinh viên, FTU",
-                t: "Tìm được người ở chung sau 3 ngày. Ở với nhau 8 tháng — không một lần lục đục.",
-                s: 5,
-              },
-              {
-                n: "Phúc M.",
-                r: "Kỹ sư phần mềm",
-                t: "Phân tích hợp nhau chính xác đến đáng sợ. Đã cứu mình khỏi vài lần ghép nhầm.",
-                s: 5,
-              },
-              {
-                n: "Mai L.",
-                r: "Thực tập sinh Marketing",
-                t: "Ít mờ ám hơn group Facebook nhiều. Hồ sơ xác minh tạo cảm giác an tâm.",
-                s: 5,
-              },
-            ].map((t, i) => (
-              <Card key={i} className="p-7 rounded-3xl border-0 shadow-sm">
-                <div className="flex gap-0.5 text-amber-400">
-                  {Array.from({ length: t.s }).map((_, j) => (
-                    <Star key={j} className="h-4 w-4 fill-current" />
-                  ))}
-                </div>
-                <p className="mt-4 text-foreground/90">"{t.t}"</p>
-                <div className="mt-5 flex items-center gap-3">
-                  <img
-                    alt={`Ảnh đại diện minh họa ${t.n}`}
-                    src={`https://api.dicebear.com/9.x/avataaars/svg?seed=${t.n}&backgroundColor=8FD3C1`}
-                    className="h-10 w-10 rounded-full"
-                  />
-                  <div>
-                    <div className="font-semibold text-sm">{t.n}</div>
-                    <div className="text-xs text-muted-foreground">{t.r}</div>
-                  </div>
-                </div>
-              </Card>
-            ))}
+              { title: "Tìm hiểu hồ sơ", text: "Đọc thông tin và thói quen sinh hoạt, sau đó trao đổi trực tiếp.", to: "/matches", action: "Khám phá ở ghép" },
+              { title: "Xem phòng thực tế", text: "Kiểm tra địa chỉ, chi phí và điều kiện thuê trước khi đặt cọc.", to: "/rooms", action: "Tìm phòng" },
+              { title: "Bảo vệ cộng đồng", text: "Đọc quy tắc và báo cáo hồ sơ hoặc tin đăng có dấu hiệu vi phạm.", to: "/community-guidelines", action: "Đọc quy tắc" },
+            ].map((item) => <Card key={item.title} className="p-7 rounded-3xl border-0 shadow-sm"><Shield className="h-6 w-6 text-teal" /><h3 className="mt-4 font-semibold">{item.title}</h3><p className="mt-3 text-muted-foreground">{item.text}</p><Link to={item.to} className="mt-5 inline-block text-teal">{item.action} →</Link></Card>)}
           </div>
         </div>
       </section>
@@ -511,23 +398,23 @@ export function LandingScreen() {
             {[
               {
                 q: "RoomieMatch có miễn phí không?",
-                a: "Có — tính năng ghép đôi, trò chuyện và hồ sơ luôn miễn phí. Premium mở khoá bộ lọc nâng cao và hiển thị ưu tiên với giá 20.000₫/tháng hoặc 180.000₫/năm (tiết kiệm 25%).",
+                a: "Xem giá và quyền lợi được công bố trong bảng gói phía trên hoặc trang Premium.",
               },
               {
-                q: "AI ghép đôi hoạt động ra sao?",
-                a: "Chúng tôi chấm điểm tương thích trên 12 khía cạnh lối sống gồm giờ ngủ, sạch sẽ, phong cách xã hội, chịu ồn và ngân sách — rồi đề xuất những người hợp nhất.",
+                q: "Điểm ghép đôi được tính như thế nào?",
+                a: "Hệ thống so sánh thông tin lối sống và khảo sát của hai hồ sơ để tính điểm tương thích. Điểm này hỗ trợ tìm hiểu, không thay thế việc trao đổi trực tiếp.",
               },
               {
                 q: "Hồ sơ có được xác minh không?",
-                a: "Có. Mọi hồ sơ đều được xác minh qua số điện thoại, email và CMND/CCCD trường học (tuỳ chọn).",
+                a: "Hồ sơ chỉ có trạng thái đã xác minh sau khi yêu cầu được đội kiểm duyệt chấp thuận.",
               },
               {
                 q: "Tôi có thể tìm ngoài TP.HCM không?",
-                a: "Hiện tại chúng tôi ra mắt tại TP.HCM, Hà Nội và Đà Nẵng. Các thành phố khác sẽ có trong Q2/2026.",
+                a: "Bạn có thể chọn thành phố khi tìm kiếm. Kết quả phụ thuộc vào hồ sơ và tin đăng hiện có tại khu vực đó.",
               },
               {
                 q: "Dữ liệu của tôi có an toàn không?",
-                a: "Luôn an toàn. Chúng tôi không chia sẻ số điện thoại hay địa chỉ. Mọi trò chuyện diễn ra trong ứng dụng.",
+                a: "Bạn có thể nhắn tin trong ứng dụng, chặn và báo cáo người dùng. Hãy cân nhắc trước khi chia sẻ thông tin cá nhân hoặc chuyển tiền.",
               },
             ].map((f, i) => (
               <AccordionItem key={i} value={`i${i}`} className="border-b">
@@ -547,7 +434,7 @@ export function LandingScreen() {
               Bạn cùng phòng lý tưởng chỉ cách bạn một bài trắc nghiệm.
             </h2>
             <p className="mt-4 text-white/90 max-w-xl mx-auto">
-              Tham gia cùng 12.000+ sinh viên và người trẻ đã tìm thấy người hợp với mình.
+              Tạo hồ sơ, chia sẻ thói quen và bắt đầu tìm người ở ghép phù hợp.
             </p>
             <Link to="/register">
               <Button
