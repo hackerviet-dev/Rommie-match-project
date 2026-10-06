@@ -37,14 +37,48 @@ try {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   const onboarding = { name: 'Room location QA', age: '24', gender: 'Nam', employment: 'Khác', orgName: '', hideOrg: false, city: 'TP.HCM', bio: 'Dữ liệu kiểm tra sẽ được xóa', sleep: '22h–0h', env: 'Yên tĩnh', yn: { smoke: 'Không', drink: 'Không', pets: 'Có' }, cleanliness: 4, extroversion: 60, budgetMin: 3, budgetMax: 7, hasRoom: 'yes', addr: 'Địa chỉ QA', district: 'Khu vực QA', roomCity: 'Thành phố phòng QA', latitude: 10.7769, longitude: 106.7009, bedrooms: '1', area: '25', rent: '3500000', needed: '1', moveIn: today, houseType: 'Studio', amenities: [] };
   for (const user of users) await call('/api/users/me/onboarding', user.accessToken, 'PUT', onboarding);
+  // Having a room completes onboarding without creating a listing or demanding room details.
+  const deferred = { ...onboarding, addr: '', district: '', bedrooms: '', area: '', rent: '', needed: '', moveIn: '', houseType: '', latitude: null, longitude: null };
+  for (const roomAction of ['explore', 'post_room']) {
+    await call('/api/users/me/onboarding', token, 'PUT', { ...deferred, roomAction });
+    assert.equal((await call('/api/users/me/onboarding', token)).isComplete, true);
+    const saved = await call('/api/users/me/profile', token);
+    assert.equal(saved.hasRoom, true);
+    assert.equal(saved.onboarding.roomAction, roomAction);
+    assert.deepEqual(await call('/api/rooms/me', token), []);
+  }
+  await call('/api/users/me/onboarding', token, 'PUT', { ...deferred, roomAction: 'invalid' }, 400);
+  for (const roomPosterType of ['landlord_agent','resident']) {
+    await call('/api/users/me/onboarding', token, 'PUT', { ...deferred, roomAction: 'explore', roomPosterType });
+    assert.equal((await call('/api/users/me/profile', token)).onboarding.roomPosterType,roomPosterType);
+  }
+  await call('/api/users/me/onboarding', token, 'PUT', { ...deferred, roomAction:'explore',roomPosterType:'admin' }, 400);
+  await call('/api/users/me/onboarding', token, 'PUT', { ...deferred, hasRoom:'no',roomAction:'',roomPosterType:'resident' }, 400);
+  await call('/api/users/me/onboarding', token, 'PUT', { ...deferred, roomAction: 'explore', age: '' }, 400);
+  await call('/api/users/me/onboarding', token, 'PUT', { ...deferred, hasRoom: 'no', roomAction: 'explore' }, 400);
+  await call('/api/users/me/onboarding', token, 'PUT', onboarding);
   const mine = await call('/api/users/me/profile', token); assert.equal(mine.onboarding.roomCity, onboarding.roomCity); assert.equal(mine.onboarding.latitude, 10.7769);
   const invalidPhoto = new FormData(); invalidPhoto.append('photo', new Blob(['not an image'], { type: 'image/png' }), 'invalid.png');
   const invalidUpload = await fetch(base + '/api/rooms/photos', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: invalidPhoto });
   assert.ok([400, 503].includes(invalidUpload.status), 'Reject invalid image or explicitly report unconfigured Cloudinary'); await invalidUpload.text();
   await call(`/api/users/${resident.user.id}/lifestyle`, token);
-  const body = { title: 'Phòng kiểm tra vị trí', address: onboarding.addr, district: onboarding.district, city: onboarding.roomCity, monthlyRent: 3500000, deposit: 1000000, availableFrom: today, maxOccupants: 3, roommatesNeeded: 1, bedrooms: 1, areaM2: 25, propertyType: 'studio', amenities: ['Wi-Fi'], latitude: 10.7769, longitude: 106.7009, isActive: true, photoUrls: [] };
+  const body = { title: 'Phòng kiểm tra vị trí', address: onboarding.addr, district: onboarding.district, city: onboarding.roomCity, monthlyRent: 3500000, deposit: 1000000, availableFrom: today, maxOccupants: 2, roommatesNeeded: 1, pairOccupancyConfirmed:true,accuracyAndResidenceConfirmed:true, bedrooms: 1, areaM2: 25, propertyType: 'studio', amenities: ['Wi-Fi'], latitude: 10.7769, longitude: 106.7009, isActive: true, photoUrls: [] };
+  const {pairOccupancyConfirmed, ...withoutConsent}=body;
+  await call('/api/rooms',token,'POST',withoutConsent,400);
+  const {accuracyAndResidenceConfirmed, ...withoutResidenceConsent}=body;
+  await call('/api/rooms',token,'POST',withoutResidenceConsent,400);
+  await call('/api/rooms',token,'POST',{...body,accuracyAndResidenceConfirmed:false},400);
+  await call('/api/rooms',token,'POST',{...body,pairOccupancyConfirmed:false},400);
+  await call('/api/rooms',token,'POST',{...body,maxOccupants:3},400);
+  await call('/api/rooms',token,'POST',{...body,roommatesNeeded:2},400);
+  await call('/api/rooms',token,'POST',{...body,roommatesNeeded:null},400);
   const room = await call('/api/rooms', token, 'POST', body, 201);
   assert.deepEqual(room.photoUrls, []); assert.equal(room.moderationStatus, 'pending');
+  assert.equal(sql(`SELECT pair_occupancy_confirmed_at IS NOT NULL FROM rooms WHERE id='${room.id}'`),'t');
+  assert.equal(sql(`SELECT accuracy_residence_confirmed_at IS NOT NULL FROM rooms WHERE id='${room.id}'`),'t');
+  await call(`/api/rooms/${room.id}`,token,'PUT',withoutResidenceConsent,400);
+  await call(`/api/rooms/${room.id}`,token,'PUT',withoutConsent,400);
+  await call(`/api/rooms/${room.id}`,token,'PUT',{...body,maxOccupants:4,roommatesNeeded:3},400);
   await call(`/api/rooms/${room.id}/residents`, null, 'GET', undefined, 404);
   const photo = `https://res.cloudinary.com/qa/image/upload/${randomUUID()}.jpg`;
   sql(`INSERT INTO room_photo_assets(owner_user_id,url,public_id) VALUES('${id}','${photo}','${randomUUID()}');`);

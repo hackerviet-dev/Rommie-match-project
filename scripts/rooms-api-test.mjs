@@ -17,8 +17,7 @@
 // malformed queries (400, never 500), pagination/totalCount/hasNextPage with a stable order, and
 // detail compared field by field against the stored row. It also pins the current visibility
 // rules: unlisted and soft-deleted rooms leave public search, an unlisted room still shows in the
-// owner's /me, and GET /api/rooms/{roomId} still answers 200 for an unlisted room (the SRS does
-// not define this case, so the existing behaviour is kept as a documented limitation).
+// owner's /me; anonymous detail hides unlisted or pending listings with 404.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -68,7 +67,8 @@ const roomBody = (overrides = {}) => ({
   monthlyRent: 4200000,
   deposit: 4000000,
   availableFrom: '2026-11-01',
-  maxOccupants: 3,
+  maxOccupants: 2,
+  pairOccupancyConfirmed: true, accuracyAndResidenceConfirmed: true,
   propertyType: 'apartment',
   bedrooms: 2,
   areaM2: 55.5,
@@ -89,6 +89,8 @@ const minimalBody = (overrides = {}) => ({
   monthlyRent: 3000000,
   availableFrom: '2026-11-01',
   maxOccupants: 2,
+  roommatesNeeded: 1,
+  pairOccupancyConfirmed: true, accuracyAndResidenceConfirmed: true,
   ...overrides,
 });
 
@@ -179,6 +181,8 @@ try {
     const body = { email, password, displayName: `Rooms ${label}`, city: 'TP.HCM' };
     const { status, json } = await call('POST', '/api/auth/register', { body });
     assert.equal(status, 200, `register ${label} returned ${status}: ${JSON.stringify(json)}`);
+    const onboarding = await call('PUT','/api/users/me/onboarding',{token:json.accessToken,body:{name:`Rooms ${label}`,age:'24',gender:'Nam',employment:'Khác',city:'TP.HCM',sleep:'22h–0h',env:'Yên tĩnh',yn:{smoke:'Không',drink:'Không',pets:'Không'},hasRoom:'yes',roomAction:'explore',roomPosterType:'resident'}});
+    assert.equal(onboarding.status,200);
     return { body, token: json.accessToken, userId: json.user.id };
   }
 
@@ -209,7 +213,7 @@ try {
   assert.equal(storedA.monthlyRent, 4200000);
   assert.equal(storedA.deposit, 4000000);
   assert.equal(storedA.availableFrom, '2026-11-01');
-  assert.equal(storedA.maxOccupants, 3);
+  assert.equal(storedA.maxOccupants, 2);
   assert.equal(storedA.propertyType, 'apartment');
   assert.equal(storedA.bedrooms, 2);
   assert.equal(storedA.areaM2, 55.5);
@@ -236,7 +240,9 @@ try {
   assert.equal(meB.json[0].id, roomB.id);
   assert.ok(!meA.json.some((room) => room.id === roomB.id), "A's /me must never contain B's room");
 
-  // 5. Detail is public and reflects the stored row.
+  // Approve fixtures before checking public discovery; real new listings remain pending.
+  sql(`UPDATE rooms SET moderation_status='approved' WHERE id IN ('${roomA.id}','${roomB.id}');`);
+  // 5. Approved detail is public and reflects the stored row.
   const detailA = await call('GET', `/api/rooms/${roomA.id}`);
   assert.equal(detailA.status, 200);
   assert.equal(detailA.json.id, roomA.id);
@@ -272,11 +278,12 @@ try {
     monthlyRent: 5000000,
     deposit: 2500000,
     availableFrom: '2026-12-15',
-    maxOccupants: 4,
+    maxOccupants: 2,
+    pairOccupancyConfirmed: true, accuracyAndResidenceConfirmed: true,
     propertyType: 'studio',
     bedrooms: 1,
     areaM2: 40.5,
-    roommatesNeeded: 2,
+    roommatesNeeded: 1,
     amenities: ['wifi', 'bếp'],
     latitude: 10.1,
     longitude: 106.2,
@@ -303,7 +310,7 @@ try {
   assert.equal(roomA.propertyType, null);
   assert.equal(roomA.bedrooms, null);
   assert.equal(roomA.areaM2, null);
-  assert.equal(roomA.roommatesNeeded, null);
+  assert.equal(roomA.roommatesNeeded, 1);
   assert.deepEqual(roomA.amenities, []);
   assert.equal(roomA.latitude, null);
   assert.equal(roomA.longitude, null);
@@ -314,7 +321,7 @@ try {
   assert.equal(storedReset.propertyType, null);
   assert.equal(storedReset.bedrooms, null);
   assert.equal(storedReset.areaM2, null);
-  assert.equal(storedReset.roommatesNeeded, null);
+  assert.equal(storedReset.roommatesNeeded, 1);
   assert.deepEqual(storedReset.amenities, []);
   assert.equal(storedReset.latitude, null);
   assert.equal(storedReset.longitude, null);
@@ -401,6 +408,8 @@ try {
     monthlyRent: 3000000,
     availableFrom: '2026-11-01',
     maxOccupants: 2,
+    roommatesNeeded: 1,
+    pairOccupancyConfirmed: true, accuracyAndResidenceConfirmed: true,
     ...overrides,
   });
   const phase2Config = {
@@ -418,6 +427,7 @@ try {
     p2[label] = response.json;
   }
   const { r1, r2, r3 } = p2;
+  sql(`UPDATE rooms SET moderation_status='approved' WHERE id IN ('${r1.id}','${r2.id}','${r3.id}');`);
 
   // 16. Search and detail are public: an anonymous caller reads both.
   const anonSearch = await searchQuery(`district=${encodeURIComponent(district2)}&pageSize=50`);
@@ -518,10 +528,7 @@ try {
   }
   assert.deepEqual(detail.json.amenities, storedDetail.amenities);
 
-  // 21. Visibility: unlisted and soft-deleted rooms leave public search while the owner keeps both
-  //     states in /me. GET /api/rooms/{roomId} still answers 200 for an unlisted room - that is the
-  //     existing behaviour, kept because neither the SRS nor docs/backend-api-summary.md defines it
-  //     (documented limitation, not a data leak: room fields are public by design).
+  // 21. Unlisted/pending listings are hidden from public search and detail; the owner can still manage them.
   const unlist = await call('PUT', `/api/rooms/${r2.id}`, {
     token: a.token,
     body: phase2Body({ title: 'P2 r2', monthlyRent: 5000000, availableFrom: '2026-11-15', isActive: false }),
@@ -530,7 +537,7 @@ try {
   const afterUnlist = await searchQuery(`district=${encodeURIComponent(district2)}&pageSize=50`);
   assert.equal(afterUnlist.totalCount, 2);
   assert.ok(!afterUnlist.items.some((room) => room.id === r2.id), 'an unlisted room must not appear in search');
-  assert.equal((await call('GET', `/api/rooms/${r2.id}`)).status, 200, 'unlisted detail stays readable (SRS silent, kept as-is)');
+  assert.equal((await call('GET', `/api/rooms/${r2.id}`)).status, 404, 'unlisted/pending detail is hidden from anonymous callers');
   assert.ok(
     (await call('GET', '/api/rooms/me', { token: a.token })).json.some((room) => room.id === r2.id && room.isActive === false),
     'the owner still sees the unlisted room',
@@ -544,7 +551,7 @@ try {
   assert.ok(!afterDelete.items.some((room) => room.id === r3.id), 'a soft-deleted room must not appear in search');
   assert.equal((await call('GET', `/api/rooms/${r3.id}`)).status, 404, 'a soft-deleted room is 404 on detail');
 
-  console.log('PASS: rooms owner APIs - anonymous 401 on /me + POST/PUT/DELETE, per-account /me (empty array, no cross-account rows), POST/PUT store every column (duplicate amenities collapsed, null amenity 400), full-replace PUT resets optional fields and isActive, non-owner PUT/DELETE 403 with the row untouched, inactive room hidden from search but kept in /me, soft DELETE 204 sets deleted_at and makes the next GET/PUT/DELETE 404. Phase 2: anonymous search and detail, city/district/maxRent/availableBy alone and combined with inclusive boundaries, empty result, malformed query 400, pagination/totalCount/hasNextPage with a stable order, detail equals the stored row, unlisted and soft-deleted rooms leave search while the owner keeps both in /me, and unlisted detail stays 200 (SRS silent).');
+  console.log('PASS: rooms owner APIs - anonymous 401 on /me + POST/PUT/DELETE, per-account /me (empty array, no cross-account rows), POST/PUT store every column (duplicate amenities collapsed, null amenity 400), full-replace PUT resets optional fields and isActive, non-owner PUT/DELETE 403 with the row untouched, inactive room hidden from search but kept in /me, soft DELETE 204 sets deleted_at and makes the next GET/PUT/DELETE 404. Phase 2: anonymous search and detail, city/district/maxRent/availableBy alone and combined with inclusive boundaries, empty result, malformed query 400, pagination/totalCount/hasNextPage with a stable order, detail equals the stored row, unlisted and soft-deleted rooms leave search while the owner keeps both in /me, and unlisted detail is hidden with 404.');
 } finally {
   // Only this script's fixtures: deleting the two users cascades to their rooms.
   sql(`DELETE FROM users WHERE email IN ('${emails.a}', '${emails.b}')`);

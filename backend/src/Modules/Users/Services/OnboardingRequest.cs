@@ -22,6 +22,12 @@ public sealed class OnboardingRequest : IValidatableObject
     public int BudgetMin { get; set; } = 3;
     public int BudgetMax { get; set; } = 7;
     public string HasRoom { get; set; } = "";
+    // Empty retains the existing contract for older clients that submit room details.
+    public string RoomAction { get; set; } = "";
+    // Optional for legacy clients; a declared poster type must be valid and have a room.
+    public string RoomPosterType { get; set; } = "";
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool DefersRoomDetails => HasRoom == "yes" && RoomAction is "explore" or "post_room";
     public string Addr { get; set; } = "";
     [StringLength(100)] public string RoomCity { get; set; } = "";
     [Range(-90d, 90d)] public double? Latitude { get; set; }
@@ -74,14 +80,18 @@ public sealed class OnboardingRequest : IValidatableObject
         Check(BudgetMin >= 1 && BudgetMax >= BudgetMin && BudgetMax <= 15, nameof(BudgetMax));
         Check(Amenities is not null && Amenities.Length <= 50 && Amenities.All(a => Text(a, 120)), nameof(Amenities));
         Check(Choice(HasRoom, "yes", "no"), nameof(HasRoom));
-        if (HasRoom == "yes")
+        Check(Choice(RoomAction, "", "explore", "post_room"), nameof(RoomAction));
+        Check(HasRoom == "yes" || string.IsNullOrEmpty(RoomAction), nameof(RoomAction));
+        Check(Choice(RoomPosterType, "", "landlord_agent", "resident"), nameof(RoomPosterType));
+        Check(HasRoom == "yes" || string.IsNullOrEmpty(RoomPosterType), nameof(RoomPosterType));
+        if (HasRoom == "yes" && !DefersRoomDetails)
         {
             Check(Text(Addr, 500), nameof(Addr));
             Check(Text(District, 100), nameof(District));
             Check(Positive(Bedrooms, true), nameof(Bedrooms));
             Check(Positive(Area), nameof(Area));
             Check(Rent is not null && System.Text.RegularExpressions.Regex.IsMatch(Rent, @"^(?:\d+|\d{1,3}(?:[.,]\d{3})+)$") && Positive(Rent.Replace(".", "").Replace(",", "")), nameof(Rent));
-            Check(Positive(Needed, true), nameof(Needed));
+            Check(Needed == "1", nameof(Needed));
             CheckMoveInDate(MoveIn, nameof(MoveIn));
             Check(Choice(HouseType, "Căn hộ", "Nhà nguyên căn", "Studio", "Ký túc xá"), nameof(HouseType));
         }

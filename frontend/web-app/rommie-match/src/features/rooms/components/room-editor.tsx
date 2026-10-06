@@ -26,13 +26,15 @@ export function RoomEditor({ room }: { room?: Room }) {
         description: room?.description ?? "",
         monthlyRent: room?.monthlyRent ?? 0,
         deposit: room?.deposit ?? 0,
-        maxOccupants: room?.maxOccupants ?? 2,
+        maxOccupants: 2,
+        pairOccupancyConfirmed: false,
+        accuracyAndResidenceConfirmed: false,
         availableFrom: room?.availableFrom ?? vietnamToday(),
         propertyType: (room?.propertyType ??
           "") as RoomFormValues["propertyType"],
         bedrooms: room?.bedrooms?.toString() ?? "",
         areaM2: room?.areaM2?.toString() ?? "",
-        roommatesNeeded: room?.roommatesNeeded?.toString() ?? "",
+        roommatesNeeded: "1",
         latitude: room?.latitude?.toString() ?? "",
         longitude: room?.longitude?.toString() ?? "",
         amenities: room?.amenities.join(", ") ?? "",
@@ -69,8 +71,6 @@ export function RoomEditor({ room }: { room?: Room }) {
     ["district", "Quận / khu vực *", "text"],
     ["monthlyRent", "Tiền thuê mỗi tháng (VND) *", "number"],
     ["deposit", "Tiền cọc (VND)", "number"],
-    ["maxOccupants", "Số người tối đa (bao gồm bạn) *", "number"],
-    ["roommatesNeeded", "Số người cần thêm", "number"],
     ["bedrooms", "Số phòng ngủ", "number"],
     ["areaM2", "Diện tích (m²)", "number"],
     ["availableFrom", "Ngày có thể dọn vào *", "date"],
@@ -82,6 +82,12 @@ export function RoomEditor({ room }: { room?: Room }) {
       onSubmit={form.handleSubmit((v) => { if (!isLocationPending && !isUploading) save.mutate(v); })}
       className="grid gap-5 sm:grid-cols-2"
     >
+      <div className="rounded-xl border border-teal/30 bg-teal/10 p-4 text-sm text-navy sm:col-span-2">
+        <p className="font-semibold">Chỉ hỗ trợ ở ghép theo cặp 2 người</p>
+        <p className="mt-1">Phòng hiện có tối đa 01 người đang ở và chỉ tuyển thêm đúng 01 người. Tổng số người sau khi ghép là 2.</p>
+        <input type="hidden" {...form.register("maxOccupants")} />
+        <input type="hidden" {...form.register("roommatesNeeded")} />
+      </div>
       <div className="sm:col-span-2"><LocationPicker initialPosition={room?.latitude != null && room.longitude != null ? { latitude: room.latitude, longitude: room.longitude } : undefined} onPendingChange={setIsLocationPending} onConfirm={location => {
         form.setValue("address", location.address, { shouldDirty: true, shouldValidate: true });
         form.setValue("city", location.city, { shouldDirty: true, shouldValidate: true });
@@ -149,6 +155,20 @@ export function RoomEditor({ room }: { room?: Room }) {
           {save.error.message}
         </p>
       )}
+      <div className="rounded-xl border p-4 sm:col-span-2">
+        <label className="flex cursor-pointer items-start gap-3" htmlFor="pair-occupancy-confirmed">
+          <input id="pair-occupancy-confirmed" type="checkbox" className="mt-1 h-4 w-4 shrink-0 accent-teal" {...form.register("pairOccupancyConfirmed")} aria-invalid={Boolean(form.formState.errors.pairOccupancyConfirmed)} aria-describedby={form.formState.errors.pairOccupancyConfirmed ? "pair-occupancy-error" : undefined} />
+          <span className="text-sm">Tôi cam kết căn phòng này hiện chỉ có <strong>TỐI ĐA 01 người đang ở</strong> và chỉ tuyển thêm <strong>ĐÚNG 01 người</strong> để ghép thành cặp 2 người.</span>
+        </label>
+        {form.formState.errors.pairOccupancyConfirmed && <p id="pair-occupancy-error" role="alert" className="mt-2 text-xs text-destructive">{form.formState.errors.pairOccupancyConfirmed.message}</p>}
+      </div>
+      <div className="rounded-xl border p-4 sm:col-span-2">
+        <label className="flex cursor-pointer items-start gap-3" htmlFor="accuracy-residence-confirmed">
+          <input id="accuracy-residence-confirmed" type="checkbox" className="mt-1 h-4 w-4 shrink-0 accent-teal" {...form.register("accuracyAndResidenceConfirmed")} aria-invalid={Boolean(form.formState.errors.accuracyAndResidenceConfirmed)} aria-describedby={form.formState.errors.accuracyAndResidenceConfirmed ? "accuracy-residence-error" : undefined} />
+          <span className="text-sm">Tôi cam kết thông tin phòng chính xác và sẵn sàng phối hợp đăng ký tạm trú cho thành viên mới theo đúng quy định pháp luật.</span>
+        </label>
+        {form.formState.errors.accuracyAndResidenceConfirmed && <p id="accuracy-residence-error" role="alert" className="mt-2 text-xs text-destructive">{form.formState.errors.accuracyAndResidenceConfirmed.message}</p>}
+      </div>
       <Button type="submit" disabled={save.isPending || isLocationPending || isUploading} className="sm:col-span-2">
         {save.isPending ? "Đang lưu…" : isUploading ? "Chờ upload ảnh…" : isLocationPending ? "Xác nhận vị trí trước khi gửi" : room ? "Lưu và gửi kiểm duyệt lại" : "Gửi kiểm duyệt"}
       </Button>

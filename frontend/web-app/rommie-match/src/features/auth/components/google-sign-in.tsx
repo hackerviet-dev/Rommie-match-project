@@ -8,6 +8,7 @@ import { ApiError } from "@/services/api-error";
 import { authApi } from "../services/auth-api";
 import { useAuthStore } from "../store/auth-store";
 import { getLoginDestination } from "../utils/actor-home";
+import { notifyLoginSuccess } from "../utils/notify-login-success";
 
 type GoogleSdk = { accounts: { id: {
   initialize: (options: { client_id: string; ux_mode: "popup"; auto_select: boolean; callback: (response: { credential: string }) => void }) => void;
@@ -43,6 +44,7 @@ export function GoogleSignIn() {
   const location = useLocation();
   const signIn = useMutation({ mutationFn: authApi.googleLogin, onSuccess: (session) => {
     setCredential(""); setPassword(""); queryClient.clear(); login(session);
+    notifyLoginSuccess(session.user);
     navigate(getLoginDestination(session.user.role, (location.state as {returnTo?: string} | null)?.returnTo), {replace: true});
   } });
   const mutateRef = useRef(signIn.mutate);

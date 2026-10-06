@@ -4,7 +4,7 @@ import { isValidDate, vietnamToday } from "@/utils/date-rules";
 
 export const onboardingDefaults = {
   name: "", age: "", gender: "", employment: "", orgName: "", hideOrg: false, city: "", bio: "",
-  sleep: "", env: "", yn: {} as Record<string, string>, hasRoom: "",
+  sleep: "", env: "", yn: {} as Record<string, string>, hasRoom: "", roomAction: "", roomPosterType: "",
   addr: "", district: "", roomCity: "", latitude: null as number | null, longitude: null as number | null, bedrooms: "", area: "", rent: "", needed: "", moveIn: "", houseType: "",
   distance: "", roomType: "", moveInDate: "",
   cleanliness: 4, extroversion: 60, budgetMin: 3, budgetMax: 7,
@@ -45,7 +45,7 @@ const room = z.object({
   addr: required("địa chỉ"), district: required("quận / khu vực"),
   bedrooms: number("Số phòng ngủ", true), area: number("Diện tích"),
   rent: required("tiền thuê").refine(value => /^(?:\d+|\d{1,3}(?:[.,]\d{3})+)$/.test(value.trim()) && Number(value.replace(/[.,]/g, "")) > 0, "Tiền thuê phải là số lớn hơn 0 (VD: 3500000 hoặc 3.500.000)."),
-  needed: number("Số người cần thêm", true), moveIn: date("Ngày có thể dọn vào"),
+  needed: choice("đúng 01 người cần thêm", ["1"]), moveIn: date("Ngày có thể dọn vào"),
   houseType: choice("loại nhà", ["Căn hộ", "Nhà nguyên căn", "Studio", "Ký túc xá"]),
 });
 const searching = z.object({
@@ -55,7 +55,10 @@ const searching = z.object({
 });
 export function validateOnboardingStep(step: number, values: OnboardingValues): OnboardingErrors {
   const schema = step === 1 ? personal : step === 2 ? lifestyle : step === 3
-    ? z.object({ hasRoom: choice("tình trạng chỗ ở", ["yes", "no"]) }) : values.hasRoom === "yes" ? room : searching;
+    ? z.object({ hasRoom: choice("tình trạng chỗ ở", ["yes", "no"]) }) : values.hasRoom === "yes"
+      ? step === 4 ? z.object({ roomPosterType: choice("tư cách đăng phòng", ["landlord_agent", "resident"]) })
+        : values.roomAction ? z.object({ roomAction: choice("bước tiếp theo", ["explore", "post_room"]) }) : room
+      : searching;
   const result = schema.safeParse({ ...values, smoke: values.yn.smoke ?? "", drink: values.yn.drink ?? "", pets: values.yn.pets ?? "" });
   if (result.success) return {};
   const errors: OnboardingErrors = {};

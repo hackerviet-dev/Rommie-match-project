@@ -18,7 +18,9 @@ export const roomSchema = z
     description: z.string().max(4000),
     monthlyRent: z.coerce.number().int().min(0).max(1e9),
     deposit: z.coerce.number().int().min(0).max(1e9),
-    maxOccupants: z.coerce.number().int().min(1).max(20),
+    maxOccupants: z.coerce.number().int().refine((v): boolean => v === 2, "RoomieMatch chỉ hỗ trợ phòng dành cho 2 người."),
+    pairOccupancyConfirmed: z.boolean().refine((v): boolean => v, "Bạn cần xác nhận cam kết ở ghép 2 người trước khi đăng phòng."),
+    accuracyAndResidenceConfirmed: z.boolean().refine((v): boolean => v, "Bạn cần cam kết thông tin phòng chính xác và phối hợp đăng ký tạm trú trước khi đăng phòng."),
     availableFrom: z
       .string()
       .refine(isValidDate, "Ngày không hợp lệ.")
@@ -29,10 +31,7 @@ export const roomSchema = z
       "Nhập số nguyên.",
     ),
     areaM2: optionalNumber(1, 99999.9),
-    roommatesNeeded: optionalNumber(1, 20).refine(
-      (v) => !v || Number.isInteger(Number(v)),
-      "Nhập số nguyên.",
-    ),
+    roommatesNeeded: z.string().refine((v): boolean => v === "1", "Chỉ được tuyển thêm đúng 01 người."),
     latitude: optionalNumber(-90, 90),
     longitude: optionalNumber(-180, 180),
     amenities: z.string(),

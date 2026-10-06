@@ -11,7 +11,7 @@ import { matchingApi } from "@/features/matching";
 import { chatApi } from "@/features/chat/services/chat-api";
 import { hyperlocalApi } from "@/features/hyperlocal";
 import { billingApi } from "@/features/billing";
-import { QuizHistory } from "@/features/quiz";
+import { QuizHistory, useMyQuiz } from "@/features/quiz";
 import { MatchingRefresh } from "@/features/matching/components/matching-refresh";
 import { MatchRequests } from "@/features/matching/components/match-requests";
 import { AppShell, CompatRing } from "@/layouts/main-layout";
@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { QueryState } from "@/components/common/query-state";
 export function DashboardScreen() {
+  const quiz = useMyQuiz();
   const me = useAuthStore((s) => s.user),
     location = useLocation(),
     profile = useQuery({
@@ -138,9 +139,9 @@ export function DashboardScreen() {
         <div className="space-y-6 lg:col-span-2">
           <Card className="rounded-2xl border-0 p-6 shadow-sm">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-xl font-semibold">Hoàn thiện hồ sơ</h2>
+              <h2 className="text-xl font-semibold">Thông tin hồ sơ</h2>
               <span className="rounded-full bg-mint/40 px-3 py-1 text-sm text-navy">
-                {profile.data ? `${profile.data.profileCompletion}%` : "…"}
+                {profile.data ? profile.data.profileCompletion >= 100 ? "Đã điền đầy đủ" : `${profile.data.profileCompletion}% thông tin` : "…"}
               </span>
             </div>
             <QueryState query={profile} />
@@ -148,7 +149,7 @@ export function DashboardScreen() {
             {profile.data && (
               <>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Mức độ hoàn thiện: {profile.data.profileCompletion}%
+                  Độ đầy đủ thông tin: {profile.data.profileCompletion}% · Không bao gồm xác minh danh tính.
                 </p>
                 <Progress
                   value={profile.data.profileCompletion}
@@ -156,13 +157,13 @@ export function DashboardScreen() {
                 />
                 <div className="mt-4 flex flex-wrap gap-2 text-xs">
                   <span className="rounded-full bg-mint/30 px-3 py-1.5">
-                    ✓ Thông tin cơ bản
+                    {profile.data.profileCompletion >= 100 ? "✓ Đã điền đủ thông tin" : "Cần bổ sung thông tin"}
                   </span>
                   <Link
                     to="/quiz"
                     className="rounded-full bg-mint/30 px-3 py-1.5"
                   >
-                    Khảo sát lối sống
+                    Khảo sát tương thích: {quiz.isPending ? "Đang kiểm tra…" : quiz.isError ? "Chưa kiểm tra được" : quiz.data ? "Đã hoàn thành" : "Chưa hoàn thành"}
                   </Link>
                   <span className="rounded-full bg-muted px-3 py-1.5">
                     {profile.data.avatarUrl
@@ -171,8 +172,8 @@ export function DashboardScreen() {
                   </span>
                   <span className="rounded-full bg-muted px-3 py-1.5">
                     {profile.data.isVerified
-                      ? "✓ Đã xác minh"
-                      : "Chưa xác minh"}
+                      ? "Xác minh danh tính: Đã xác minh"
+                      : "Xác minh danh tính: Chưa xác minh"}
                   </span>
                 </div>
                 <Button asChild variant="outline" className="mt-4">

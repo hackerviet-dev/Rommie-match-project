@@ -18,8 +18,7 @@ import { Slider } from "@/components/ui/slider";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { VN_LOCATIONS } from "@/constants/locations";
-import { LocationPicker } from "@/features/location/components/location-picker";
-import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Compass, HousePlus, Building2, UsersRound } from "lucide-react";
 import { vietnamToday } from "@/utils/date-rules";
 
 
@@ -39,7 +38,6 @@ function Field({ field, error, children, className = "" }: { field: string; erro
 export function OnboardingFlow() {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
-  const [isLocationPending, setIsLocationPending] = useState(false);
   const [hasAttempted, setHasAttempted] = useState(false);
   const [ageTouched, setAgeTouched] = useState(false);
   const [orgTouched, setOrgTouched] = useState(false);
@@ -54,7 +52,7 @@ export function OnboardingFlow() {
   const signOut = useSignOut();
   const saveOnboarding = useMutation({
     mutationFn: onboardingApi.complete,
-    onSuccess: async (status) => {
+    onSuccess: async (status, submitted) => {
       setHasSaved(true);
       form.reset(form.getValues());
       toast.success("Đã lưu hồ sơ và hoàn thành onboarding.");
@@ -63,7 +61,7 @@ export function OnboardingFlow() {
         queryClient.invalidateQueries({ queryKey: ["profile", "me", userId] }),
         queryClient.invalidateQueries({ queryKey: ["lifestyle", "me", userId] }),
       ]);
-      nav("/quiz", { replace: true });
+      nav(submitted.hasRoom === "yes" ? submitted.roomAction === "post_room" ? "/rooms/new" : "/dashboard" : "/quiz", { replace: true });
     },
   });
   const profile = useQuery({ queryKey: ["profile", "me", userId], queryFn: profileApi.getMine, enabled: Boolean(userId), retry: false });
@@ -72,10 +70,10 @@ export function OnboardingFlow() {
   const hasValidRegisteredAge = isValidOnboardingAge(registeredInfo.age ?? "");
   useEffect(() => {
     if (!profile.data || isPrefilled) return;
-    form.reset({ ...form.getValues(), ...profileToOnboarding(profile.data) });
+    const restored = profileToOnboarding(profile.data);
+    form.reset({ ...form.getValues(), ...restored, roomAction: restored.hasRoom === "yes" ? "explore" : "" });
     const savedAmenities = profile.data.onboarding?.amenities ?? [];
     setSelectedAmenities(savedAmenities);
-    setAmenityOptions(current => [...new Set([...current, ...savedAmenities])]);
     setIsPrefilled(true);
   }, [profile.data, isPrefilled, form]);
   // Step 1
@@ -104,28 +102,12 @@ export function OnboardingFlow() {
   const setYn = (value: OnboardingValues["yn"]) => form.setValue("yn", value, { shouldDirty: true });
   // Step 3
   const hasRoom = values.hasRoom;
-  const setHasRoom = (value: OnboardingValues["hasRoom"]) => form.setValue("hasRoom", value, { shouldDirty: true });
-  // Step 4 - has room
-  const addr = values.addr;
-  const setAddr = (value: OnboardingValues["addr"]) => { form.setValue("addr", value, { shouldDirty: true }); form.setValue("latitude", null, { shouldDirty: true }); form.setValue("longitude", null, { shouldDirty: true }); };
-  const district = values.district;
-  const setDistrict = (value: OnboardingValues["district"]) => { form.setValue("district", value, { shouldDirty: true }); form.setValue("latitude", null, { shouldDirty: true }); form.setValue("longitude", null, { shouldDirty: true }); };
-  const bedrooms = values.bedrooms;
-  const setBedrooms = (value: OnboardingValues["bedrooms"]) => form.setValue("bedrooms", value, { shouldDirty: true });
-  const area = values.area;
-  const setArea = (value: OnboardingValues["area"]) => form.setValue("area", value, { shouldDirty: true });
-  const rent = values.rent;
-  const setRent = (value: OnboardingValues["rent"]) => form.setValue("rent", value, { shouldDirty: true });
-  const needed = values.needed;
-  const setNeeded = (value: OnboardingValues["needed"]) => form.setValue("needed", value, { shouldDirty: true });
-  const moveIn = values.moveIn;
-  const setMoveIn = (value: OnboardingValues["moveIn"]) => form.setValue("moveIn", value, { shouldDirty: true });
-  const houseType = values.houseType;
-  const setHouseType = (value: OnboardingValues["houseType"]) => form.setValue("houseType", value, { shouldDirty: true });
-  const DEFAULT_AMENITIES = ["Máy lạnh", "Máy giặt", "Wi-Fi", "Bếp", "Ban công", "Bảo vệ 24/7", "Thang máy", "Chỗ để xe"];
-  const [amenityOptions, setAmenityOptions] = useState<string[]>(DEFAULT_AMENITIES);
+  const setHasRoom = (value: OnboardingValues["hasRoom"]) => {
+    if (value !== hasRoom) form.setValue("roomPosterType", "", { shouldDirty: true });
+    form.setValue("hasRoom", value, { shouldDirty: true });
+    form.setValue("roomAction", value === "yes" ? "explore" : "", { shouldDirty: true });
+  };
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
-  const [newAmenity, setNewAmenity] = useState("");
   const hasChanges = form.formState.isDirty || JSON.stringify([...selectedAmenities].sort()) !== JSON.stringify([...(profile.data?.onboarding?.amenities ?? [])].sort());
   const shouldWarn = isPrefilled && !hasSaved && !isExiting && (hasChanges || !status.data?.isComplete);
   const blocker = useBlocker(({ currentLocation, nextLocation }) => shouldWarn && currentLocation.pathname !== nextLocation.pathname);
@@ -144,7 +126,7 @@ export function OnboardingFlow() {
   const setMoveInDate = (value: OnboardingValues["moveInDate"]) => form.setValue("moveInDate", value, { shouldDirty: true });
 
   const nav = useNavigate();
-  const total = 4;
+  const total = hasRoom === "yes" ? 5 : 4;
   function cancelExit() {
     setIsExitRequested(false);
     if (blocker.state === "blocked") blocker.reset();
@@ -172,7 +154,6 @@ export function OnboardingFlow() {
   }
   const hasErrors = Object.keys(errors).length > 0;
   function handleNext() {
-    if (step === 4 && hasRoom === "yes" && isLocationPending) return;
     const nextErrors = validateOnboardingStep(step, values);
     if (Object.keys(nextErrors).length) {
       setHasAttempted(true);
@@ -197,26 +178,12 @@ export function OnboardingFlow() {
     }
   }
 
-  const toggleAmenity = (a: string) =>
-    setSelectedAmenities(s => s.includes(a) ? s.filter(x => x !== a) : [...s, a]);
-  const addAmenity = () => {
-    const v = newAmenity.trim();
-    if (!v || amenityOptions.includes(v)) return;
-    setAmenityOptions(o => [...o, v]);
-    setSelectedAmenities(s => [...s, v]);
-    setNewAmenity("");
-  };
-  const removeAmenity = (a: string) => {
-    setAmenityOptions(o => o.filter(x => x !== a));
-    setSelectedAmenities(s => s.filter(x => x !== a));
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-mint/10 p-4 sm:p-8">
       <div className="mx-auto max-w-2xl">
         <div className="flex items-center justify-between mb-6"><Logo /><div className="flex items-center gap-3"><span className="text-sm text-muted-foreground">Bước {step}/{total}</span><Button type="button" variant="outline" disabled={saveOnboarding.isPending || signOut.isPending || status.isPending} onClick={() => status.data?.isComplete ? nav("/settings?section=profile") : setIsExitRequested(true)}>Thoát</Button></div></div>
         <Progress value={(step/total)*100} className="h-2 mb-8" />
-        <p role="status" className="mb-6 text-sm text-muted-foreground">{status.data?.isComplete ? "Hồ sơ đã lưu trước đó. Bạn đang chỉnh sửa; thay đổi chỉ được lưu sau khi hoàn thành 4 bước và bấm Lưu hồ sơ & tiếp tục." : "Chưa hoàn thành onboarding. Bạn cần hoàn thành 4 bước và bấm Lưu hồ sơ & tiếp tục trước khi sử dụng hệ thống. Bấm Back không lưu dữ liệu."}{hasChanges && " Có thay đổi chưa lưu."}</p>
+        <p role="status" className="mb-6 text-sm text-muted-foreground">{status.data?.isComplete ? "Hồ sơ đã lưu trước đó. Thay đổi chỉ được lưu khi bạn hoàn thành các bước và bấm Lưu hồ sơ." : "Chưa hoàn thành onboarding. Bạn cần hoàn thành các bước và bấm Lưu hồ sơ trước khi sử dụng hệ thống. Bấm Back không lưu dữ liệu."}{hasChanges && " Có thay đổi chưa lưu."}</p>
 
         <Card className="p-8 sm:p-10 rounded-3xl border-0 shadow-lg">
           {!isPrefilled && (
@@ -241,7 +208,7 @@ export function OnboardingFlow() {
                     </div>
                   ))}
                 </dl>
-                {(!registeredInfo.gender || !registeredInfo.city || !hasValidRegisteredAge) && <p className="mt-4 text-xs text-muted-foreground">Vui lòng bổ sung các mục còn thiếu bên dưới. Đăng nhập Google không cung cấp tuổi, giới tính và thành phố. Thông tin chỉ được lưu khi hoàn thành đủ 4 bước.</p>}
+                {(!registeredInfo.gender || !registeredInfo.city || !hasValidRegisteredAge) && <p className="mt-4 text-xs text-muted-foreground">Vui lòng bổ sung các mục còn thiếu bên dưới. Đăng nhập Google không cung cấp tuổi, giới tính và thành phố. Thông tin chỉ được lưu khi hoàn thành các bước và bấm Lưu hồ sơ.</p>}
               </section>
               <div className="mt-6 grid sm:grid-cols-2 gap-4">
                 {(!registeredInfo.name || errors.name) && <Field field="name" error={errors.name}><Label>Họ và tên <span className="text-destructive">*</span></Label><Input value={name} onChange={e=>setName(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="Nguyễn Linh" /></Field>}
@@ -299,7 +266,7 @@ export function OnboardingFlow() {
                 </Field>
                 <div>
                   <Label>Bạn sạch sẽ ở mức nào? <span className="text-muted-foreground font-normal">(1 bừa → 5 sạch tinh)</span></Label>
-                  <Slider aria-label="Mức độ sạch sẽ" value={[values.cleanliness]} onValueChange={([value]) => form.setValue("cleanliness", value)} max={5} min={1} step={1} className="mt-2" />
+                  <Slider aria-label="Mức độ sạch sẽ" value={[values.cleanliness]} onValueChange={([value]) => form.setValue("cleanliness", value, { shouldDirty: true })} max={5} min={1} step={1} className="mt-2" />
                 </div>
                 <div className="grid sm:grid-cols-3 gap-4">
                   {[["smoke","Có hút thuốc?"],["drink","Có uống rượu bia?"],["pets","Có nuôi thú cưng?"]].map(([k,l]) => (
@@ -313,7 +280,7 @@ export function OnboardingFlow() {
                 </div>
                 <div>
                   <Label>Hướng nội ←→ Hướng ngoại</Label>
-                  <Slider aria-label="Mức độ hướng ngoại" value={[values.extroversion]} onValueChange={([value]) => form.setValue("extroversion", value)} max={100} step={5} className="mt-2" />
+                  <Slider aria-label="Mức độ hướng ngoại" value={[values.extroversion]} onValueChange={([value]) => form.setValue("extroversion", value, { shouldDirty: true })} max={100} step={5} className="mt-2" />
                 </div>
                 <Field field="env" error={errors.env}>
                   <Label>Không gian phòng ưa thích <span className="text-destructive">*</span></Label>
@@ -329,18 +296,19 @@ export function OnboardingFlow() {
             <>
               <h2 className="text-2xl font-display font-bold">Tình trạng chỗ ở</h2>
               <p className="text-muted-foreground text-sm mt-1">Bạn đã có phòng hay đang cần tìm phòng?</p>
+              <p className="mt-3 rounded-xl bg-teal/10 p-3 text-sm text-navy">RoomieMatch chỉ hỗ trợ ghép cặp 2 người: bạn và 01 người ở cùng.</p>
               <Field field="hasRoom" error={errors.hasRoom} className="mt-8 grid sm:grid-cols-2 gap-4">
                 <button type="button" onClick={()=>setHasRoom("yes")}
                   className={`text-left p-5 rounded-2xl border-2 transition-all ${hasRoom==="yes" ? "border-navy bg-navy/5 shadow-md" : "border-border hover:border-navy/40"}`}>
                   <div className="text-3xl">🏠</div>
                   <div className="mt-2 font-semibold">Mình đã có phòng</div>
-                  <div className="text-sm text-muted-foreground mt-1">Chỉ cần tìm bạn cùng phòng phù hợp.</div>
+                  <div className="text-sm text-muted-foreground mt-1">Muốn tìm thêm 01 bạn dọn vào ở chung phòng với mình.</div>
                 </button>
                 <button type="button" onClick={()=>setHasRoom("no")}
                   className={`text-left p-5 rounded-2xl border-2 transition-all ${hasRoom==="no" ? "border-navy bg-navy/5 shadow-md" : "border-border hover:border-navy/40"}`}>
                   <div className="text-3xl">🔎</div>
                   <div className="mt-2 font-semibold">Mình đang tìm phòng</div>
-                  <div className="text-sm text-muted-foreground mt-1">Tìm cả phòng lẫn bạn cùng phòng.</div>
+                  <div className="text-sm text-muted-foreground mt-1">Tìm 1 phòng trống hoặc ghép cặp với 01 người đã có phòng.</div>
                 </button>
               </Field>
             </>
@@ -348,63 +316,39 @@ export function OnboardingFlow() {
 
           {step === 4 && hasRoom === "yes" && (
             <>
-              <h2 className="text-2xl font-display font-bold">Thông tin phòng hiện tại</h2>
-              <p className="text-muted-foreground text-sm mt-1">Giúp bạn cùng phòng tương lai hiểu rõ về chỗ ở của bạn.</p>
-              <div className="mt-8 space-y-6">
-                <LocationPicker initialPosition={values.latitude != null && values.longitude != null ? { latitude: values.latitude, longitude: values.longitude } : undefined} onPendingChange={setIsLocationPending} onConfirm={location => {
-                  setAddr(location.address); setDistrict(location.district);
-                  form.setValue("roomCity", location.city, { shouldDirty: true });
-                  form.setValue("latitude", location.latitude, { shouldDirty: true });
-                  form.setValue("longitude", location.longitude, { shouldDirty: true });
-                }} />
-                <div><Label htmlFor="room-city">Thành phố / Tỉnh của phòng</Label><Input id="room-city" value={values.roomCity || values.city} onChange={e => { form.setValue("roomCity", e.target.value, { shouldDirty: true }); form.setValue("latitude", null); form.setValue("longitude", null); }} className="mt-1.5" /></div>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <Field field="addr" error={errors.addr}><Label>Địa chỉ <span className="text-destructive">*</span></Label><Input value={addr} onChange={e=>setAddr(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="123 Nguyễn Huệ" /></Field>
-                  <Field field="district" error={errors.district}><Label>Quận / Khu vực <span className="text-destructive">*</span></Label><Input value={district} onChange={e=>setDistrict(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="Quận 1, TP.HCM" /></Field>
-                  <Field field="bedrooms" error={errors.bedrooms}><Label>Số phòng ngủ <span className="text-destructive">*</span></Label><Input value={bedrooms} onChange={e=>setBedrooms(e.target.value)} type="number" className="mt-1.5 h-11 rounded-xl" placeholder="2" /></Field>
-                  <Field field="area" error={errors.area}><Label>Diện tích (m²) <span className="text-destructive">*</span></Label><Input value={area} onChange={e=>setArea(e.target.value)} type="number" className="mt-1.5 h-11 rounded-xl" placeholder="45" /></Field>
-                  <Field field="rent" error={errors.rent}><Label>Tiền thuê chia mỗi người (VND) <span className="text-destructive">*</span></Label><Input value={rent} onChange={e=>setRent(e.target.value)} className="mt-1.5 h-11 rounded-xl" placeholder="3.500.000" /></Field>
-                  <Field field="needed" error={errors.needed}><Label>Số người cần thêm <span className="text-destructive">*</span></Label><Input value={needed} onChange={e=>setNeeded(e.target.value)} type="number" className="mt-1.5 h-11 rounded-xl" placeholder="1" /></Field>
-                  <Field field="moveIn" error={errors.moveIn}><Label>Ngày có thể dọn vào <span className="text-destructive">*</span></Label><Input value={moveIn} onChange={e=>setMoveIn(e.target.value)} type="date" min={vietnamToday()} className="mt-1.5 h-11 rounded-xl" /><p className="mt-1 text-xs text-muted-foreground">Chọn từ hôm nay trở đi.</p></Field>
-                  <Field field="houseType" error={errors.houseType}>
-                    <Label>Loại nhà <span className="text-destructive">*</span></Label>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {["Căn hộ","Nhà nguyên căn","Studio","Ký túc xá"].map(o => <Pill key={o} active={houseType===o} onClick={()=>setHouseType(o)}>{o}</Pill>)}
-                    </div>
-                  </Field>
+              <h2 className="text-2xl font-display font-bold">Bạn đăng phòng với tư cách nào?</h2>
+              <p className="mt-2 text-sm text-muted-foreground">Bạn là ai? Chọn tư cách phù hợp với nhu cầu đăng phòng của bạn.</p>
+              <Field field="roomPosterType" error={errors.roomPosterType} className="mt-8">
+                <div role="radiogroup" aria-label="Tư cách đăng phòng" className="grid gap-4 sm:grid-cols-2">
+                  {[{ value: "landlord_agent", icon: Building2, title: "Chủ nhà / Môi giới", description: "Có phòng cho thuê dành cho cặp 2 người; chỉ tuyển thêm đúng 01 người." }, { value: "resident", icon: UsersRound, title: "Người đang ở", description: "Đang ở một mình và muốn tìm thêm đúng 01 bạn ở ghép, chia sẻ chi phí." }].map(option => (
+                    <label key={option.value} className={`cursor-pointer rounded-2xl border-2 p-5 transition-all focus-within:ring-2 focus-within:ring-teal ${values.roomPosterType === option.value ? "border-navy bg-navy/5 shadow-md" : "border-border hover:border-navy/40"}`}>
+                      <input type="radio" value={option.value} {...form.register("roomPosterType")} className="sr-only" />
+                      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal/10 text-teal" aria-hidden="true"><option.icon className="h-7 w-7" strokeWidth={1.75} /></span>
+                      <span className="mt-3 block font-semibold">{option.title}</span>
+                      <span className="mt-2 block text-sm text-muted-foreground">{option.description}</span>
+                    </label>
+                  ))}
                 </div>
-                <div>
-                  <Label>Tiện nghi có sẵn <span className="text-muted-foreground font-normal">(chọn hoặc thêm mới)</span></Label>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {amenityOptions.map(o => {
-                      const active = selectedAmenities.includes(o);
-                      const isCustom = !DEFAULT_AMENITIES.includes(o);
-                      return (
-                        <span key={o} className={`group inline-flex items-center gap-1 rounded-xl border text-sm font-medium transition-all ${active ? "bg-navy text-white border-navy shadow-md" : "bg-card hover:bg-muted"}`}>
-                          <button type="button" onClick={()=>toggleAmenity(o)} className="px-4 py-2.5">{o}</button>
-                          {isCustom && (
-                            <button type="button" onClick={()=>removeAmenity(o)} aria-label={`Xoá ${o}`} className={`pr-2 text-xs ${active ? "text-white/80 hover:text-white" : "text-muted-foreground hover:text-destructive"}`}>×</button>
-                          )}
-                        </span>
-                      );
-                    })}
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    <Input
-                      value={newAmenity}
-                      onChange={e=>setNewAmenity(e.target.value)}
-                      onKeyDown={e=>{ if (e.key === "Enter") { e.preventDefault(); addAmenity(); } }}
-                      className="h-10 rounded-xl"
-                      placeholder="Thêm tiện nghi khác (VD: Hồ bơi)"
-                    />
-                    <Button type="button" onClick={addAmenity} variant="outline" className="rounded-xl">Thêm</Button>
-                  </div>
+              </Field>
+            </>
+          )}
+
+          {step === 5 && hasRoom === "yes" && (
+            <>
+              <h2 className="text-2xl font-display font-bold">Bạn muốn bắt đầu như thế nào?</h2>
+              <p className="mt-2 text-sm text-muted-foreground">{values.roomPosterType === "landlord_agent" ? "Bạn đăng phòng với tư cách Chủ nhà / Môi giới." : "Bạn đăng phòng với tư cách Người đang ở."} Bạn có thể khám phá trước hoặc đăng phòng ngay; chưa cần nhập thông tin phòng để hoàn thành hồ sơ.</p>
+              <Field field="roomAction" error={errors.roomAction} className="mt-8">
+                <div role="radiogroup" aria-label="Bước tiếp theo" className="grid gap-4 sm:grid-cols-2">
+                  {[{ value: "explore", icon: Compass, title: "Khám phá trước", description: "Làm quen với RoomieMatch. Bạn có thể đăng phòng sau." }, { value: "post_room", icon: HousePlus, title: values.roomPosterType === "landlord_agent" ? "Đăng phòng ngay" : "Đăng phòng tìm người ở chung", description: "Lưu hồ sơ rồi chuyển sang nhập thông tin, ảnh và vị trí phòng. Tin chỉ công khai sau khi được duyệt." }].map(option => (
+                    <label key={option.value} className={`cursor-pointer rounded-2xl border-2 p-5 transition-all focus-within:ring-2 focus-within:ring-teal ${values.roomAction === option.value ? "border-navy bg-navy/5 shadow-md" : "border-border hover:border-navy/40"}`}>
+                      <input type="radio" value={option.value} {...form.register("roomAction")} className="sr-only" />
+                      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal/10 text-teal" aria-hidden="true"><option.icon className="h-7 w-7" strokeWidth={1.75} /></span>
+                      <span className="mt-3 block font-semibold">{option.title}</span>
+                      <span className="mt-2 block text-sm text-muted-foreground">{option.description}</span>
+                    </label>
+                  ))}
                 </div>
-                <div>
-                  <Label>Mô tả thêm về phòng</Label>
-                  <textarea className="mt-1.5 w-full min-h-24 rounded-xl border bg-background p-3 text-sm" placeholder="Phòng thoáng, gần công viên, khu yên tĩnh..." />
-                </div>
-              </div>
+              </Field>
             </>
           )}
 
@@ -415,7 +359,7 @@ export function OnboardingFlow() {
               <div className="mt-8 space-y-6">
                 <div>
                   <Label>Ngân sách hàng tháng (VND)</Label>
-                  <Slider aria-label="Ngân sách hàng tháng" value={[values.budgetMin, values.budgetMax]} onValueChange={([min, max]) => { form.setValue("budgetMin", min); form.setValue("budgetMax", max); }} max={15} min={1} step={1} className="mt-2" />
+                  <Slider aria-label="Ngân sách hàng tháng" value={[values.budgetMin, values.budgetMax]} onValueChange={([min, max]) => { form.setValue("budgetMin", min, { shouldDirty: true }); form.setValue("budgetMax", max, { shouldDirty: true }); }} max={15} min={1} step={1} className="mt-2" />
                   <div className="flex justify-between text-xs text-muted-foreground mt-2"><span>{values.budgetMin} triệu</span><span>{values.budgetMax} triệu</span></div>
                 </div>
                 <Field field="distance" error={errors.distance}>
@@ -447,8 +391,8 @@ export function OnboardingFlow() {
           <fieldset disabled={saveOnboarding.isPending} className="contents">
             <div className="mt-4 flex justify-between gap-3">
               <Button variant="ghost" disabled={step===1} onClick={()=>{ setHasAttempted(false); setStep(s=>s-1); }} className="rounded-xl"><ArrowLeft className="h-4 w-4 mr-2" /> Quay lại</Button>
-              <Button onClick={handleNext} disabled={!isPrefilled || saveOnboarding.isPending || (step === 4 && hasRoom === "yes" && isLocationPending)} className="rounded-xl bg-navy hover:bg-navy/90 text-white px-6 disabled:opacity-50 disabled:cursor-not-allowed">
-                {saveOnboarding.isPending ? "Đang lưu…" : step < total ? "Tiếp tục" : "Lưu hồ sơ & tiếp tục"} <ArrowRight className="h-4 w-4 ml-2" />
+              <Button onClick={handleNext} disabled={!isPrefilled || saveOnboarding.isPending} className="rounded-xl bg-navy hover:bg-navy/90 text-white px-6 disabled:opacity-50 disabled:cursor-not-allowed">
+                {saveOnboarding.isPending ? "Đang lưu…" : step < total ? "Tiếp tục" : hasRoom === "yes" ? values.roomAction === "post_room" ? "Lưu hồ sơ & đăng phòng" : "Lưu hồ sơ & khám phá" : "Lưu hồ sơ & tiếp tục"} <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </div>
           </fieldset>

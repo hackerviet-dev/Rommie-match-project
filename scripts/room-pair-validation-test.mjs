@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {fileURLToPath} from 'node:url';
+import {mkdir} from 'node:fs/promises';
+process.chdir(fileURLToPath(new URL('../',import.meta.url)));
+await mkdir('tmp/rooms',{recursive:true});
+const require=createRequire(process.cwd()+'/frontend/web-app/rommie-match/package.json');
+await require('esbuild').build({entryPoints:['frontend/web-app/rommie-match/src/features/rooms/schemas/room-schema.ts'],bundle:true,platform:'node',format:'cjs',outfile:'tmp/rooms/schema.cjs'});
+const {roomSchema}=require(process.cwd()+'/tmp/rooms/schema.cjs');
+const valid={title:'Phòng QA',address:'123 QA Street',city:'TP.HCM',district:'Quận 1',description:'',monthlyRent:3000000,deposit:0,maxOccupants:2,roommatesNeeded:'1',pairOccupancyConfirmed:true,accuracyAndResidenceConfirmed:true,availableFrom:new Date(Date.now()+86400000).toISOString().slice(0,10),propertyType:'',bedrooms:'',areaM2:'',latitude:'',longitude:'',amenities:'',isActive:true,photoUrls:[]};
+assert.ok(roomSchema.safeParse(valid).success);
+for(const patch of [{pairOccupancyConfirmed:false},{pairOccupancyConfirmed:undefined},{maxOccupants:3},{maxOccupants:1},{roommatesNeeded:'2'},{roommatesNeeded:''}])assert.equal(roomSchema.safeParse({...valid,...patch}).success,false);
+console.log('PASS: pair-only capacity, exactly one roommate and explicit consent required.');
+for(const accuracyAndResidenceConfirmed of [false,undefined]) assert.equal(roomSchema.safeParse({...valid,accuracyAndResidenceConfirmed}).success,false);
+console.log('PASS: accuracy and residence cooperation consent required.');

@@ -98,25 +98,31 @@ public sealed record SaveRoomRequest(
     [Required, Range(0, 1_000_000_000)] [property: Description("Giá thuê mỗi tháng, đơn vị VND, 0-1000000000.")] int? MonthlyRent,
     [Range(0, 1_000_000_000)] [property: Description("Tiền đặt cọc, đơn vị VND, 0-1000000000.")] int Deposit,
     [Required, NotPastDate] [property: Description("Ngày phòng bắt đầu sẵn sàng, dạng yyyy-MM-dd, từ hôm nay trở đi theo giờ Việt Nam.")] DateOnly? AvailableFrom,
-    [Range(1, 20)] [property: Description("Số người ở tối đa, từ 1 đến 20 (bao gồm người đăng).")] int MaxOccupants,
+    [Range(2, 2)] [property: Description("Chỉ hỗ trợ cặp 2 người.")] int MaxOccupants,
     [property: Description("Loại nhà: apartment, house, studio hoặc dormitory; có thể null.")] string? PropertyType,
     [Range(1, 50)] [property: Description("Số phòng ngủ, 1-50; có thể null.")] int? Bedrooms,
     [Range(typeof(decimal), "1", "99999.9", ParseLimitsInInvariantCulture = true)]
     [property: Description("Diện tích m², 1-99999.9; có thể null.")] decimal? AreaM2,
-    [Range(1, 20)] [property: Description("Số bạn cùng phòng cần tìm, 1-20 và nhỏ hơn maxOccupants; có thể null.")] int? RoommatesNeeded,
+    [Required, Range(1, 1)] [property: Description("Bắt buộc tuyển thêm đúng 01 người.")] int? RoommatesNeeded,
     [property: Description("Danh sách tiện ích: tối đa 30 mục, mỗi mục tối đa 60 ký tự; phần tử null bị từ chối với 400 (mục trùng nhau được gộp, mục rỗng bị bỏ qua).")] string[]? Amenities,
     [Range(typeof(decimal), "-90", "90", ParseLimitsInInvariantCulture = true)]
     [property: Description("Vĩ độ -90 đến 90; phải gửi cùng longitude hoặc bỏ cả hai.")] decimal? Latitude,
     [Range(typeof(decimal), "-180", "180", ParseLimitsInInvariantCulture = true)]
     [property: Description("Kinh độ -180 đến 180; phải gửi cùng latitude hoặc bỏ cả hai.")] decimal? Longitude,
     [property: Description("Có hiển thị tin phòng hay không; null dùng mặc định của server.")] bool? IsActive,
-    [property: Description("Tối đa 10 URL ảnh đã upload bởi chính người đăng. Bỏ trường khi sửa sẽ giữ ảnh cũ.")] string[]? PhotoUrls = null) : IValidatableObject
+    [property: Description("Tối đa 10 URL ảnh đã upload bởi chính người đăng. Bỏ trường khi sửa sẽ giữ ảnh cũ.")] string[]? PhotoUrls = null,
+    bool PairOccupancyConfirmed = false,
+    bool AccuracyAndResidenceConfirmed = false) : IValidatableObject
 {
     public const int MaxAmenities = 30;
     public const int MaxAmenityLength = 60;
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
+        if (!PairOccupancyConfirmed)
+            yield return new ValidationResult("Bạn cần cam kết phòng hiện có tối đa 01 người và chỉ tuyển thêm đúng 01 người để ghép thành cặp 2 người.", [nameof(PairOccupancyConfirmed)]);
+        if (!AccuracyAndResidenceConfirmed)
+            yield return new ValidationResult("Bạn cần cam kết thông tin phòng chính xác và phối hợp đăng ký tạm trú cho thành viên mới trước khi đăng phòng.", [nameof(AccuracyAndResidenceConfirmed)]);
         if (PhotoUrls is { Length: > 10 } || PhotoUrls?.Any(url => url is null || url.Length > 2048 || !Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != "https") == true)
             yield return new ValidationResult("Tối đa 10 ảnh HTTPS đã upload hợp lệ.", [nameof(PhotoUrls)]);
         if (Latitude is null != Longitude is null)

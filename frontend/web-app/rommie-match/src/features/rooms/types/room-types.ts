@@ -37,7 +37,7 @@ export type SaveRoomRequest = Omit<
   | "updatedAt"
   | "moderationStatus"
   | "moderationNote"
->;
+> & { pairOccupancyConfirmed: boolean; accuracyAndResidenceConfirmed: boolean };
 
 export type RoomSearch = {
   page?: number;

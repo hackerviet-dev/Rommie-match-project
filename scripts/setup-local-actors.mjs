@@ -26,13 +26,13 @@ const actors = [
   {
     actor: "Moderator",
     email: "moderator@roomiematch.vn",
-    name: "Kiểm duyệt Demo",
+    name: "Kiểm duyệt viên RoomieMatch",
     role: "moderator",
   },
   {
     actor: "Admin",
     email: "admin@roomiematch.vn",
-    name: "Quản trị Demo",
+    name: "Quản trị viên RoomieMatch",
     role: "admin",
     seedId: "00000000-0000-0000-0000-000000000099",
   },

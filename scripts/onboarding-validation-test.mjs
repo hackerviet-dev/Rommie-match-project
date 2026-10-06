@@ -32,10 +32,17 @@ assert.equal(Object.keys(validate(4,{...d,hasRoom:'no'})).length,3);
 assert.deepEqual(validate(4,{...d,hasRoom:'no',distance:'2–5 km',roomType:'Phòng riêng',moveInDate:futureDate}),{});
 assert.ok(validate(4,{...d,hasRoom:'no',moveInDate:'2026-02-30'}).moveInDate);
 const room={...d,hasRoom:'yes',addr:'123 Nguyễn Huệ',district:'Quận 1',bedrooms:'2',area:'45',rent:'3.500.000',needed:'1',moveIn:futureDate,houseType:'Căn hộ'};
-assert.deepEqual(validate(4,room),{});
-assert.ok(validate(4,{...room,area:'-45',needed:'1.5',rent:'abc'}).area);
-assert.ok(validate(4,{...room,rent:'3abc500'}).rent);
-assert.ok(validate(4,{...room,rent:'0'}).rent);
+assert.ok(validate(4,{...room}).roomPosterType);
+for (const roomPosterType of ['landlord_agent','resident']) assert.deepEqual(validate(4,{...room,roomPosterType}),{});
+assert.ok(validate(4,{...room,roomPosterType:'admin'}).roomPosterType);
+assert.deepEqual(validate(5,room),{});
+for (const roomAction of ['explore', 'post_room']) {
+  assert.deepEqual(validate(5,{...d,hasRoom:'yes',roomAction}),{});
+}
+assert.ok(validate(5,{...d,hasRoom:'yes',roomAction:'invalid'}).roomAction);
+assert.ok(validate(5,{...room,area:'-45',needed:'1.5',rent:'abc'}).area);
+assert.ok(validate(5,{...room,rent:'3abc500'}).rent);
+assert.ok(validate(5,{...room,rent:'0'}).rent);
 const profile={displayName:'Đã đăng ký',city:'TP.HCM',gender:'female',birthDate:'2004-10-02',bio:null,district:'Quận 1',occupation:null};
 const saved=prefill(profile,new Date(2026,9,1));
 assert.equal(saved.name,profile.displayName);assert.equal(saved.city,profile.city);assert.equal(saved.gender,'Nữ');assert.equal(saved.age,'21');
@@ -50,4 +57,5 @@ const completed={...profile,birthDate:null,birthYear:2002,occupation:'Đang đi 
 const restored=prefill(completed,new Date(2026,9,2));
 assert.equal(restored.age,'24');assert.equal(restored.employment,'Đang đi làm');assert.equal(restored.orgName,'Company');assert.equal(restored.hideOrg,true);
 assert.equal(restored.hasRoom,'yes');assert.equal(restored.addr,room.addr);assert.equal(restored.rent,room.rent);assert.equal(restored.cleanliness,5);assert.deepEqual(restored.yn,completed.onboarding.yn);
-console.log('PASS: all 4 steps, both room branches, blank/invalid numbers/dates, registered profile prefill and nondisclosure');
+assert.equal(prefill({...completed,onboarding:{...completed.onboarding,roomPosterType:'resident'}}).roomPosterType,'resident');
+console.log('PASS: 4/5 steps, poster type validation/restoration, both room branches, blank/invalid numbers/dates, registered profile prefill and nondisclosure');

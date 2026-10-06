@@ -9,6 +9,7 @@ import {
   useAuthStore,
   loginSchema,
   getLoginDestination,
+  notifyLoginSuccess,
 } from "@/features/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,7 @@ export default function LoginPage() {
     onSuccess: (session) => {
       queryClient.clear();
       login(session);
+      notifyLoginSuccess(session.user);
       const returnTo = (location.state as { returnTo?: string } | null)
         ?.returnTo;
       nav(getLoginDestination(session.user.role, returnTo), { replace: true });

@@ -212,7 +212,7 @@ export function SettingsScreen() {
                   <div className="mt-3">
                     <div className="flex justify-between text-xs mb-1.5">
                       <span className="text-muted-foreground">
-                        Mức độ hoàn thiện hồ sơ
+                        Độ đầy đủ thông tin (không bao gồm xác minh)
                       </span>
                       <span className="font-semibold text-navy">
                         {completion}%

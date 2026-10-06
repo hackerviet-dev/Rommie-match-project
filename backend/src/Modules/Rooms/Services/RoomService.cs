@@ -133,11 +133,11 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
             INSERT INTO rooms
                 (owner_user_id, title, description, address, district, city, monthly_rent,
                  deposit, available_from, max_occupants, property_type, bedrooms, area_m2,
-                 roommates_needed, amenities, latitude, longitude, is_active, photo_urls)
+                 roommates_needed, amenities, latitude, longitude, is_active, photo_urls, pair_occupancy_confirmed_at, accuracy_residence_confirmed_at)
             VALUES
                 (@owner_user_id, @title, @description, @address, @district, @city, @monthly_rent,
                  @deposit, @available_from, @max_occupants, @property_type, @bedrooms, @area_m2,
-                 @roommates_needed, @amenities, @latitude, @longitude, @is_active, coalesce(@photo_urls, '{}'::text[]))
+                 @roommates_needed, @amenities, @latitude, @longitude, @is_active, coalesce(@photo_urls, '{}'::text[]), now(), now())
             RETURNING id
             """;
 
@@ -177,7 +177,9 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
                 latitude = @latitude,
                 longitude = @longitude,
                 is_active = @is_active,
-                photo_urls = coalesce(@photo_urls, photo_urls)
+                photo_urls = coalesce(@photo_urls, photo_urls),
+                pair_occupancy_confirmed_at = now(),
+                accuracy_residence_confirmed_at = now()
             WHERE id = @room_id AND owner_user_id = @owner_user_id AND deleted_at IS NULL
             """;
 
