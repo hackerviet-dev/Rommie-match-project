@@ -43,7 +43,13 @@ export function AuthGuard({
       />
     );
   const home = getActorHome(user.role);
-  if ((staff && home !== "/admin") || (memberHome && home === "/admin"))
+  const isStaff = user.role === "admin" || user.role === "moderator";
+  if ((staff && !isStaff) || (memberHome && isStaff))
     return <Navigate to={home} replace />;
+  if (staff) {
+    const root = location.pathname.split("/")[1];
+    if (`/${root}` !== home)
+      return <Navigate to={home + location.pathname.slice(root.length + 1) + location.search + location.hash} replace />;
+  }
   return children;
 }

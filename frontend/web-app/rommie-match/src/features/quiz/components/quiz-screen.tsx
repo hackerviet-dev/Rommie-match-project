@@ -26,12 +26,13 @@ export function QuizScreen() {
   </div></div>;
 }
 
-type QuizQuestionnaireProps = { quiz: Quiz; initialAnswers: Record<string, string>; onSaved: () => void };
+type QuizQuestionnaireProps = { quiz: Quiz; initialAnswers: Record<string, string>; onSaved: () => void; embedded?: boolean };
 
-function QuizQuestionnaire({ quiz, initialAnswers, onSaved }: QuizQuestionnaireProps) {
+export function QuizQuestionnaire({ quiz, initialAnswers, onSaved, embedded = false }: QuizQuestionnaireProps) {
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>(() => Object.fromEntries(quiz.questions.filter(question => question.options.some(option => option.id === initialAnswers[question.id])).map(question => [question.id, initialAnswers[question.id]])));
   const save = useSaveQuiz();
+  const QuestionContainer = embedded ? "div" : Card;
   const question = quiz.questions[index];
   const progress = Math.round(quiz.questions.filter(item => answers[item.id]).length / quiz.questions.length * 100);
   function handleNext() {
@@ -44,13 +45,13 @@ function QuizQuestionnaire({ quiz, initialAnswers, onSaved }: QuizQuestionnaireP
     }
   }
   return <><div className="mb-3 text-right text-sm font-semibold text-teal">{progress}% đã trả lời</div><Progress value={progress} className="h-2 mb-8" />
-    <Card className="p-8 sm:p-12 rounded-3xl border-0 shadow-xl text-center">
-      <div className="text-7xl mb-6" aria-hidden="true">{question.emoji}</div><p className="text-xs uppercase tracking-wider text-teal font-semibold">Câu {index + 1}/{quiz.questions.length}</p><h1 className="mt-3 text-2xl sm:text-3xl font-display font-bold leading-tight">{question.text}</h1>
+    <QuestionContainer className={embedded ? "text-center" : "p-8 sm:p-12 rounded-3xl border-0 shadow-xl text-center"}>
+      <div className="text-5xl mb-4" aria-hidden="true">{question.emoji}</div><p className="text-xs uppercase tracking-wider text-teal font-semibold">Câu {index + 1}/{quiz.questions.length}</p><h2 className="mt-3 text-xl sm:text-2xl font-display font-bold leading-tight">{question.text}</h2>
       <div className="mt-8 space-y-3" role="group" aria-label="Chọn câu trả lời">{question.options.map((option, optionIndex) => {
         const isActive = answers[question.id] === option.id;
-        return <button key={option.id} disabled={save.isPending} aria-pressed={isActive} onClick={() => setAnswers(current => ({ ...current, [question.id]: option.id }))} className={`w-full p-5 rounded-2xl border-2 text-left transition-all flex items-center gap-3 ${isActive ? "border-teal bg-mint/20 shadow-md" : "border-border hover:border-teal/50 hover:bg-muted/50"}`}><span className={`h-6 w-6 rounded-full grid place-items-center border-2 shrink-0 ${isActive ? "border-teal bg-teal text-white" : "border-border"}`}>{isActive && <Check className="h-3.5 w-3.5" />}</span><span className="font-medium">{String.fromCharCode(65 + optionIndex)}. {option.text}</span></button>;
+        return <button type="button" key={option.id} disabled={save.isPending} aria-pressed={isActive} onClick={() => setAnswers(current => ({ ...current, [question.id]: option.id }))} className={`w-full p-5 rounded-2xl border-2 text-left transition-all flex items-center gap-3 ${isActive ? "border-teal bg-mint/20 shadow-md" : "border-border hover:border-teal/50 hover:bg-muted/50"}`}><span className={`h-6 w-6 rounded-full grid place-items-center border-2 shrink-0 ${isActive ? "border-teal bg-teal text-white" : "border-border"}`}>{isActive && <Check className="h-3.5 w-3.5" />}</span><span className="font-medium">{String.fromCharCode(65 + optionIndex)}. {option.text}</span></button>;
       })}</div>
       {save.isError && <p role="alert" className="mt-4 text-sm text-destructive">{save.error.message} Câu trả lời chưa được lưu. Vui lòng thử lại.</p>}
-      <div className="mt-8 flex gap-3"><Button variant="outline" disabled={index === 0 || save.isPending} onClick={() => setIndex(value => value - 1)}>Quay lại</Button><Button onClick={handleNext} disabled={!answers[question.id] || save.isPending} className="flex-1 h-12 rounded-xl bg-navy hover:bg-navy/90 text-white">{save.isPending ? "Đang lưu…" : index < quiz.questions.length - 1 ? "Câu tiếp theo" : "Lưu bài khảo sát"}</Button></div>
-    </Card></>;
+      <div className="mt-8 flex gap-3">{(!embedded || index > 0) && <Button type="button" variant="outline" disabled={index === 0 || save.isPending} onClick={() => setIndex(value => value - 1)}>{embedded ? "Câu trước" : "Quay lại"}</Button>}<Button type="button" onClick={handleNext} disabled={!answers[question.id] || save.isPending} className="flex-1 h-12 rounded-xl bg-navy hover:bg-navy/90 text-white">{save.isPending ? "Đang lưu…" : index < quiz.questions.length - 1 ? "Câu tiếp theo" : "Lưu bài khảo sát"}</Button></div>
+    </QuestionContainer></>;
 }

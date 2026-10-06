@@ -27,6 +27,10 @@ export default function RoomEditorPage() {
         {id && <QueryState query={query} />}{" "}
         {id && query.data?.ownerUserId !== me && query.data ? (
           <p role="alert">Bạn không có quyền sửa phòng này.</p>
+        ) : query.data?.moderationStatus === "rejected" ? (
+          <p role="status" className="font-semibold text-red-700">Tin đã bị từ chối và không thể sửa. Xem lý do trong thông báo hoặc tin nhắn.</p>
+        ) : query.data?.moderationStatus === "approved" ? (
+          <p role="status" className="font-semibold text-green-700">✓ Phòng đã được duyệt thành công. Bạn không thể sửa nội dung tin này.</p>
         ) : (
           (!id || query.data) && <RoomEditor key={id} room={query.data} />
         )}

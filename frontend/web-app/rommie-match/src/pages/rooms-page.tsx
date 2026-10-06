@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { QueryState, Pagination } from "@/components/common/query-state";
 import { roomsApi } from "@/features/rooms/services/rooms-api";
 import { useAuthStore } from "@/features/auth";
+import { RoomListCard } from "@/features/rooms/components/room-list-card";
 export default function RoomsPage() {
   const [p, setP] = useSearchParams(),
     me = useAuthStore((s) => s.user?.id),
@@ -92,25 +93,8 @@ export default function RoomsPage() {
           {query.data.totalCount} phòng
         </p>
       )}
-      <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {query.data?.items.map((r) => (
-          <Card key={r.id} className="rounded-3xl p-6">
-            <div className="mb-4 rounded-2xl bg-mint/20 p-6 text-xl text-navy">
-              {r.propertyType || "Phòng ở ghép"}
-            </div>
-            <h2 className="text-xl font-semibold">{r.title}</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {r.district}, {r.city}
-            </p>
-            <p className="mt-4 text-xl font-semibold text-teal">
-              {r.monthlyRent.toLocaleString("vi-VN")}₫ / tháng
-            </p>
-            <p className="mt-2 text-sm">Có thể dọn vào: {r.availableFrom}</p>
-            <Button asChild className="mt-5 w-full">
-              <Link to={`/rooms/${r.id}`}>Xem phòng</Link>
-            </Button>
-          </Card>
-        ))}
+      <div className="mt-5 space-y-4">
+        {query.data?.items.map((r) => <RoomListCard key={r.id} room={r} />)}
       </div>
       {query.data?.totalCount === 0 && (
         <p role="status" className="py-12 text-center text-muted-foreground">

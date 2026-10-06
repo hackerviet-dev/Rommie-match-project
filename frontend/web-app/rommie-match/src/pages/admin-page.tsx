@@ -1,3 +1,4 @@
+import { useStaffPath } from "@/features/auth";
 import { Routes, Route, Navigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
@@ -31,13 +32,15 @@ import { Card } from "@/components/ui/card";
 import { QueryState, Pagination } from "@/components/common/query-state";
 import { useState } from "react";
 function AdminOnly({ children }: { children: ReactNode }) {
+  const staffPath = useStaffPath();
   return useAuthStore((s) => s.user?.role) === "admin" ? (
     children
   ) : (
-    <Navigate to="/admin" replace />
+    <Navigate to={staffPath} replace />
   );
 }
 function Overview() {
+  const staffPath = useStaffPath();
   const me = useAuthStore((s) => s.user),
     query = useQuery({
       queryKey: ["staff", "overview", me?.id],
@@ -96,7 +99,7 @@ function Overview() {
       <QueryState query={query} />
       <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((c) => (
-          <Link key={c.path} to={`/admin/${c.path}`}>
+          <Link key={c.path} to={`${staffPath}/${c.path}`}>
             <Card className="h-full rounded-2xl border-slate-200 p-6 shadow-none transition-shadow hover:shadow-sm">
               <div
                 className={`grid h-12 w-12 place-items-center rounded-xl ${c.color}`}
@@ -119,7 +122,7 @@ function Overview() {
           <h2 className="font-semibold">Không gian cộng đồng</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <Link
-              to="/admin/groups"
+              to={`${staffPath}/groups`}
               className="flex items-center gap-4 rounded-xl bg-slate-50 p-5"
             >
               <UsersRound className="h-6 w-6 text-indigo-500" />
@@ -131,7 +134,7 @@ function Overview() {
               </div>
             </Link>
             <Link
-              to="/admin/users"
+              to={`${staffPath}/users`}
               className="flex items-center gap-4 rounded-xl bg-slate-50 p-5"
             >
               <Users className="h-6 w-6 text-emerald-500" />
@@ -262,6 +265,7 @@ function Queue({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 export default function AdminPage() {
+  const staffPath = useStaffPath();
   return (
     <AdminLayout>
       <Routes>
@@ -323,7 +327,7 @@ export default function AdminPage() {
             </AdminOnly>
           }
         />
-        <Route path="*" element={<Navigate to="/admin" replace />} />
+        <Route path="*" element={<Navigate to={staffPath} replace />} />
       </Routes>
     </AdminLayout>
   );

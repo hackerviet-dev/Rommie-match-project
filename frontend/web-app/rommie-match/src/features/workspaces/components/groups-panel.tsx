@@ -1,3 +1,4 @@
+import { useStaffPath } from "@/features/auth";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -17,6 +18,7 @@ import { QueryState, Pagination } from "@/components/common/query-state";
 import { ConfirmAction } from "@/components/common/confirm-action";
 import { groupRoleLabel } from "../utils/workspace-labels";
 export function GroupsPanel({ staff = false }: { staff?: boolean }) {
+  const staffPath = useStaffPath();
   const [params, setParams] = useSearchParams(),
     id = params.get("group") ?? "",
     [page, setPage] = useState(1),
@@ -248,7 +250,7 @@ export function GroupsPanel({ staff = false }: { staff?: boolean }) {
                 <Link
                   to={
                     staff
-                      ? `/admin/rooms?room=${detail.data.roomId}`
+                      ? `${staffPath}/rooms?room=${detail.data.roomId}`
                       : `/rooms/${detail.data.roomId}`
                   }
                   className="mt-2 inline-block text-sm text-teal"
@@ -298,7 +300,7 @@ export function GroupsPanel({ staff = false }: { staff?: boolean }) {
                       <Link
                         to={
                           staff
-                            ? `/admin/users/${m.userId}`
+                            ? `${staffPath}/users/${m.userId}`
                             : `/profile/${m.userId}`
                         }
                         className="font-medium"

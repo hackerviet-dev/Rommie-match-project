@@ -82,7 +82,9 @@ public sealed class OnboardingRequest : IValidatableObject
         Check(Choice(HasRoom, "yes", "no"), nameof(HasRoom));
         Check(Choice(RoomAction, "", "explore", "post_room"), nameof(RoomAction));
         Check(HasRoom == "yes" || string.IsNullOrEmpty(RoomAction), nameof(RoomAction));
-        Check(Choice(RoomPosterType, "", "landlord_agent", "resident"), nameof(RoomPosterType));
+        if (RoomPosterType == "landlord_agent")
+            errors.Add(new("Hệ thống chưa hỗ trợ Chủ nhà / Môi giới.", [nameof(RoomPosterType)]));
+        else Check(HasRoom == "yes" ? RoomPosterType == "resident" : string.IsNullOrEmpty(RoomPosterType), nameof(RoomPosterType));
         Check(HasRoom == "yes" || string.IsNullOrEmpty(RoomPosterType), nameof(RoomPosterType));
         if (HasRoom == "yes" && !DefersRoomDetails)
         {

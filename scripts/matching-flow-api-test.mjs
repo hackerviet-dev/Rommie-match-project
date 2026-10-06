@@ -189,9 +189,9 @@ async function run() {
   assert.ok(Array.isArray(quiz.json.questions) && quiz.json.questions.length > 0, 'questions must not be empty');
   const answers = Object.fromEntries(quiz.json.questions.map((question) => [question.id, question.options[0].id]));
 
-  // 6. Quiz result: 404 before answering, 400 for an incomplete body, PUT -> GET round-trip.
+  // 6. Quiz result: 204 before answering, 400 for an incomplete body, PUT -> GET round-trip.
   const quizBefore = await call('GET', '/api/matching/me/quiz', { token: a.token });
-  assert.equal(quizBefore.status, 404, 'quiz result must be 404 before answering');
+  assert.equal(quizBefore.status, 204, 'quiz result must be 204 before answering');
   const partial = await call('PUT', '/api/matching/me/quiz', { token: a.token, body: { answers: { [quiz.json.questions[0].id]: quiz.json.questions[0].options[0].id } } });
   assert.equal(partial.status, 400, `an incomplete quiz body must be 400 (got ${partial.status})`);
   assert.ok(Object.keys(partial.json.errors ?? {}).some((key) => key.startsWith('Answers.')), 'quiz 400 must key errors by question');
@@ -591,7 +591,7 @@ if (failure !== null) {
 } else {
   console.log(
     'PASS: onboarding -> quiz -> matching flow - anonymous 401 on every private step, public question set, '
-    + 'profile/lifestyle/housing-needs/quiz PUT->GET round-trips, quiz 404/400 contract, 409 lifestyle_required before lifestyle, '
+    + 'profile/lifestyle/housing-needs/quiz PUT->GET round-trips, quiz 204/400 contract, 409 lifestyle_required before lifestyle, '
     + 'recalculate 200 with candidatesScored+matches, quota limit read from /me/usage and 403 scan_quota_exceeded + resetsAt at the real limit, '
     + 'per-account scan budgets, and saving profile/lifestyle/housing/quiz never recalculates or spends a scan. '
     + 'Phase 3 matches list: 401 anonymous, token-owned list with no self and no cross-account leak, paging/totalCount/'

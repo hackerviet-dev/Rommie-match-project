@@ -130,6 +130,9 @@ public sealed class RoomsController(IRoomService roomService, RoomPhotoService p
     {
         return error switch
         {
+            RoomWriteError.ApprovedLocked => Problem(
+                "Tin đã được kiểm duyệt, bạn không thể sửa nội dung.",
+                statusCode: StatusCodes.Status409Conflict),
             RoomWriteError.NotOwner => Problem(
                 "Bạn không phải chủ của tin đăng này.",
                 statusCode: StatusCodes.Status403Forbidden),

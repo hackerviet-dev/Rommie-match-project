@@ -4,7 +4,11 @@ import { matchingApi } from "../services/matching-api";
 import { useAuthStore } from "@/features/auth";
 import { Button } from "@/components/ui/button";
 import { QueryState } from "@/components/common/query-state";
+import { useState } from "react";
+import { SavedProfileQuizDialog, useMyQuiz } from "@/features/quiz";
 export function MatchingRefresh() {
+  const quiz = useMyQuiz();
+  const [showSaved, setShowSaved] = useState(false);
   const userId = useAuthStore((s) => s.user?.id),
     client = useQueryClient(),
     navigate = useNavigate();
@@ -36,13 +40,13 @@ export function MatchingRefresh() {
       <div className="mt-4 flex flex-wrap gap-3">
         <Button
           disabled={
-            refresh.isPending || !usage.data || usage.data.scansRemaining === 0
+            refresh.isPending || !quiz.data || !usage.data || usage.data.scansRemaining === 0
           }
           onClick={() => refresh.mutate()}
         >
           {refresh.isPending ? "Đang tìm…" : "Tìm / cập nhật người phù hợp"}
         </Button>
-        <Button variant="outline" onClick={() => navigate("/matches")}>
+        <Button variant="outline" onClick={() => setShowSaved(true)}>
           Xem kết quả đã lưu
         </Button>
         {usage.data?.scansRemaining === 0 && (
@@ -51,6 +55,9 @@ export function MatchingRefresh() {
           </Button>
         )}
       </div>
+      <SavedProfileQuizDialog open={showSaved} onOpenChange={setShowSaved} />
+      <button className="mt-3 text-sm font-semibold text-teal underline" onClick={() => navigate("/matches")}>Xem người phù hợp đã lưu</button>
+      {!quiz.isPending && !quiz.data && <p className="mt-3 text-sm">Bạn cần hoàn thành khảo sát trước khi ghép đôi. <button className="font-semibold text-teal underline" onClick={() => navigate("/quiz")}>Làm khảo sát</button></p>}
       {refresh.isError && (
         <p role="alert" className="mt-3 text-sm text-destructive">
           {refresh.error.message}

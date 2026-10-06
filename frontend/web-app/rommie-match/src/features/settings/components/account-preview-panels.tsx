@@ -11,6 +11,7 @@ import { bookingsApi } from "@/features/hyperlocal/services/bookings-api";
 import { bookingStatusLabel } from "@/features/hyperlocal/utils/booking-status";
 import { billingApi } from "@/features/billing";
 import { matchingApi } from "@/features/matching";
+import { useNotifications } from "@/features/notifications";
 import {
   Dialog,
   DialogContent,
@@ -25,12 +26,14 @@ export function AccountPreviewPanels({ section }: { section: AccountSection }) {
   return null;
 }
 function MyRooms() {
+  const { query: notifications, read } = useNotifications();
   const me = useAuthStore((s) => s.user?.id),
     client = useQueryClient(),
     [deleteId, setDeleteId] = useState<string | null>(null),
     query = useQuery({
       queryKey: ["rooms", "mine", me],
       queryFn: roomsApi.mine,
+      refetchInterval: 15_000,
     }),
     remove = useMutation({
       mutationFn: roomsApi.remove,
@@ -51,13 +54,18 @@ function MyRooms() {
         </p>
       )}
       <div className="mt-5 space-y-4">
-        {query.data?.map((r) => (
+        {query.data?.map((r) => {
+          const rejection = notifications.data?.items.find(n => n.data.roomId === r.id && n.data.status === "rejected");
+          return (
           <Card
             key={r.id}
             className="flex flex-wrap items-center justify-between gap-3 rounded-2xl p-5"
           >
             <div>
               <h2 className="font-semibold">{r.title}</h2>
+              {r.moderationStatus === "rejected" && <div className="mt-2 text-sm text-red-700"><p className="font-semibold">Tin bị từ chối · Không thể sửa.</p><p className="mt-1 whitespace-pre-wrap">Lý do: {rejection?.body ?? "Đang tải kết quả kiểm duyệt…"}</p></div>}
+              {r.moderationStatus === "approved" && <p className="mt-2 text-sm font-semibold text-green-700">✓ Đã duyệt thành công · Không thể sửa nội dung</p>}
+              {notifications.data?.items.filter((n) => n.data.roomId === r.id && !n.readAt).map((n) => <Button key={n.id} variant="link" disabled={read.isPending} onClick={() => read.mutate(n.id)}>Đánh dấu đã đọc kết quả duyệt</Button>)}
               <p className="mt-1 text-sm text-muted-foreground">
                 {r.monthlyRent.toLocaleString("vi-VN")}₫ ·{" "}
                 {r.moderationStatus === "pending"
@@ -69,19 +77,20 @@ function MyRooms() {
                       : "Đã ẩn"}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              {r.moderationStatus === "rejected" && rejection?.data.conversationId && <Button asChild variant="outline"><Link to={`/chat?conversation=${rejection.data.conversationId}`}>Tin nhắn người duyệt</Link></Button>}
               <Button asChild variant="outline">
                 <Link to={`/rooms/${r.id}`}>Xem</Link>
               </Button>
-              <Button asChild variant="outline">
+              {r.moderationStatus === "pending" && <Button asChild variant="outline">
                 <Link to={`/rooms/${r.id}/edit`}>Sửa</Link>
-              </Button>
+              </Button>}
               <Button variant="destructive" onClick={() => setDeleteId(r.id)}>
                 Xóa
               </Button>
             </div>
           </Card>
-        ))}
+        ); })}
       </div>
       <Dialog
         open={Boolean(deleteId)}

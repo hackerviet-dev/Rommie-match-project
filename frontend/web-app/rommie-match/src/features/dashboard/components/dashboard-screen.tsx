@@ -137,7 +137,7 @@ export function DashboardScreen() {
       </div>
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <Card className="rounded-2xl border-0 p-6 shadow-sm">
+          {(!profile.data || profile.isError || profile.data.profileCompletion < 100) && <Card className="rounded-2xl border-0 p-6 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Thông tin hồ sơ</h2>
               <span className="rounded-full bg-mint/40 px-3 py-1 text-sm text-navy">
@@ -181,7 +181,7 @@ export function DashboardScreen() {
                 </Button>
               </>
             )}
-          </Card>
+          </Card>}
           <Card className="rounded-3xl p-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Gợi ý cho bạn</h2>

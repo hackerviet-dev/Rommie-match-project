@@ -154,6 +154,14 @@ export function AppRouter() {
             }
           />
           <Route
+            path="/moderator/*"
+            element={
+              <AuthGuard staff>
+                <AdminPage />
+              </AuthGuard>
+            }
+          />
+          <Route
             path="/admin/*"
             element={
               <AuthGuard staff>
@@ -190,7 +198,8 @@ export function AppRouter() {
       </PageTransition>
       {pathname !== ROUTES.chat &&
         pathname !== ROUTES.onboarding &&
-        !pathname.startsWith("/admin") && <AIChatbox />}
+        !pathname.startsWith("/admin") &&
+        !pathname.startsWith("/moderator") && <AIChatbox />}
     </OnboardingGate>
   );
 }

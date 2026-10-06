@@ -19,7 +19,8 @@ public sealed class OnboardingController(OnboardingService service) : Controller
     public async Task<IActionResult> Complete(OnboardingRequest request, CancellationToken cancellationToken)
     {
         if (User.GetUserId() is not { } id) return Unauthorized();
-        await service.SaveAsync(id, request, cancellationToken);
+        try { await service.SaveAsync(id, request, cancellationToken); }
+        catch (WorkspaceException e) { return Problem(statusCode:e.Status, detail:e.Message); }
         return Ok(new { isComplete = true });
     }
 }

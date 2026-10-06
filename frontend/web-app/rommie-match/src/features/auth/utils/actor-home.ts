@@ -2,9 +2,9 @@ import { ROUTES } from "@/constants/routes";
 
 export function getActorHome(role?: string | null) {
   if (!role) return ROUTES.landing;
-  return role === "admin" || role === "moderator"
-    ? ROUTES.admin
-    : ROUTES.dashboard;
+  if (role === "admin") return ROUTES.admin;
+  if (role === "moderator") return ROUTES.moderator;
+  return ROUTES.dashboard;
 }
 
 export function getLoginDestination(role: string, returnTo?: string) {
@@ -22,10 +22,12 @@ export function getLoginDestination(role: string, returnTo?: string) {
     )
   )
     return home;
-  if (
-    (pathname === ROUTES.admin || pathname.startsWith(`${ROUTES.admin}/`)) &&
-    home !== ROUTES.admin
-  )
-    return home;
+  const staffRoot = [ROUTES.admin, ROUTES.moderator].find(
+    (root) => pathname === root || pathname.startsWith(`${root}/`),
+  );
+  if (staffRoot) {
+    if (role !== "admin" && role !== "moderator") return home;
+    return home + returnTo.slice(staffRoot.length);
+  }
   return returnTo;
 }

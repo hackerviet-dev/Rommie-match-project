@@ -23,8 +23,8 @@ public sealed class QuizController(IQuizService quizService) : ControllerBase
 
     [Authorize]
     [EndpointSummary("Lấy kết quả trắc nghiệm của tôi")]
-    [EndpointDescription("Cần đăng nhập; không có parameter/body. 200 trả QuizResultDto của chính người gọi (answers, traits, tags, completedAt, updatedAt). 404 nghĩa là tài khoản chưa làm bài này, không phải lỗi hệ thống: frontend nên chuyển người dùng sang màn hình làm bài. traits/tags do server tính từ answers, client chỉ hiển thị.")]
-    [ProducesResponseType(404, Description = "Tài khoản chưa làm bài trắc nghiệm này; hãy chuyển sang màn hình làm bài.")]
+    [EndpointDescription("Cần đăng nhập; không có parameter/body. 200 trả QuizResultDto của chính người gọi (answers, traits, tags, completedAt, updatedAt). 204 nghĩa là tài khoản chưa làm bài này, không phải lỗi hệ thống: frontend nên chuyển người dùng sang màn hình làm bài. traits/tags do server tính từ answers, client chỉ hiển thị.")]
+    [ProducesResponseType(204, Description = "Tài khoản chưa làm bài trắc nghiệm này; hãy chuyển sang màn hình làm bài.")]
     [ProducesResponseType(typeof(QuizResultDto), 200, Description = "Thành công; dữ liệu trả về theo schema bên dưới.")]
     [HttpGet("me/quiz")]
     public async Task<ActionResult<QuizResultDto>> GetMyResult(CancellationToken cancellationToken)
@@ -35,7 +35,7 @@ public sealed class QuizController(IQuizService quizService) : ControllerBase
         }
 
         var result = await quizService.GetMyResultAsync(userId, cancellationToken);
-        return result is null ? NotFound() : Ok(result);
+        return result is null ? NoContent() : Ok(result);
     }
 
     // Saving answers does not rescore existing matches; the app calls

@@ -181,6 +181,10 @@ try {
     const body = { email, password, displayName: `Rooms ${label}`, city: 'TP.HCM' };
     const { status, json } = await call('POST', '/api/auth/register', { body });
     assert.equal(status, 200, `register ${label} returned ${status}: ${JSON.stringify(json)}`);
+    const quiz=await call('GET','/api/matching/quiz',{token:json.accessToken});
+    assert.equal(quiz.status,200);
+    const savedQuiz=await call('PUT','/api/matching/me/quiz',{token:json.accessToken,body:{answers:Object.fromEntries(quiz.json.questions.map(q=>[q.id,q.options[0].id]))}});
+    assert.equal(savedQuiz.status,200);
     const onboarding = await call('PUT','/api/users/me/onboarding',{token:json.accessToken,body:{name:`Rooms ${label}`,age:'24',gender:'Nam',employment:'Khác',city:'TP.HCM',sleep:'22h–0h',env:'Yên tĩnh',yn:{smoke:'Không',drink:'Không',pets:'Không'},hasRoom:'yes',roomAction:'explore',roomPosterType:'resident'}});
     assert.equal(onboarding.status,200);
     return { body, token: json.accessToken, userId: json.user.id };

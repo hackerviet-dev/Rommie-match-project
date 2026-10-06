@@ -1,6 +1,7 @@
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { onboardingApi } from "../services/onboarding-api";
+import { QuizQuestionnaire, useQuiz, useMyQuiz } from "@/features/quiz";
 import { profileApi } from "@/features/profile";
 import { useAuthStore, useSignOut } from "@/features/auth";
 import { flushSync } from "react-dom";
@@ -46,14 +47,14 @@ export function OnboardingFlow() {
   const values = form.watch();
   const userId = useAuthStore(state => state.user?.id);
   const status = useQuery({ queryKey: ["onboarding", userId], queryFn: onboardingApi.getStatus, enabled: Boolean(userId) });
-  const [hasSaved, setHasSaved] = useState(false);
+  const quiz = useQuiz();
+  const savedQuiz = useMyQuiz();
   const [isExitRequested, setIsExitRequested] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const signOut = useSignOut();
   const saveOnboarding = useMutation({
     mutationFn: onboardingApi.complete,
     onSuccess: async (status, submitted) => {
-      setHasSaved(true);
       form.reset(form.getValues());
       toast.success("Đã lưu hồ sơ và hoàn thành onboarding.");
       queryClient.setQueryData(["onboarding", userId], status);
@@ -61,6 +62,7 @@ export function OnboardingFlow() {
         queryClient.invalidateQueries({ queryKey: ["profile", "me", userId] }),
         queryClient.invalidateQueries({ queryKey: ["lifestyle", "me", userId] }),
       ]);
+      if (submitted.hasRoom === "yes" && step === 5) { setStep(6); return; }
       nav(submitted.hasRoom === "yes" ? submitted.roomAction === "post_room" ? "/rooms/new" : "/dashboard" : "/quiz", { replace: true });
     },
   });
@@ -109,7 +111,7 @@ export function OnboardingFlow() {
   };
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const hasChanges = form.formState.isDirty || JSON.stringify([...selectedAmenities].sort()) !== JSON.stringify([...(profile.data?.onboarding?.amenities ?? [])].sort());
-  const shouldWarn = isPrefilled && !hasSaved && !isExiting && (hasChanges || !status.data?.isComplete);
+  const shouldWarn = isPrefilled && !isExiting && (hasChanges || !status.data?.isComplete);
   const blocker = useBlocker(({ currentLocation, nextLocation }) => shouldWarn && currentLocation.pathname !== nextLocation.pathname);
   useEffect(() => {
     if (!shouldWarn) return;
@@ -126,7 +128,7 @@ export function OnboardingFlow() {
   const setMoveInDate = (value: OnboardingValues["moveInDate"]) => form.setValue("moveInDate", value, { shouldDirty: true });
 
   const nav = useNavigate();
-  const total = hasRoom === "yes" ? 5 : 4;
+  const total = hasRoom === "yes" ? 6 : 4;
   function cancelExit() {
     setIsExitRequested(false);
     if (blocker.state === "blocked") blocker.reset();
@@ -183,7 +185,7 @@ export function OnboardingFlow() {
       <div className="mx-auto max-w-2xl">
         <div className="flex items-center justify-between mb-6"><Logo /><div className="flex items-center gap-3"><span className="text-sm text-muted-foreground">Bước {step}/{total}</span><Button type="button" variant="outline" disabled={saveOnboarding.isPending || signOut.isPending || status.isPending} onClick={() => status.data?.isComplete ? nav("/settings?section=profile") : setIsExitRequested(true)}>Thoát</Button></div></div>
         <Progress value={(step/total)*100} className="h-2 mb-8" />
-        <p role="status" className="mb-6 text-sm text-muted-foreground">{status.data?.isComplete ? "Hồ sơ đã lưu trước đó. Thay đổi chỉ được lưu khi bạn hoàn thành các bước và bấm Lưu hồ sơ." : "Chưa hoàn thành onboarding. Bạn cần hoàn thành các bước và bấm Lưu hồ sơ trước khi sử dụng hệ thống. Bấm Back không lưu dữ liệu."}{hasChanges && " Có thay đổi chưa lưu."}</p>
+        <p role="status" className="mb-6 text-sm text-muted-foreground">{status.data?.isComplete ? "Hồ sơ đã lưu trước đó. Thay đổi chỉ được lưu khi bạn hoàn thành các bước và bấm Lưu hồ sơ." : "Chưa hoàn thành onboarding. Bạn cần hoàn thành các bước và bấm Lưu hồ sơ trước khi sử dụng hệ thống. Với Người đang ở, hồ sơ được lưu sau khi hoàn thành khảo sát; sau đó mới chọn cách bắt đầu. Quay lại không lưu thay đổi."}{hasChanges && " Có thay đổi chưa lưu."}</p>
 
         <Card className="p-8 sm:p-10 rounded-3xl border-0 shadow-lg">
           {!isPrefilled && (
@@ -320,9 +322,9 @@ export function OnboardingFlow() {
               <p className="mt-2 text-sm text-muted-foreground">Bạn là ai? Chọn tư cách phù hợp với nhu cầu đăng phòng của bạn.</p>
               <Field field="roomPosterType" error={errors.roomPosterType} className="mt-8">
                 <div role="radiogroup" aria-label="Tư cách đăng phòng" className="grid gap-4 sm:grid-cols-2">
-                  {[{ value: "landlord_agent", icon: Building2, title: "Chủ nhà / Môi giới", description: "Có phòng cho thuê dành cho cặp 2 người; chỉ tuyển thêm đúng 01 người." }, { value: "resident", icon: UsersRound, title: "Người đang ở", description: "Đang ở một mình và muốn tìm thêm đúng 01 bạn ở ghép, chia sẻ chi phí." }].map(option => (
-                    <label key={option.value} className={`cursor-pointer rounded-2xl border-2 p-5 transition-all focus-within:ring-2 focus-within:ring-teal ${values.roomPosterType === option.value ? "border-navy bg-navy/5 shadow-md" : "border-border hover:border-navy/40"}`}>
-                      <input type="radio" value={option.value} {...form.register("roomPosterType")} className="sr-only" />
+                  {[{ value: "landlord_agent", icon: Building2, title: "Chủ nhà / Môi giới", description: "Hệ thống chưa hỗ trợ tính năng này." }, { value: "resident", icon: UsersRound, title: "Người đang ở", description: "Đang ở một mình và muốn tìm thêm đúng 01 bạn ở ghép, chia sẻ chi phí." }].map(option => (
+                    <label key={option.value} className={`${option.value === "landlord_agent" ? "cursor-not-allowed opacity-50" : "cursor-pointer"} rounded-2xl border-2 p-5 transition-all focus-within:ring-2 focus-within:ring-teal ${values.roomPosterType === option.value ? "border-navy bg-navy/5 shadow-md" : "border-border hover:border-navy/40"}`}>
+                      <input type="radio" disabled={option.value === "landlord_agent"} value={option.value} {...form.register("roomPosterType")} className="sr-only" />
                       <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal/10 text-teal" aria-hidden="true"><option.icon className="h-7 w-7" strokeWidth={1.75} /></span>
                       <span className="mt-3 block font-semibold">{option.title}</span>
                       <span className="mt-2 block text-sm text-muted-foreground">{option.description}</span>
@@ -335,8 +337,24 @@ export function OnboardingFlow() {
 
           {step === 5 && hasRoom === "yes" && (
             <>
+              <h2 className="text-2xl font-display font-bold">Khảo sát bạn cùng phòng</h2>
+              <p className="mt-2 mb-6 text-sm text-muted-foreground">Hoàn thành cùng bộ câu hỏi với người tìm phòng. Hồ sơ và kết quả phải được lưu thành công trước khi chọn bước tiếp theo.</p>
+              {quiz.isPending || savedQuiz.isPending ? <p role="status">Đang tải khảo sát…</p> : quiz.isError || savedQuiz.isError ? <div role="alert"><p>Không tải được khảo sát.</p><Button onClick={() => { void quiz.refetch(); void savedQuiz.refetch(); }}>Thử lại</Button></div> : quiz.data ? <fieldset disabled={saveOnboarding.isPending}>
+                <QuizQuestionnaire embedded quiz={quiz.data} initialAnswers={savedQuiz.data?.answers ?? {}} onSaved={() => {
+                  for (let current = 1; current <= 4; current++) {
+                    if (Object.keys(validateOnboardingStep(current, values)).length) { setStep(current); setHasAttempted(true); return; }
+                  }
+                  saveOnboarding.mutate({ ...values, roomAction: "explore", roomCity: values.roomCity || values.city, amenities: selectedAmenities });
+                }} />
+              </fieldset> : <p role="alert">Chưa có bộ câu hỏi khảo sát.</p>}
+              {saveOnboarding.isPending && <p role="status" className="mt-4 text-sm">Đang lưu hồ sơ vào hệ thống…</p>}
+            </>
+          )}
+
+          {step === 6 && hasRoom === "yes" && (
+            <>
               <h2 className="text-2xl font-display font-bold">Bạn muốn bắt đầu như thế nào?</h2>
-              <p className="mt-2 text-sm text-muted-foreground">{values.roomPosterType === "landlord_agent" ? "Bạn đăng phòng với tư cách Chủ nhà / Môi giới." : "Bạn đăng phòng với tư cách Người đang ở."} Bạn có thể khám phá trước hoặc đăng phòng ngay; chưa cần nhập thông tin phòng để hoàn thành hồ sơ.</p>
+              <p className="mt-2 text-sm text-muted-foreground">{values.roomPosterType === "landlord_agent" ? "Bạn đăng phòng với tư cách Chủ nhà / Môi giới." : "Bạn đăng phòng với tư cách Người đang ở."} Hồ sơ và kết quả khảo sát đã được lưu vào hệ thống. Bạn có thể khám phá trước hoặc đăng phòng ngay.</p>
               <Field field="roomAction" error={errors.roomAction} className="mt-8">
                 <div role="radiogroup" aria-label="Bước tiếp theo" className="grid gap-4 sm:grid-cols-2">
                   {[{ value: "explore", icon: Compass, title: "Khám phá trước", description: "Làm quen với RoomieMatch. Bạn có thể đăng phòng sau." }, { value: "post_room", icon: HousePlus, title: values.roomPosterType === "landlord_agent" ? "Đăng phòng ngay" : "Đăng phòng tìm người ở chung", description: "Lưu hồ sơ rồi chuyển sang nhập thông tin, ảnh và vị trí phòng. Tin chỉ công khai sau khi được duyệt." }].map(option => (
@@ -390,10 +408,10 @@ export function OnboardingFlow() {
           {saveOnboarding.isError && <p role="alert" className="mt-4 text-sm text-destructive">{saveOnboarding.error.message} Hồ sơ chưa được lưu, vui lòng thử lại.</p>}
           <fieldset disabled={saveOnboarding.isPending} className="contents">
             <div className="mt-4 flex justify-between gap-3">
-              <Button variant="ghost" disabled={step===1} onClick={()=>{ setHasAttempted(false); setStep(s=>s-1); }} className="rounded-xl"><ArrowLeft className="h-4 w-4 mr-2" /> Quay lại</Button>
-              <Button onClick={handleNext} disabled={!isPrefilled || saveOnboarding.isPending} className="rounded-xl bg-navy hover:bg-navy/90 text-white px-6 disabled:opacity-50 disabled:cursor-not-allowed">
+              <Button variant="ghost" disabled={step===1} onClick={()=>{ setHasAttempted(false); setStep(s=>s-1); }} className="rounded-xl"><ArrowLeft className="h-4 w-4 mr-2" /> {step === 5 && hasRoom === "yes" ? "Quay lại chọn tư cách" : "Quay lại"}</Button>
+              {!(step === 5 && hasRoom === "yes") && <Button onClick={handleNext} disabled={!isPrefilled || saveOnboarding.isPending} className="rounded-xl bg-navy hover:bg-navy/90 text-white px-6 disabled:opacity-50 disabled:cursor-not-allowed">
                 {saveOnboarding.isPending ? "Đang lưu…" : step < total ? "Tiếp tục" : hasRoom === "yes" ? values.roomAction === "post_room" ? "Lưu hồ sơ & đăng phòng" : "Lưu hồ sơ & khám phá" : "Lưu hồ sơ & tiếp tục"} <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
+              </Button>}
             </div>
           </fieldset>
         </Card>

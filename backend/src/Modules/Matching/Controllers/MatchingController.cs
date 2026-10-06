@@ -130,7 +130,7 @@ public sealed class MatchingController(IMatchingService matchingService) : Contr
             MatchingError.ScanQuotaExceeded => (StatusCodes.Status403Forbidden, "scan_quota_exceeded",
                 "Bạn đã dùng hết lượt quét miễn phí của tháng này. Nâng cấp Premium để quét không giới hạn."),
             MatchingError.NoPreferences => (StatusCodes.Status409Conflict, "lifestyle_required",
-                "Bạn cần lưu thông tin lối sống trước khi tính độ hợp."),
+                "Bạn cần lưu thông tin lối sống, hoàn thành khảo sát và có tư cách Người đang ở hoặc Người tìm phòng trước khi tính độ hợp."),
             MatchingError.ProfileHidden => (StatusCodes.Status409Conflict, "profile_hidden",
                 "Hồ sơ của bạn đang ẩn. Bật \"Hồ sơ công khai\" để dùng boost."),
             MatchingError.BoostAlreadyActive => (StatusCodes.Status409Conflict, "boost_active",

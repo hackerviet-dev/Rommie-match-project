@@ -56,7 +56,7 @@ const searching = z.object({
 export function validateOnboardingStep(step: number, values: OnboardingValues): OnboardingErrors {
   const schema = step === 1 ? personal : step === 2 ? lifestyle : step === 3
     ? z.object({ hasRoom: choice("tình trạng chỗ ở", ["yes", "no"]) }) : values.hasRoom === "yes"
-      ? step === 4 ? z.object({ roomPosterType: choice("tư cách đăng phòng", ["landlord_agent", "resident"]) })
+      ? step === 4 ? z.object({ roomPosterType: choice("Người đang ở (Chủ nhà / Môi giới chưa được hỗ trợ)", ["resident"]) })
         : values.roomAction ? z.object({ roomAction: choice("bước tiếp theo", ["explore", "post_room"]) }) : room
       : searching;
   const result = schema.safeParse({ ...values, smoke: values.yn.smoke ?? "", drink: values.yn.drink ?? "", pets: values.yn.pets ?? "" });

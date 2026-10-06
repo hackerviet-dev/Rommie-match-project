@@ -24,6 +24,8 @@ import { ROUTES } from "@/constants/routes";
 import { ACCOUNT_SECTIONS } from "@/constants/account-sections";
 import { useSignOut } from "../hooks/use-sign-out";
 import { useAuthStore } from "../store/auth-store";
+import { getActorHome } from "../utils/actor-home";
+import { RoomNotificationBadge } from "@/features/notifications";
 
 export function AccountMenu() {
   const user = useAuthStore((state) => state.user);
@@ -88,6 +90,7 @@ export function AccountMenu() {
               >
                 <Icon className="text-navy" />
                 {label}
+                {id === "rooms" && <RoomNotificationBadge />}
                 <ChevronRight className="ml-auto" />
               </Link>
             </DropdownMenuItem>
@@ -96,10 +99,10 @@ export function AccountMenu() {
         {(user?.role === "admin" || user?.role === "moderator") && (
           <DropdownMenuItem asChild>
             <Link
-              to={ROUTES.admin}
+              to={getActorHome(user?.role)}
               className="gap-3 rounded-xl px-3 py-3 font-medium"
             >
-              <Shield className="text-navy" /> Quản trị{" "}
+              <Shield className="text-navy" /> {user?.role === "admin" ? "Quản trị" : "Kiểm duyệt"}{" "}
               <ChevronRight className="ml-auto" />
             </Link>
           </DropdownMenuItem>

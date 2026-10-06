@@ -1,3 +1,4 @@
+import { useStaffPath } from "@/features/auth";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -15,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { QueryState, Pagination } from "@/components/common/query-state";
 import { ConfirmAction } from "@/components/common/confirm-action";
 export function StaffUsers({ team = false }: { team?: boolean }) {
+  const staffPath = useStaffPath();
   const [q, setQ] = useState(""),
     [page, setPage] = useState(1),
     [role, setRole] = useState(team ? "staff" : ""),
@@ -110,7 +112,7 @@ export function StaffUsers({ team = false }: { team?: boolean }) {
                   </td>
                   <td className="p-4">
                     <Link
-                      to={`/admin/users/${u.id}`}
+                      to={`${staffPath}/users/${u.id}`}
                       className="whitespace-nowrap text-indigo-600 hover:underline"
                     >
                       Xem chi tiết →
@@ -138,6 +140,7 @@ export function StaffUsers({ team = false }: { team?: boolean }) {
   );
 }
 export function StaffUserDetail() {
+  const staffPath = useStaffPath();
   const { id = "" } = useParams(),
     me = useAuthStore((s) => s.user),
     client = useQueryClient();
@@ -170,7 +173,7 @@ export function StaffUserDetail() {
   const p = query.data?.profile;
   return (
     <div>
-      <Link to="/admin/users" className="text-sm text-indigo-600">
+      <Link to={`${staffPath}/users`} className="text-sm text-indigo-600">
         ← Danh sách thành viên
       </Link>
       <h1 className="mt-4 text-2xl font-display font-bold">

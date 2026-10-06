@@ -1,3 +1,4 @@
+import { useStaffPath } from "@/features/auth";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -13,10 +14,11 @@ import { Button } from "@/components/ui/button";
 import { QueryState, Pagination } from "@/components/common/query-state";
 import { RoomGallery } from "@/features/rooms/components/room-gallery";
 function RoomReview({ room }: { room: StaffRoom }) {
+  const staffPath = useStaffPath();
   const client = useQueryClient(),
     form = useForm<z.infer<typeof schema>>({
       resolver: zodResolver(schema),
-      defaultValues: { note: "", status: "approved" },
+      defaultValues: { note: "", message: "", status: "approved" },
     });
   const save = useMutation({
     mutationFn: (v: z.infer<typeof schema>) =>
@@ -34,7 +36,7 @@ function RoomReview({ room }: { room: StaffRoom }) {
         <div>
           <h2 className="text-lg font-semibold">{room.title}</h2>
           <Link
-            to={`/admin/users/${room.ownerUserId}`}
+            to={`${staffPath}/users/${room.ownerUserId}`}
             className="mt-1 inline-block text-sm text-indigo-600"
           >
             {room.ownerName}
@@ -93,7 +95,7 @@ function RoomReview({ room }: { room: StaffRoom }) {
       </p>
       {room.note && (
         <p className="mt-4 rounded-xl bg-slate-50 p-3 text-sm">
-          Ghi chú kiểm duyệt: {room.note}
+          Ghi chú nội bộ: {room.note}
         </p>
       )}
       <form
@@ -103,7 +105,7 @@ function RoomReview({ room }: { room: StaffRoom }) {
         <div className="min-w-48 flex-1">
           <textarea
             aria-label={`Ghi chú kiểm duyệt ${room.title}`}
-            placeholder="Ghi rõ lý do duyệt hoặc từ chối"
+            placeholder="Ghi chú nội bộ (không gửi người đăng). Không bắt buộc khi duyệt thành công."
             maxLength={2000}
             className="min-h-20 w-full rounded-xl border p-3 text-sm"
             {...form.register("note")}
@@ -112,6 +114,12 @@ function RoomReview({ room }: { room: StaffRoom }) {
             {form.formState.errors.note?.message}
           </p>
         </div>
+        {form.watch("status") === "rejected" && <div className="w-full">
+          <label className="text-sm font-semibold">Lý do gửi người đăng *</label>
+          <textarea aria-label={`Tin nhắn từ chối ${room.title}`} placeholder="Giải thích lý do từ chối. Nội dung này gửi qua thông báo và tin nhắn cho người đăng."
+            maxLength={2000} className="mt-2 min-h-20 w-full rounded-xl border p-3 text-sm" {...form.register("message")} />
+          <p className="text-xs text-destructive">{form.formState.errors.message?.message}</p>
+        </div>}
         <select
           aria-label={`Kết quả kiểm duyệt ${room.title}`}
           className="rounded-xl border bg-white p-3 text-sm"

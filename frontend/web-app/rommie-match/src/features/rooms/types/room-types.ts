@@ -25,6 +25,8 @@ export type Room = {
   moderationStatus: "pending" | "approved" | "rejected";
   moderationNote: string | null;
   photoUrls: string[];
+  googleMapsUrl: string | null;
+  googleMapsEmbedUrl: string | null;
 };
 
 export type SaveRoomRequest = Omit<

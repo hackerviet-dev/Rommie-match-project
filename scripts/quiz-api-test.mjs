@@ -152,7 +152,7 @@ for (const [label, raw] of [
 }
 
 // Rejected requests must not have created a result.
-assert.equal((await call('GET', '/api/matching/me/quiz', { token: a.token })).status, 404);
+assert.equal((await call('GET', '/api/matching/me/quiz', { token: a.token })).status, 204);
 
 
 // 5. A valid submit is echoed back with the traits and tags the backend computed.
@@ -217,7 +217,7 @@ const bFinal = await call('GET', '/api/matching/me/quiz', { token: b.token });
 assert.deepEqual(bFinal.json, savedMiddleB.json, 'B must read back its own record only');
 
 console.log(
-  'PASS: quiz APIs - public question set, anonymous 401, 404 before answering, 400 for missing/unknown/invalid answers, '
+  'PASS: quiz APIs - public question set, anonymous 401, 204 before answering, 400 for missing/unknown/invalid answers, '
   + 'PUT->GET round-trip with computed traits/tags, retake replaces answers without rescoring, and per-account isolation.',
 );
 

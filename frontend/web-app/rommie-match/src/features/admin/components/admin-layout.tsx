@@ -1,3 +1,4 @@
+import { useStaffPath } from "@/features/auth";
 import { useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import {
@@ -20,6 +21,7 @@ import { useAuthStore } from "@/features/auth";
 import { useSignOut } from "@/features/auth/hooks/use-sign-out";
 import { Logo } from "@/layouts/main-layout";
 import { Button } from "@/components/ui/button";
+import { useStaffQueueCounts } from "../hooks/use-staff-queue-counts";
 const navigation = [
   { path: "/admin", label: "Tổng quan", icon: LayoutDashboard },
   { path: "/admin/users", label: "Thành viên", icon: Users },
@@ -53,11 +55,17 @@ const navigation = [
   },
 ];
 export function AdminLayout({ children }: { children: ReactNode }) {
+  const staffPath = useStaffPath();
+  const queueCounts = useStaffQueueCounts();
   const user = useAuthStore((s) => s.user),
     signOut = useSignOut(),
     [open, setOpen] = useState(false),
     location = useLocation();
-  const items = navigation.filter((n) => !n.admin || user?.role === "admin");
+  const items = navigation.filter((n) => !n.admin || user?.role === "admin").map((n) => ({
+    ...n,
+    path: staffPath + n.path.slice("/admin".length),
+    count: queueCounts[n.path.split("/").at(-1) as keyof typeof queueCounts] ?? 0,
+  }));
   const active = items
     .filter(
       (n) =>
@@ -105,14 +113,22 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             <NavLink
               key={n.path}
               to={n.path}
-              end={n.path === "/admin"}
+              end={n.path === staffPath}
               onClick={() => setOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium ${isActive ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:bg-slate-50"}`
               }
             >
               <n.icon className="h-5 w-5 shrink-0" />
-              {n.label}
+              <span className="min-w-0 flex-1">{n.label}</span>
+              {n.count > 0 && (
+                <span
+                  aria-label={`${n.count} việc chờ xử lý`}
+                  className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold leading-none text-white"
+                >
+                  {n.count > 99 ? "99+" : n.count}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

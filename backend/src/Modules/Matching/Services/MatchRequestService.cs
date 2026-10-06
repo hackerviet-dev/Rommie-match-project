@@ -58,6 +58,14 @@ public sealed class MatchRequestService(IDbConnectionFactory connectionFactory) 
                 FROM users u
                 INNER JOIN profiles p ON p.user_id = u.id
                 WHERE u.id = @other_id AND u.is_active AND u.role = 'member' AND p.is_public
+                  AND coalesce(p.onboarding_data->>'roomPosterType','') <> 'landlord_agent'
+                  AND (NOT p.has_room OR p.onboarding_data->>'roomPosterType'='resident')
+                  AND EXISTS (SELECT 1 FROM quiz_responses qr WHERE qr.user_id=p.user_id AND qr.quiz_code='lifestyle_v1' AND qr.completed_at IS NOT NULL)
+                  AND EXISTS (SELECT 1 FROM profiles mine JOIN users caller ON caller.id=mine.user_id
+                    JOIN quiz_responses qr ON qr.user_id=mine.user_id AND qr.quiz_code='lifestyle_v1' AND qr.completed_at IS NOT NULL
+                    WHERE mine.user_id=@user_id AND caller.is_active AND caller.role='member'
+                      AND coalesce(mine.onboarding_data->>'roomPosterType','') <> 'landlord_agent'
+                      AND (NOT mine.has_room OR mine.onboarding_data->>'roomPosterType'='resident'))
                   AND NOT {BlockBetweenPair}
                 """;
             visible.AddParameter("user_id", userId).AddParameter("other_id", candidateId);

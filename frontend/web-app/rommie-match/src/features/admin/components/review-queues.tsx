@@ -1,3 +1,4 @@
+import { useStaffPath } from "@/features/auth";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -9,6 +10,7 @@ import { QueryState, Pagination } from "@/components/common/query-state";
 import { adminApi } from "../services/admin-api";
 import { useAuthStore } from "@/features/auth";
 export function Reports() {
+  const staffPath = useStaffPath();
   const [status, setStatus] = useState("open"),
     [page, setPage] = useState(1),
     [notes, setNotes] = useState<Record<string, string>>({}),
@@ -52,14 +54,14 @@ export function Reports() {
           <h2 className="font-semibold">
             <Link
               className="hover:text-teal"
-              to={`/admin/users/${r.reporterId}`}
+              to={`${staffPath}/users/${r.reporterId}`}
             >
               {r.reporterName}
             </Link>{" "}
             →{" "}
             <Link
               className="hover:text-teal"
-              to={`/admin/users/${r.reportedUserId}`}
+              to={`${staffPath}/users/${r.reportedUserId}`}
             >
               {r.reportedUserName}
             </Link>
@@ -136,6 +138,7 @@ export function Reports() {
   );
 }
 export function Verifications() {
+  const staffPath = useStaffPath();
   const [status, setStatus] = useState("pending"),
     [page, setPage] = useState(1),
     [notes, setNotes] = useState<Record<string, string>>({}),
@@ -177,7 +180,7 @@ export function Verifications() {
       {query.data?.items.map((v) => (
         <Card key={v.id} className="mb-4 rounded-2xl p-5">
           <h2 className="font-semibold">
-            <Link className="hover:text-teal" to={`/admin/users/${v.userId}`}>
+            <Link className="hover:text-teal" to={`${staffPath}/users/${v.userId}`}>
               {v.userName}
             </Link>{" "}
             ·{" "}

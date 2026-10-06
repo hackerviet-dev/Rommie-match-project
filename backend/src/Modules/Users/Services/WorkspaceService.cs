@@ -8,7 +8,7 @@ namespace RoomieMatch.Modules.Users.Services;
 
 public sealed class WorkspaceException(int status, string message) : Exception(message) { public int Status { get; } = status; }
 public sealed record AccountAccessRequest([Required, RegularExpression("^(member|moderator|admin)$")] string Role, bool IsActive, [Required, StringLength(2000, MinimumLength=5)] string Note);
-public sealed record RoomReviewRequest([Required, RegularExpression("^(approved|rejected)$")] string Status, [Required, StringLength(2000, MinimumLength=5)] string Note, [Required] DateTimeOffset? ExpectedUpdatedAt);
+public sealed record RoomReviewRequest([Required, RegularExpression("^(approved|rejected)$")] string Status, [StringLength(2000)] string? Note, [Required] DateTimeOffset? ExpectedUpdatedAt, [StringLength(2000)] string? Message = null);
 public sealed record GroupCreateRequest([Required, StringLength(160, MinimumLength=3)] string Name, Guid? RoomId);
 public sealed record GroupInviteRequest([Required, EmailAddress] string Email);
 public sealed record GroupRoleRequest([Required, RegularExpression("^(owner|manager|member)$")] string Role);
@@ -82,11 +82,46 @@ public sealed class WorkspaceService(IDbConnectionFactory factory)
     public Task<PagedResult<JsonElement>> Rooms(string? status,Guid? id,PageQuery p,CancellationToken ct)=>Page("SELECT r.id,r.title,r.description,r.address,r.city,r.district,r.monthly_rent AS \"monthlyRent\",r.deposit,r.property_type AS \"propertyType\",r.bedrooms,r.area_m2 AS \"areaM2\",r.max_occupants AS \"maxOccupants\",r.roommates_needed AS \"roommatesNeeded\",r.available_from AS \"availableFrom\",r.amenities,r.photo_urls AS \"photoUrls\",r.latitude,r.longitude,r.is_active AS \"isActive\",r.owner_user_id AS \"ownerUserId\",p.display_name AS \"ownerName\",r.moderation_status AS status,r.moderation_note AS note,r.updated_at AS \"updatedAt\",r.created_at","FROM rooms r LEFT JOIN profiles p ON p.user_id=r.owner_user_id WHERE r.deleted_at IS NULL AND (CAST(@status AS text) IS NULL OR r.moderation_status=@status) AND (CAST(@id AS uuid) IS NULL OR r.id=@id)",p,ct,("status",status),("id",id));
     public async Task ReviewRoom(Guid actor,Guid id,RoomReviewRequest req,CancellationToken ct)
     {
-        Text(req.Note,5,2000);
+        var note=req.Note?.Trim() ?? "";
+        var message=req.Message?.Trim() ?? "";
+        if(req.Status=="rejected")Text(message,5,2000);
+        if(note.Length>2000)throw new WorkspaceException(400,"Ghi chú nội bộ tối đa 2000 ký tự.");
         await using var c=await factory.OpenConnectionAsync(ct);await using var tx=await c.BeginTransactionAsync(ct);
-        var changed=await Write(c,tx,"UPDATE rooms SET moderation_status=@status,moderation_note=@note,reviewed_by=@actor,reviewed_at=now() WHERE id=@id AND deleted_at IS NULL AND updated_at=@version AND moderation_status<>@status",ct,("id",id),("status",req.Status),("note",req.Note.Trim()),("actor",actor),("version",req.ExpectedUpdatedAt));
+        var changed=await Write(c,tx,"UPDATE rooms SET moderation_status=@status,moderation_note=@note,reviewed_by=@actor,reviewed_at=now() WHERE id=@id AND deleted_at IS NULL AND updated_at=@version AND moderation_status<>@status",ct,("id",id),("status",req.Status),("note",note),("actor",actor),("version",req.ExpectedUpdatedAt));
         if(changed==0)throw new WorkspaceException(409,"Tin đã thay đổi hoặc đã được xử lý. Tải lại trước khi duyệt.");
-        await Audit(c,tx,actor,"room."+req.Status,id,req.Note,ct);await tx.CommitAsync(ct);
+        // Enrich an activity-trigger notice when present; otherwise create one in this transaction.
+        var noticeBody=req.Status=="approved"?"Tin phòng của bạn đã được hiển thị.":message;
+        var noticeTitle=req.Status=="approved"?"Phòng đã được duyệt thành công":"Tin phòng đã bị từ chối";
+        var enriched=await Write(c,tx,"UPDATE notifications n SET type='room_review',title=@title,body=@note,data=jsonb_build_object('roomId',r.id,'status',@status,'roomTitle',r.title,'recipientMessage',@note) FROM rooms r WHERE r.id=@id AND n.user_id=r.owner_user_id AND n.type='rooms' AND n.data->>'entityId'=CAST(@id AS text) AND n.data->>'status'=@status AND n.created_at>=transaction_timestamp()",ct,("id",id),("status",req.Status),("title",noticeTitle),("note",noticeBody));
+        if(enriched==0)await Write(c,tx,"INSERT INTO notifications(user_id,type,title,body,data) SELECT owner_user_id,'room_review',@title,@note,jsonb_build_object('roomId',id,'status',@status,'roomTitle',title,'recipientMessage',@note) FROM rooms WHERE id=@id",ct,("id",id),("status",req.Status),("title",noticeTitle),("note",noticeBody));
+        if(req.Status=="rejected")
+        {
+            // Review, recipient notice and staff message commit together. Internal note stays private.
+            await Write(c,tx,"""
+                WITH recipient AS (SELECT owner_user_id,title FROM rooms WHERE id=@id),
+                conversation AS (
+                  INSERT INTO conversations(direct_key)
+                  SELECT CASE WHEN @actor::text COLLATE "C" < owner_user_id::text COLLATE "C"
+                    THEN @actor::text||':'||owner_user_id::text ELSE owner_user_id::text||':'||@actor::text END
+                  FROM recipient
+                  ON CONFLICT(direct_key) WHERE direct_key IS NOT NULL DO UPDATE SET updated_at=now() RETURNING id
+                ), members AS (
+                  INSERT INTO conversation_members(conversation_id,user_id)
+                  SELECT conversation.id,member_id FROM conversation,recipient,
+                    LATERAL (VALUES (@actor::uuid),(recipient.owner_user_id)) AS participants(member_id)
+                  ON CONFLICT DO NOTHING
+                ), sent AS (
+                  INSERT INTO messages(conversation_id,sender_id,content)
+                  SELECT conversation.id,@actor,'Tin phòng “'||recipient.title||'” đã bị từ chối. '||@message
+                  FROM conversation,recipient RETURNING conversation_id
+                )
+                UPDATE notifications SET data=data||jsonb_build_object('conversationId',sent.conversation_id)
+                FROM sent WHERE user_id=(SELECT owner_user_id FROM recipient)
+                  AND data->>'roomId'=@id::text AND data->>'status'='rejected'
+                  AND created_at>=transaction_timestamp()
+                """,ct,("id",id),("actor",actor),("message",message));
+        }
+        await Audit(c,tx,actor,"room."+req.Status,id,note,ct);await tx.CommitAsync(ct);
     }
     public Task<PagedResult<JsonElement>> Logs(PageQuery p,CancellationToken ct)=>Page("SELECT a.id,a.action,a.target_id AS \"targetId\",a.note,a.created_at,p.display_name AS \"actorName\"","FROM staff_audit_logs a LEFT JOIN profiles p ON p.user_id=a.actor_id",p,ct);
     public Task<PagedResult<JsonElement>> Groups(Guid user,bool staff,PageQuery p,CancellationToken ct)=>Page("SELECT g.id,g.name,g.room_id AS \"roomId\",g.created_at,(SELECT count(*) FROM housing_group_members m WHERE m.group_id=g.id AND m.status='active') AS \"memberCount\",(SELECT role FROM housing_group_members m WHERE m.group_id=g.id AND m.user_id=@user) AS \"myRole\",(SELECT status FROM housing_group_members m WHERE m.group_id=g.id AND m.user_id=@user) AS \"myStatus\"","FROM housing_groups g WHERE @staff OR EXISTS(SELECT 1 FROM housing_group_members m WHERE m.group_id=g.id AND m.user_id=@user)",p,ct,("user",user),("staff",staff));

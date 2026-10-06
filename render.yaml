@@ -45,6 +45,7 @@ services:
       - key: Maps__MapId
         sync: false
       - key: Cloudinary__CloudName
+        # Enter all three Cloudinary values in Render Environment; do not commit secrets.
         sync: false
       - key: Cloudinary__ApiKey
         sync: false

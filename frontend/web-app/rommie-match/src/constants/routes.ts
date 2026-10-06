@@ -13,5 +13,6 @@ export const ROUTES = {
   communityGuidelines: "/community-guidelines",
   settings: "/settings",
   admin: "/admin",
+  moderator: "/moderator",
   profile: "/profile/:id",
 } as const;

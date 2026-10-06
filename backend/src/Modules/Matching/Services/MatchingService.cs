@@ -332,8 +332,10 @@ public sealed class MatchingService(
             FROM lifestyle_preferences lp
             INNER JOIN users u ON u.id = lp.user_id
             INNER JOIN profiles p ON p.user_id = lp.user_id
-            LEFT JOIN quiz_responses qr ON qr.user_id = lp.user_id AND qr.quiz_code = @quiz_code
+            INNER JOIN quiz_responses qr ON qr.user_id = lp.user_id AND qr.quiz_code = @quiz_code AND qr.completed_at IS NOT NULL
             WHERE u.is_active = true
+              AND coalesce(p.onboarding_data->>'roomPosterType','') <> 'landlord_agent'
+              AND (NOT p.has_room OR p.onboarding_data->>'roomPosterType' = 'resident')
               -- A lifestyle_preferences row may carry only the onboarding housing-need fields
               -- (drinking, preferred_distance, preferred_room_type) with sleep_schedule NULL.
               -- Those rows are not a submitted lifestyle questionnaire, so they stay out of
@@ -528,6 +530,14 @@ public sealed class MatchingService(
               AND u.is_active = true
               AND u.role = 'member'
               AND p.is_public = true
+              AND coalesce(p.onboarding_data->>'roomPosterType','') <> 'landlord_agent'
+              AND (NOT p.has_room OR p.onboarding_data->>'roomPosterType' = 'resident')
+              AND EXISTS (SELECT 1 FROM quiz_responses qr WHERE qr.user_id=p.user_id AND qr.quiz_code='lifestyle_v1' AND qr.completed_at IS NOT NULL)
+              AND EXISTS (SELECT 1 FROM profiles mine JOIN users caller ON caller.id=mine.user_id
+                JOIN quiz_responses qr ON qr.user_id=mine.user_id AND qr.quiz_code='lifestyle_v1' AND qr.completed_at IS NOT NULL
+                WHERE mine.user_id=@user_id AND caller.is_active AND caller.role='member'
+                  AND coalesce(mine.onboarding_data->>'roomPosterType','') <> 'landlord_agent'
+                  AND (NOT mine.has_room OR mine.onboarding_data->>'roomPosterType' = 'resident'))
               AND NOT EXISTS (
                   SELECT 1 FROM user_blocks b
                   WHERE b.deleted_at IS NULL

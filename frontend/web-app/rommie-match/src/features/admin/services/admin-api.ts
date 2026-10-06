@@ -66,9 +66,9 @@ export const adminApi = {
       body: { status, rejectionReason },
       authenticated: true,
     }),
-  refunds: (page = 1) =>
+  refunds: (page = 1, status = "") =>
     apiClient<Page<AdminRefund>>(
-      `/api/admin/billing/refund-requests?page=${page}`,
+      `/api/admin/billing/refund-requests?page=${page}${status ? `&status=${encodeURIComponent(status)}` : ""}`,
       { authenticated: true },
     ),
   resolveRefund: (

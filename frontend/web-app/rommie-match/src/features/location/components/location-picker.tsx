@@ -5,23 +5,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { locationApi, type RoomLocation } from "../services/location-api";
 import { loadGoogleMaps } from "@/integrations/google-maps/loader";
+import { isGoogleMapsUrl } from "../utils/google-maps-url";
 
 type LocationPickerProps = {
   onConfirm: (location: RoomLocation) => void;
   onPendingChange?: (pending: boolean) => void;
+  savedLink?: { value: string; onChange: (value: string) => void; error?: string };
   initialPosition?: { latitude: number; longitude: number };
 };
 
-export function LocationPicker({ onConfirm, onPendingChange, initialPosition }: LocationPickerProps) {
+export function LocationPicker({ onConfirm, onPendingChange, initialPosition, savedLink }: LocationPickerProps) {
   const config = useQuery({ queryKey: ["maps", "config"], queryFn: locationApi.config, staleTime: 300000 });
-  const [mode, setMode] = useState("search"), [link, setLink] = useState("");
+  const [mode, setMode] = useState(savedLink ? "link" : "search"), [link, setLink] = useState("");
+  const [linkDraft, setLinkDraft] = useState(savedLink?.value ?? "");
+  const [linkError, setLinkError] = useState("");
+  const [isLinkSaved, setIsLinkSaved] = useState(false);
+  useEffect(() => { setLinkDraft(savedLink?.value ?? ""); }, [savedLink?.value]);
   const [candidate, setCandidate] = useState<RoomLocation>(), [isBusy, setIsBusy] = useState(false), [error, setError] = useState("");
   const [isReady, setIsReady] = useState(false), [isConfirmed, setIsConfirmed] = useState(false);
   const searchNode = useRef<HTMLDivElement>(null), mapNode = useRef<HTMLDivElement>(null);
   const map = useRef<google.maps.Map | null>(null), marker = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
   const revision = useRef(0), mounted = useRef(true), callbacks = useRef({ onConfirm, onPendingChange });
   callbacks.current = { onConfirm, onPendingChange };
-  const pending = isBusy || Boolean(candidate && !isConfirmed);
+  const pending = isBusy || Boolean(candidate && !isConfirmed) || Boolean(savedLink && linkDraft.trim() !== savedLink.value);
   useEffect(() => { callbacks.current.onPendingChange?.(pending); }, [pending]);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; callbacks.current.onPendingChange?.(false); }; }, []);
 
@@ -116,19 +122,30 @@ export function LocationPicker({ onConfirm, onPendingChange, initialPosition }: 
     <section className="space-y-4 rounded-2xl border bg-muted/20 p-4 sm:p-5" aria-label="Chọn vị trí phòng">
       <h3 className="flex items-center gap-2 font-semibold"><MapPin size={19} /> Vị trí phòng</h3>
       <div className="flex flex-wrap gap-2">
-        {[{ id: "search", label: "Tìm địa chỉ", icon: Search }, { id: "gps", label: "Vị trí hiện tại", icon: Navigation }, { id: "link", label: "Dán link Maps", icon: LinkIcon }].map(({ id, label, icon: Icon }) => <Button key={id} type="button" variant={mode === id ? "default" : "outline"} aria-pressed={mode === id} onClick={() => setMode(id)}><Icon size={16} />{label}</Button>)}
+        {[{ id: "search", label: "Tìm địa chỉ", icon: Search }, { id: "gps", label: "Vị trí hiện tại", icon: Navigation }, { id: "link", label: "Dán link Maps", icon: LinkIcon }].map(({ id, label, icon: Icon }) => <Button key={id} type="button" variant={mode === id ? "default" : "outline"} aria-pressed={mode === id} disabled={id === "search" ? !isReady : id === "gps" ? !isReady || !config.data?.geocodingEnabled : false} onClick={() => setMode(id)}><Icon size={16} />{label}</Button>)}
       </div>
       {config.isPending && <p role="status">Đang tải cấu hình bản đồ…</p>}
       {config.isError && <p role="alert" className="text-sm text-destructive">{config.error.message} <Button type="button" variant="outline" onClick={() => void config.refetch()}>Thử lại</Button></p>}
       {mode === "search" && <div ref={searchNode}>{!isReady && <p className="text-sm text-muted-foreground">{config.data?.browserApiKey ? "Đang tải Google Maps…" : "Chưa cấu hình Google Maps. Hãy nhập địa chỉ ở các ô bên dưới."}</p>}</div>}
       {mode === "gps" && <div className="space-y-2"><p className="text-sm text-muted-foreground">Chỉ dùng nếu bạn đang ở phòng. Kiểm tra và kéo ghim trước khi xác nhận.</p><Button type="button" variant="outline" disabled={isBusy || !config.data?.geocodingEnabled} onClick={handleLocate}>Cho phép lấy vị trí hiện tại</Button></div>}
-      {mode === "link" && <div className="flex flex-wrap gap-2"><Input aria-label="Link Google Maps" value={link} onChange={e => setLink(e.target.value)} placeholder="https://maps.app.goo.gl/…" className="min-w-0 flex-1" /><Button type="button" disabled={isBusy || !link.trim() || !config.data?.geocodingEnabled} onClick={() => void handleResolve(() => locationApi.resolveLink(link.trim()))}>Tìm vị trí</Button></div>}
-      {config.data && !config.data.geocodingEnabled && mode !== "search" && <p className="text-sm text-muted-foreground">Chưa cấu hình tra cứu địa chỉ phía máy chủ. Có thể nhập địa chỉ thủ công.</p>}
+      {mode === "link" && savedLink && <div className="space-y-2">
+        <div className="flex flex-wrap gap-2"><Input aria-label="Link Google Maps" value={linkDraft} onChange={e => { setLinkDraft(e.target.value); setLinkError(""); setIsLinkSaved(false); }} placeholder="https://maps.app.goo.gl/…" className="min-w-0 flex-1" aria-invalid={Boolean(linkError || savedLink.error)} />
+          <Button type="button" disabled={!linkDraft.trim() && !savedLink.value} onClick={() => {
+            const value = linkDraft.trim();
+            if (value && (value.length > 2048 || !isGoogleMapsUrl(value))) { setLinkError("Nhập link Google Maps HTTPS hợp lệ, tối đa 2048 ký tự."); return; }
+            savedLink.onChange(value); setLinkDraft(value); setLinkError(""); setIsLinkSaved(true);
+          }}>Lưu vị trí</Button>{linkDraft.trim() !== savedLink.value && <Button type="button" variant="outline" onClick={() => { setLinkDraft(savedLink.value); setLinkError(""); setIsLinkSaved(false); }}>Bỏ thay đổi link</Button>}</div>
+        <p className="text-sm text-muted-foreground">Lưu link để người xem mở hoặc sao chép URL Google Maps. Nhập địa chỉ, khu vực và thành phố bên dưới; link được ghi cùng bài đăng khi gửi kiểm duyệt.</p>
+        {isLinkSaved && <p role="status" className="text-sm text-teal">{savedLink.value ? "Đã giữ link trong form. Gửi kiểm duyệt để lưu bài đăng." : "Đã bỏ link khỏi form."}</p>}
+        {(linkError || savedLink.error) && <p role="alert" className="text-sm text-destructive">{linkError || savedLink.error}</p>}
+      </div>}
+      {mode === "link" && !savedLink && <div className="flex flex-wrap gap-2"><Input aria-label="Link Google Maps" value={link} onChange={e => setLink(e.target.value)} placeholder="https://maps.app.goo.gl/…" className="min-w-0 flex-1" /><Button type="button" disabled={isBusy || !link.trim() || !config.data?.geocodingEnabled} onClick={() => void handleResolve(() => locationApi.resolveLink(link.trim()))}>Tìm vị trí</Button></div>}
+      {config.data && !config.data.geocodingEnabled && mode !== "search" && !(mode === "link" && savedLink) && <p className="text-sm text-muted-foreground">Chưa cấu hình tra cứu địa chỉ phía máy chủ. Có thể nhập địa chỉ thủ công.</p>}
       {isReady && <div ref={mapNode} className="h-72 w-full rounded-xl" aria-label="Bản đồ kéo ghim vị trí phòng" />}
       {!isReady && candidate && <iframe title="Kiểm tra vị trí phòng" src={`https://maps.google.com/maps?q=${candidate.latitude},${candidate.longitude}&output=embed`} className="h-64 w-full rounded-xl border-0" />}
       {isBusy && <p role="status" className="text-sm">Đang tìm địa chỉ…</p>}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      {pending && <Button type="button" variant="outline" onClick={() => { revision.current++; setIsBusy(false); setCandidate(undefined); setIsConfirmed(false); setError(""); }}>Bỏ vị trí này, nhập địa chỉ thủ công</Button>}
+      {(isBusy || Boolean(candidate && !isConfirmed)) && <Button type="button" variant="outline" onClick={() => { revision.current++; setIsBusy(false); setCandidate(undefined); setIsConfirmed(false); setError(""); }}>Bỏ vị trí này, nhập địa chỉ thủ công</Button>}
       {candidate && <div className="space-y-2 rounded-xl bg-white p-4"><p className="font-medium">{candidate.address}</p><p className="text-sm text-muted-foreground">{candidate.district} · {candidate.city}</p><p className="text-xs text-muted-foreground">Kết quả có thể thiếu số nhà/hẻm. Xác nhận đúng phòng rồi kiểm tra lại các ô địa chỉ.</p><Button type="button" variant={isConfirmed ? "outline" : "default"} disabled={isBusy || isConfirmed} onClick={() => { callbacks.current.onConfirm(candidate); setIsConfirmed(true); }}>{isConfirmed ? "Đã điền vị trí vào form" : "Xác nhận vị trí này"}</Button></div>}
       {candidate && !isReady && <p className="text-sm text-muted-foreground">Chưa tải được bản đồ kéo ghim. Hãy kiểm tra điểm trên bản đồ xem trước hoặc chọn vị trí khác.</p>}
     </section>

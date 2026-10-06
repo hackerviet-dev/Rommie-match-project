@@ -18,6 +18,15 @@ public sealed class OnboardingService(IDbConnectionFactory connectionFactory)
     {
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        if (request.HasRoom == "yes")
+        {
+            await using var quiz = connection.CreateCommand();
+            quiz.Transaction = transaction;
+            quiz.CommandText = "SELECT EXISTS(SELECT 1 FROM quiz_responses WHERE user_id=@id AND quiz_code='lifestyle_v1' AND completed_at IS NOT NULL)";
+            quiz.AddParameter("id", userId);
+            if (!(bool)(await quiz.ExecuteScalarAsync(cancellationToken))!)
+                throw new WorkspaceException(409, "Người đang ở cần hoàn thành và lưu khảo sát trước khi tiếp tục.");
+        }
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """

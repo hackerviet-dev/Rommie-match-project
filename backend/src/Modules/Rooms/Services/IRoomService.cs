@@ -39,7 +39,8 @@ public enum RoomWriteError
 {
     None,
     NotFound,
-    NotOwner
+    NotOwner,
+    ApprovedLocked
 }
 
 public sealed record RoomWriteResult(RoomWriteError Error, RoomDto? Room)
@@ -81,7 +82,7 @@ public sealed record RoomDto(
     DateTimeOffset UpdatedAt,
     string ModerationStatus,
     string? ModerationNote,
-    IReadOnlyList<string> PhotoUrls);
+    IReadOnlyList<string> PhotoUrls, string? GoogleMapsUrl, string? GoogleMapsEmbedUrl);
 
 public static class RoomPropertyTypes
 {
@@ -91,18 +92,18 @@ public static class RoomPropertyTypes
 
 public sealed record SaveRoomRequest(
     [Required, StringLength(180, MinimumLength = 4)] [property: Description("Tiêu đề tin phòng, 4-180 ký tự.")] string Title,
-    [StringLength(4000)] [property: Description("Mô tả; phòng tối đa 4000 ký tự, dịch vụ tối đa 2000 ký tự.")] string? Description,
+    [Required, StringLength(4000)] [property: Description("Mô tả phòng bắt buộc, tối đa 4000 ký tự.")] string? Description,
     [Required, StringLength(500, MinimumLength = 4)] [property: Description("Địa chỉ, 4-500 ký tự.")] string Address,
     [Required, StringLength(100)] [property: Description("Tên quận/huyện, tối đa 100 ký tự.")] string District,
     [Required, StringLength(100)] [property: Description("Tên thành phố, ví dụ TP.HCM, tối đa 100 ký tự.")] string City,
-    [Required, Range(0, 1_000_000_000)] [property: Description("Giá thuê mỗi tháng, đơn vị VND, 0-1000000000.")] int? MonthlyRent,
-    [Range(0, 1_000_000_000)] [property: Description("Tiền đặt cọc, đơn vị VND, 0-1000000000.")] int Deposit,
+    [Required, Range(1, 1_000_000_000)] [property: Description("Giá thuê mỗi tháng bắt buộc lớn hơn 0, đơn vị VND.")] int? MonthlyRent,
+    [Required, Range(0, 1_000_000_000)] [property: Description("Tiền đặt cọc bắt buộc nhập, có thể là 0 VND.")] int? Deposit,
     [Required, NotPastDate] [property: Description("Ngày phòng bắt đầu sẵn sàng, dạng yyyy-MM-dd, từ hôm nay trở đi theo giờ Việt Nam.")] DateOnly? AvailableFrom,
     [Range(2, 2)] [property: Description("Chỉ hỗ trợ cặp 2 người.")] int MaxOccupants,
-    [property: Description("Loại nhà: apartment, house, studio hoặc dormitory; có thể null.")] string? PropertyType,
-    [Range(1, 50)] [property: Description("Số phòng ngủ, 1-50; có thể null.")] int? Bedrooms,
-    [Range(typeof(decimal), "1", "99999.9", ParseLimitsInInvariantCulture = true)]
-    [property: Description("Diện tích m², 1-99999.9; có thể null.")] decimal? AreaM2,
+    [property: Description("Loại nhà bắt buộc: apartment, house, studio hoặc dormitory.")] string? PropertyType,
+    [Required, Range(1, 50)] [property: Description("Số phòng ngủ bắt buộc, 1-50.")] int? Bedrooms,
+    [Required, Range(typeof(decimal), "1", "99999.9", ParseLimitsInInvariantCulture = true)]
+    [property: Description("Diện tích m² bắt buộc, 1-99999.9.")] decimal? AreaM2,
     [Required, Range(1, 1)] [property: Description("Bắt buộc tuyển thêm đúng 01 người.")] int? RoommatesNeeded,
     [property: Description("Danh sách tiện ích: tối đa 30 mục, mỗi mục tối đa 60 ký tự; phần tử null bị từ chối với 400 (mục trùng nhau được gộp, mục rỗng bị bỏ qua).")] string[]? Amenities,
     [Range(typeof(decimal), "-90", "90", ParseLimitsInInvariantCulture = true)]
@@ -110,15 +111,35 @@ public sealed record SaveRoomRequest(
     [Range(typeof(decimal), "-180", "180", ParseLimitsInInvariantCulture = true)]
     [property: Description("Kinh độ -180 đến 180; phải gửi cùng latitude hoặc bỏ cả hai.")] decimal? Longitude,
     [property: Description("Có hiển thị tin phòng hay không; null dùng mặc định của server.")] bool? IsActive,
-    [property: Description("Tối đa 10 URL ảnh đã upload bởi chính người đăng. Bỏ trường khi sửa sẽ giữ ảnh cũ.")] string[]? PhotoUrls = null,
+    [property: Description("Bắt buộc 1-10 URL ảnh đã upload bởi chính người đăng, cả khi tạo và sửa.")] string[]? PhotoUrls = null,
     bool PairOccupancyConfirmed = false,
-    bool AccuracyAndResidenceConfirmed = false) : IValidatableObject
+    bool AccuracyAndResidenceConfirmed = false,
+    [StringLength(2048)] string? GoogleMapsUrl = null,
+    [StringLength(8192)] string? GoogleMapsEmbedUrl = null) : IValidatableObject
 {
     public const int MaxAmenities = 30;
     public const int MaxAmenityLength = 60;
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
+        if (string.IsNullOrWhiteSpace(Address) || !System.Text.RegularExpressions.Regex.IsMatch(Address.Trim(), @"^\d+\p{L}?(?:[/-]\d+\p{L}?)*(?:\s+|,\s*)\p{L}[\p{L}\p{N}\s.,/'’()\-]*$") || System.Text.RegularExpressions.Regex.Matches(Address, @"\p{L}").Count < 2)
+            yield return new ValidationResult("Nhập số nhà và tên đường, ví dụ: 205/10A đường Hoàng Văn Thụ.", [nameof(Address)]);
+        if (!RoomLocations.IsProvince(City))
+            yield return new ValidationResult("Chọn tỉnh / thành phố trong danh sách.", [nameof(City)]);
+        else if (!RoomLocations.IsArea(City, District))
+            yield return new ValidationResult("Chọn phường / xã thuộc tỉnh / thành phố đã chọn.", [nameof(District)]);
+        if (string.IsNullOrWhiteSpace(GoogleMapsUrl) && string.IsNullOrWhiteSpace(GoogleMapsEmbedUrl))
+            yield return new ValidationResult("Bắt buộc lưu link hoặc bản đồ nhúng của phòng.", [nameof(GoogleMapsUrl),nameof(GoogleMapsEmbedUrl)]);
+        if (!string.IsNullOrWhiteSpace(GoogleMapsEmbedUrl) && (!Uri.TryCreate(GoogleMapsEmbedUrl.Trim(), UriKind.Absolute, out var embedUri) || embedUri.Scheme != "https" || !embedUri.IsDefaultPort || !string.IsNullOrEmpty(embedUri.UserInfo) || (embedUri.Host != "www.google.com" && embedUri.Host != "google.com") || embedUri.AbsolutePath != "/maps/embed" || !Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(embedUri.Query).TryGetValue("pb", out var pb) || string.IsNullOrWhiteSpace(pb.ToString())))
+            yield return new ValidationResult("URL nhúng Google Maps không hợp lệ.", [nameof(GoogleMapsEmbedUrl)]);
+        if (string.IsNullOrWhiteSpace(PropertyType))
+            yield return new ValidationResult("Chọn loại nhà.", [nameof(PropertyType)]);
+        if (Amenities is null || !Amenities.Any(a => !string.IsNullOrWhiteSpace(a)))
+            yield return new ValidationResult("Nhập ít nhất 1 tiện ích.", [nameof(Amenities)]);
+        if (PhotoUrls is null || PhotoUrls.Length == 0)
+            yield return new ValidationResult("Bắt buộc thêm ít nhất 1 ảnh phòng.", [nameof(PhotoUrls)]);
+        if (!string.IsNullOrWhiteSpace(GoogleMapsUrl) && (!Uri.TryCreate(GoogleMapsUrl.Trim(), UriKind.Absolute, out var mapsUri) || !GeoService.IsMapsUrl(mapsUri)))
+            yield return new ValidationResult("Chỉ chấp nhận link Google Maps HTTPS hợp lệ.", [nameof(GoogleMapsUrl)]);
         if (!PairOccupancyConfirmed)
             yield return new ValidationResult("Bạn cần cam kết phòng hiện có tối đa 01 người và chỉ tuyển thêm đúng 01 người để ghép thành cặp 2 người.", [nameof(PairOccupancyConfirmed)]);
         if (!AccuracyAndResidenceConfirmed)

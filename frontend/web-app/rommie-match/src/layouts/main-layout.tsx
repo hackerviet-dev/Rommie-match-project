@@ -21,7 +21,7 @@ import {
   House,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -33,8 +33,17 @@ import {
 import { AccountMenu, getActorHome, useAuthStore } from "@/features/auth";
 import { HeaderSearch } from "@/components/common/header-search";
 import { tokenStorage } from "@/services/token-storage";
+import { useNotifications } from "@/features/notifications";
 
 function NotificationBell() {
+  const { query: notifications, read, readVisible } = useNotifications();
+  const [open, setOpen] = useState(false);
+  const { mutate: markVisibleRead, isPending: markingRead, isError: readFailed } = readVisible;
+  useEffect(() => {
+    if (!open || markingRead || readFailed) return;
+    const unreadIds = notifications.data?.items.filter((n) => !n.readAt).map((n) => n.id) ?? [];
+    if (unreadIds.length) markVisibleRead(unreadIds);
+  }, [open, markingRead, readFailed, notifications.data, markVisibleRead]);
   const me = useAuthStore((s) => s.user?.id),
     query = useQuery({
       queryKey: ["chat", "notifications", me],
@@ -42,28 +51,42 @@ function NotificationBell() {
       enabled: Boolean(me),
       refetchInterval: 15000,
     });
-  const unread = query.data?.items.reduce((n, c) => n + c.unreadCount, 0) ?? 0;
+  const unread = (query.data?.items.reduce((n, c) => n + c.unreadCount, 0) ?? 0) + (notifications.data?.unreadCount ?? 0);
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={(value) => { readVisible.reset(); setOpen(value); }}>
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Thông báo tin nhắn"
+          aria-label="Thông báo"
           className="relative rounded-full"
         >
           <Bell className="h-5 w-5" />
           {unread > 0 && (
-            <span className="absolute -right-1 -top-1 rounded-full bg-teal px-1.5 text-xs text-white">
+            <span className="absolute -right-1 -top-1 rounded-full bg-red-600 px-1.5 text-xs text-white">
               {unread}
             </span>
           )}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 rounded-2xl p-4">
-        <h2 className="font-semibold">Tin nhắn chưa đọc</h2>
+        <h2 className="font-semibold">Thông báo của bạn</h2>
+        <QueryState query={notifications} />
+        <div className="max-h-72 overflow-y-auto">
+          {notifications.data?.items.map((n) => (
+            <Link key={n.id} to={n.data.roomId ? `/rooms/${n.data.roomId}` : n.data.url?.startsWith("/") && !n.data.url.startsWith("//") && !n.data.url.includes("\\") ? n.data.url : "/settings"}
+              onClick={() => { if (!n.readAt) read.mutate(n.id); }}
+              className={`mt-3 block rounded-xl p-3 ${n.readAt ? "bg-muted/40 text-muted-foreground hover:bg-muted/70" : n.data.status === "approved" ? "bg-green-50 text-green-800" : "bg-amber-50 text-amber-900"}`}>
+              <strong className="text-sm">{n.data.status === "approved" && "✓ "}{n.title}{!n.readAt && " · Mới"}</strong>
+              <p className="mt-1 text-xs">{n.data.roomTitle}</p>
+              <p className="mt-1 text-xs">{n.body}</p>
+            </Link>
+          ))}
+        </div>
+        {(read.isError || readFailed) && <p role="alert" className="text-sm text-destructive">Không thể đánh dấu đã đọc. Đóng và mở lại bảng thông báo để thử lại.</p>}
+        <h2 className="mt-4 font-semibold">Tin nhắn chưa đọc</h2>
         <QueryState query={query} />
-        {query.data && !unread && (
+        {query.data && !query.data.items.some((c) => c.unreadCount > 0) && (
           <p className="py-5 text-sm text-muted-foreground">
             Không có tin nhắn chưa đọc trong danh sách gần đây.
           </p>

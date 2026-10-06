@@ -46,7 +46,7 @@ export const staffApi = {
     ),
   review: (
     id: string,
-    body: { status: string; note: string; expectedUpdatedAt: string },
+    body: { status: string; note: string; message: string; expectedUpdatedAt: string },
   ) =>
     apiClient<void>(`/api/admin/rooms/${id}/review`, {
       method: "POST",

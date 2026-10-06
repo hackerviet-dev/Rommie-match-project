@@ -29,7 +29,7 @@ onboarding = {'name': 'Quiz UI Test', 'age': '24', 'gender': 'Nam', 'city': 'TP.
               'yn': {'smoke': 'Không', 'drink': 'Không', 'pets': 'Không'}, 'hasRoom': 'no',
               'distance': '2–5 km', 'roomType': 'Phòng riêng', 'moveInDate': '2026-10-15'}
 assert call('/api/users/me/onboarding', 'PUT', onboarding, token)[0] == 200
-assert call('/api/matching/me/quiz', token=token)[0] == 404
+assert call('/api/matching/me/quiz', token=token)[0] == 204
 assert call('/api/matching/me/quiz', 'PUT', {'answers': {}}, token)[0] == 400
 answers = {question['id']: question['options'][0]['id'] for question in quiz['questions']}
 code, result = call('/api/matching/me/quiz', 'PUT', {'answers': answers}, token)

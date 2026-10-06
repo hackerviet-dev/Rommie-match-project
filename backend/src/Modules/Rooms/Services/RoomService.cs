@@ -12,7 +12,7 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
         r.address, r.district, r.city, r.monthly_rent, r.deposit, r.available_from,
         r.max_occupants, r.amenities, r.latitude, r.longitude, r.is_active,
         r.created_at, r.updated_at, r.property_type, r.bedrooms, r.area_m2, r.roommates_needed,
-        r.moderation_status, r.moderation_note, r.photo_urls
+        r.moderation_status, NULL::text AS moderation_note, r.photo_urls, r.google_maps_url, r.google_maps_embed_url
         """;
 
     public object GetModuleStatus()
@@ -133,11 +133,11 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
             INSERT INTO rooms
                 (owner_user_id, title, description, address, district, city, monthly_rent,
                  deposit, available_from, max_occupants, property_type, bedrooms, area_m2,
-                 roommates_needed, amenities, latitude, longitude, is_active, photo_urls, pair_occupancy_confirmed_at, accuracy_residence_confirmed_at)
+                 roommates_needed, amenities, latitude, longitude, is_active, photo_urls, pair_occupancy_confirmed_at, accuracy_residence_confirmed_at, google_maps_url, google_maps_embed_url)
             VALUES
                 (@owner_user_id, @title, @description, @address, @district, @city, @monthly_rent,
                  @deposit, @available_from, @max_occupants, @property_type, @bedrooms, @area_m2,
-                 @roommates_needed, @amenities, @latitude, @longitude, @is_active, coalesce(@photo_urls, '{}'::text[]), now(), now())
+                 @roommates_needed, @amenities, @latitude, @longitude, @is_active, coalesce(@photo_urls, '{}'::text[]), now(), now(), @google_maps_url, @google_maps_embed_url)
             RETURNING id
             """;
 
@@ -179,8 +179,10 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
                 is_active = @is_active,
                 photo_urls = coalesce(@photo_urls, photo_urls),
                 pair_occupancy_confirmed_at = now(),
-                accuracy_residence_confirmed_at = now()
-            WHERE id = @room_id AND owner_user_id = @owner_user_id AND deleted_at IS NULL
+                accuracy_residence_confirmed_at = now(),
+                google_maps_url = @google_maps_url,
+                google_maps_embed_url = @google_maps_embed_url
+            WHERE id = @room_id AND owner_user_id = @owner_user_id AND deleted_at IS NULL AND moderation_status = 'pending'
             """;
 
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
@@ -192,6 +194,9 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
 
         if (await command.ExecuteNonQueryAsync(cancellationToken) == 0)
         {
+            var existing = await ReadRoomAsync(connection, roomId, cancellationToken);
+            if (existing?.OwnerUserId == ownerUserId && existing.ModerationStatus is "approved" or "rejected")
+                return RoomWriteResult.Failure(RoomWriteError.ApprovedLocked);
             return RoomWriteResult.Failure(
                 await ClassifyMissingWriteAsync(connection, roomId, cancellationToken));
         }
@@ -255,7 +260,9 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
             .AddParameter("latitude", request.Latitude)
             .AddParameter("longitude", request.Longitude)
             .AddParameter("is_active", request.IsActive ?? true)
-            .AddParameter("photo_urls", request.PhotoUrls);
+            .AddParameter("photo_urls", request.PhotoUrls)
+            .AddParameter("google_maps_url", string.IsNullOrWhiteSpace(request.GoogleMapsUrl) ? null : request.GoogleMapsUrl.Trim())
+            .AddParameter("google_maps_embed_url", string.IsNullOrWhiteSpace(request.GoogleMapsEmbedUrl) ? null : request.GoogleMapsEmbedUrl.Trim());
     }
 
     private static async Task<RoomDto?> ReadRoomAsync(
@@ -310,7 +317,7 @@ public sealed class RoomService(IDbConnectionFactory connectionFactory) : IRoomS
                 reader.GetBoolean(16),
                 reader.GetFieldValue<DateTimeOffset>(17),
                 reader.GetFieldValue<DateTimeOffset>(18),
-                reader.GetString(23), reader.IsDBNull(24) ? null : reader.GetString(24), reader.GetFieldValue<string[]>(25)));
+                reader.GetString(23), reader.IsDBNull(24) ? null : reader.GetString(24), reader.GetFieldValue<string[]>(25), reader.IsDBNull(26) ? null : reader.GetString(26),reader.IsDBNull(27) ? null : reader.GetString(27)));
         }
 
         return rooms;
