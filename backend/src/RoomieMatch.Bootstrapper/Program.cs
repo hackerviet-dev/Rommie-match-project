@@ -5,6 +5,7 @@ using RoomieMatch.Modules.Billing;
 using RoomieMatch.Modules.Chat;
 using RoomieMatch.Modules.Hyperlocal;
 using RoomieMatch.Modules.Matching;
+using RoomieMatch.Modules.Media;
 using RoomieMatch.Modules.Rooms;
 using RoomieMatch.Modules.Users;
 using RoomieMatch.Shared.Data;
@@ -34,7 +35,8 @@ builder.Services.AddControllers()
     .AddApplicationPart(typeof(HyperlocalModule).Assembly)
     .AddApplicationPart(typeof(RoomsModule).Assembly)
     .AddApplicationPart(typeof(BillingModule).Assembly)
-    .AddApplicationPart(typeof(ChatModule).Assembly);
+    .AddApplicationPart(typeof(ChatModule).Assembly)
+    .AddApplicationPart(typeof(MediaModule).Assembly);
 
 builder.Services
     .AddUsersModule(builder.Configuration)
@@ -42,7 +44,8 @@ builder.Services
     .AddHyperlocalModule(builder.Configuration)
     .AddRoomsModule(builder.Configuration)
     .AddBillingModule(builder.Configuration)
-    .AddChatModule(builder.Configuration);
+    .AddChatModule(builder.Configuration)
+    .AddMediaModule(builder.Configuration);
 
 builder.Services.AddOpenApi(options =>
 {
@@ -60,6 +63,7 @@ builder.Services.AddOpenApi(options =>
         return Task.CompletedTask;
     });
     options.AddOperationTransformer<AuthorizeRequirementTransformer>();
+    options.AddOperationTransformer<FormRequestBodyTransformer>();
     options.AddSchemaTransformer<RequestRequiredFieldsTransformer>();
     options.AddOperationTransformer((operation, _, _) =>
     {

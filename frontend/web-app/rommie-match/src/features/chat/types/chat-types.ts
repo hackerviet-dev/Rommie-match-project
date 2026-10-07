@@ -2,7 +2,9 @@ export type Message = {
   id: string;
   conversationId: string;
   senderId: string;
+  // Empty for an image sent without a caption.
   content: string;
+  imageUrl: string | null;
   createdAt: string;
   readAt: string | null;
 };

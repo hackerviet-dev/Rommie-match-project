@@ -25,10 +25,11 @@ async function call(method, path, { token, body } = {}) {
   const response = await fetch(baseUrl + path, {
     method,
     headers: {
-      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+      // FormData sets its own multipart content type.
+      ...(body === undefined || body instanceof FormData ? {} : { 'content-type': 'application/json' }),
       ...(token ? { authorization: `Bearer ${token}` } : {}),
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
   });
   const text = await response.text();
   let json = null;
@@ -43,6 +44,11 @@ async function call(method, path, { token, body } = {}) {
     text,
     contentType: response.headers.get('content-type') ?? '',
   };
+}
+
+function emptyBody(operation) {
+  if (!operation.hasBody) return undefined;
+  return operation.multipart ? new FormData() : {};
 }
 
 const openapi = await call('GET', '/openapi/v1.json');
@@ -63,6 +69,9 @@ for (const [template, item] of Object.entries(document.paths)) {
         secured: Boolean(operation.security?.length),
         pathParams: (operation.parameters ?? []).filter((parameter) => parameter.in === 'path').map((parameter) => parameter.name),
         hasBody: 'requestBody' in operation,
+        // Upload endpoints only accept multipart; a JSON body would stop at 415 before auth.
+        multipart: Boolean(operation.requestBody?.content?.['multipart/form-data'])
+          && !operation.requestBody?.content?.['application/json'],
       });
     }
   }
@@ -157,7 +166,7 @@ async function register(label, role) {
 //    documents, a secured one must answer 401.
 for (const operation of operations) {
   const result = await call(operation.method, fillPath(operation.template), {
-    body: operation.hasBody ? {} : undefined,
+    body: emptyBody(operation),
   });
   record(operation, 'anonymous', result, operation.secured ? 'secured: anonymous => 401' : 'public');
   if (!operation.secured) {
@@ -188,7 +197,7 @@ for (const operation of operations) {
   const required = bodySchema?.required ?? [];
   const result = await call(operation.method, fillPath(operation.template), {
     token: memberToken,
-    body: operation.hasBody ? {} : undefined,
+    body: emptyBody(operation),
   });
   record(
     operation,

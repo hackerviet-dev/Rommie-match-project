@@ -12,7 +12,6 @@ import { useSignOut, useAuthStore } from "@/features/auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   Select,
   SelectTrigger,
@@ -54,6 +53,7 @@ import {
 import { AccountWorkspace } from "./account-workspace";
 import { AccountPreviewPanels } from "./account-preview-panels";
 import { SettingsProfileEditor } from "./settings-profile-editor";
+import { AvatarUploader } from "./avatar-uploader";
 
 function Section({
   icon: Icon,
@@ -185,12 +185,7 @@ export function SettingsScreen() {
             <Card className="mt-6 p-6 rounded-3xl border-0 shadow-sm overflow-hidden">
               <OnboardingStatus />
               <div className="flex flex-col sm:flex-row sm:items-center gap-5">
-                <Avatar className="h-20 w-20 ring-2 ring-mint shrink-0">
-                  <AvatarImage src={p.avatar} />
-                  <AvatarFallback>
-                    {p.name?.trim().slice(0, 2).toUpperCase() || "ME"}
-                  </AvatarFallback>
-                </Avatar>
+                {actual && <AvatarUploader profile={actual} />}
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="font-display font-bold text-xl">{p.name}</h2>

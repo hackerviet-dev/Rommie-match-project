@@ -115,18 +115,58 @@ public sealed class SafetyService(IDbConnectionFactory connectionFactory) : ISaf
             return SafetyResult<UserReportDto>.Failure(SafetyError.NotFound);
         }
 
+        return await InsertReportAsync(connection, userId, targetId, null, request, cancellationToken);
+    }
+
+    // Reports a listing: the room owner becomes the reported member and room_id records which
+    // listing it is about. Any live listing can be reported, pending or hidden ones included,
+    // since a member may have seen it before moderation changed. One open report per reporter
+    // and room; a general report on the same owner does not block it.
+    public async Task<SafetyResult<UserReportDto>> ReportRoomAsync(
+        Guid userId,
+        Guid roomId,
+        CreateUserReportRequest request,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        await using var owner = connection.CreateCommand();
+        owner.CommandText = "SELECT owner_user_id FROM rooms WHERE id = @room_id AND deleted_at IS NULL";
+        owner.AddParameter("room_id", roomId);
+        if (await owner.ExecuteScalarAsync(cancellationToken) is not Guid ownerId)
+        {
+            return SafetyResult<UserReportDto>.Failure(SafetyError.RoomNotFound);
+        }
+
+        if (ownerId == userId)
+        {
+            return SafetyResult<UserReportDto>.Failure(SafetyError.Self);
+        }
+
+        return await InsertReportAsync(connection, userId, ownerId, roomId, request, cancellationToken);
+    }
+
+    private static async Task<SafetyResult<UserReportDto>> InsertReportAsync(
+        DbConnection connection,
+        Guid userId,
+        Guid targetId,
+        Guid? roomId,
+        CreateUserReportRequest request,
+        CancellationToken cancellationToken)
+    {
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            INSERT INTO user_reports (reporter_id, reported_user_id, reason, details)
-            SELECT @user_id, @target_id, @reason, @details
+            INSERT INTO user_reports (reporter_id, reported_user_id, room_id, reason, details)
+            SELECT @user_id, @target_id, CAST(@room_id AS uuid), @reason, @details
             WHERE NOT EXISTS (
                 SELECT 1 FROM user_reports
-                WHERE reporter_id = @user_id AND reported_user_id = @target_id AND status = 'open')
-            RETURNING id, reported_user_id, reason, details, status, created_at
+                WHERE reporter_id = @user_id AND reported_user_id = @target_id
+                  AND room_id IS NOT DISTINCT FROM CAST(@room_id AS uuid) AND status = 'open')
+            RETURNING id, reported_user_id, reason, details, status, created_at, room_id
             """;
         command
             .AddParameter("user_id", userId)
             .AddParameter("target_id", targetId)
+            .AddParameter("room_id", roomId)
             .AddParameter("reason", request.Reason)
             .AddParameter("details", string.IsNullOrWhiteSpace(request.Details) ? null : request.Details.Trim());
 
@@ -142,7 +182,8 @@ public sealed class SafetyService(IDbConnectionFactory connectionFactory) : ISaf
             reader.GetString(2),
             reader.IsDBNull(3) ? null : reader.GetString(3),
             reader.GetString(4),
-            reader.GetFieldValue<DateTimeOffset>(5)));
+            reader.GetFieldValue<DateTimeOffset>(5),
+            reader.IsDBNull(6) ? null : reader.GetGuid(6)));
     }
 
     private static async Task<string?> ReadRoleAsync(

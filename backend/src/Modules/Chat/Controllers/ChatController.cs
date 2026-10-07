@@ -97,7 +97,7 @@ public sealed class ChatController(IChatService chatService) : ControllerBase
     }
 
     [EndpointSummary("Gửi tin nhắn qua REST")]
-    [EndpointDescription("Cần đăng nhập. Gửi JSON {content}, 1-4000 ký tự sau trim. 200 trả MessageDto; tin cũng được đẩy realtime qua SignalR /hubs/chat. 400: nội dung sai; 403: có chặn; 404: không phải thành viên. Ghép tin theo id để tránh hiển thị trùng REST và realtime.")]
+    [EndpointDescription("Cần đăng nhập. Gửi JSON {content, imageUrl}. Tin chữ: content 1-4000 ký tự sau trim. Tin ảnh: trước hết POST /api/media/images với purpose=chat, rồi gửi url nhận được vào imageUrl; content khi đó là chú thích, có thể bỏ trống. 200 trả MessageDto (imageUrl null với tin chữ); tin cũng được đẩy realtime qua SignalR /hubs/chat. 400: nội dung sai, hoặc imageUrl không phải ảnh chat chính bạn tải lên; 403: có chặn; 404: không phải thành viên. Ghép tin theo id để tránh hiển thị trùng REST và realtime.")]
     [ProducesResponseType(400, Description = "Dữ liệu đầu vào không hợp lệ; xem chi tiết lỗi và các trường trong response.")]
     [ProducesResponseType(403, Description = "Không đủ quyền hoặc không thỏa điều kiện; xem mô tả endpoint và code lỗi nếu có.")]
     [ProducesResponseType(404, Description = "Không tìm thấy dữ liệu hoặc không được phép xem dữ liệu này.")]
@@ -114,7 +114,7 @@ public sealed class ChatController(IChatService chatService) : ControllerBase
         }
 
         return ToActionResult(
-            await chatService.SendMessageAsync(userId, conversationId, request.Content, cancellationToken));
+            await chatService.SendMessageAsync(userId, conversationId, request.Content, request.ImageUrl, cancellationToken));
     }
 
     [EndpointSummary("Đánh dấu hội thoại đã đọc")]
@@ -144,7 +144,7 @@ public sealed class ChatController(IChatService chatService) : ControllerBase
         var status = error switch
         {
             ChatError.NotFound => StatusCodes.Status404NotFound,
-            ChatError.InvalidContent => StatusCodes.Status400BadRequest,
+            ChatError.InvalidContent or ChatError.InvalidImage => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status403Forbidden
         };
 

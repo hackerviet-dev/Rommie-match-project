@@ -89,6 +89,29 @@ public sealed class SafetyController(ISafetyService safetyService) : ControllerB
             : SafetyProblem(result.Error);
     }
 
+    [EndpointSummary("Báo cáo một tin phòng")]
+    [EndpointDescription("Cần đăng nhập. Gửi {reason, details?} như báo cáo thành viên; reason=other bắt buộc details. Người bị báo cáo là chủ tin, báo cáo lưu kèm roomId để kiểm duyệt viên mở đúng tin qua /api/admin/reports. 201 trả UserReportDto trạng thái open. 400: dữ liệu sai hoặc code self_target (báo cáo tin của chính mình); 404 code room_not_found: không có tin phòng; 409 code report_already_open: đã có báo cáo đang chờ xử lý với tin này.")]
+    [ProducesResponseType(400, Description = "Dữ liệu đầu vào không hợp lệ; xem chi tiết lỗi và các trường trong response.")]
+    [ProducesResponseType(404, Description = "room_not_found: không tìm thấy tin phòng.")]
+    [ProducesResponseType(409, Description = "report_already_open: đã có báo cáo đang chờ xử lý với tin phòng này.")]
+    [ProducesResponseType(typeof(UserReportDto), 201, Description = "Thành công; dữ liệu trả về theo schema bên dưới.")]
+    [HttpPost("/api/rooms/{roomId:guid}/reports")]
+    public async Task<ActionResult<UserReportDto>> ReportRoom(
+        [Description("UUID tin phòng bị báo cáo.")] Guid roomId,
+        [Description("JSON theo schema bên dưới; tên trường dùng camelCase.")] CreateUserReportRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (User.GetUserId() is not { } callerId)
+        {
+            return Unauthorized();
+        }
+
+        var result = await safetyService.ReportRoomAsync(callerId, roomId, request, cancellationToken);
+        return result.Error == SafetyError.None
+            ? StatusCode(StatusCodes.Status201Created, result.Value)
+            : SafetyProblem(result.Error);
+    }
+
     // Same shape as the matching errors: a stable "code" next to the Vietnamese message.
     private ObjectResult SafetyProblem(SafetyError error)
     {
@@ -100,7 +123,9 @@ public sealed class SafetyController(ISafetyService safetyService) : ControllerB
             SafetyError.StaffTarget => (StatusCodes.Status403Forbidden, "staff_target",
                 "Không thể chặn tài khoản quản trị viên."),
             SafetyError.ReportAlreadyOpen => (StatusCodes.Status409Conflict, "report_already_open",
-                "Bạn đã báo cáo thành viên này và báo cáo đang chờ xử lý."),
+                "Bạn đã báo cáo nội dung này và báo cáo đang chờ xử lý."),
+            SafetyError.RoomNotFound => (StatusCodes.Status404NotFound, "room_not_found",
+                "Không tìm thấy tin phòng."),
             _ => throw new ArgumentOutOfRangeException(nameof(error), error, null)
         };
 

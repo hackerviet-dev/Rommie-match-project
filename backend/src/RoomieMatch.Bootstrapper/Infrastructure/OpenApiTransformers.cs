@@ -1,8 +1,11 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
@@ -83,6 +86,33 @@ internal sealed class AuthorizeRequirementTransformer : IOpenApiOperationTransfo
             Description = "Đã đăng nhập nhưng không đủ quyền hoặc không thỏa điều kiện truy cập; xem mô tả endpoint."
         });
 
+        return Task.CompletedTask;
+    }
+}
+
+// A multipart body is built from several form parameters, so it gets no description of its
+// own. List each field with its [Description] instead.
+internal sealed class FormRequestBodyTransformer : IOpenApiOperationTransformer
+{
+    public Task TransformAsync(
+        OpenApiOperation operation,
+        OpenApiOperationTransformerContext context,
+        CancellationToken cancellationToken)
+    {
+        if (operation.RequestBody is not OpenApiRequestBody body
+            || !string.IsNullOrEmpty(body.Description)
+            || body.Content?.ContainsKey("multipart/form-data") != true)
+        {
+            return Task.CompletedTask;
+        }
+
+        var fields = context.Description.ParameterDescriptions
+            .Where(parameter => parameter.Source == BindingSource.Form || parameter.Source == BindingSource.FormFile)
+            .Select(parameter => (parameter.ParameterDescriptor as ControllerParameterDescriptor)?.ParameterInfo
+                .GetCustomAttribute<DescriptionAttribute>()?.Description is { } text
+                ? $"{parameter.Name}: {text}"
+                : parameter.Name);
+        body.Description = $"multipart/form-data gồm {string.Join("; ", fields)}";
         return Task.CompletedTask;
     }
 }

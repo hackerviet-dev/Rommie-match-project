@@ -102,7 +102,7 @@ function NotificationBell() {
               <strong className="text-sm">
                 {c.partner.displayName} · {c.unreadCount}
               </strong>
-              <p className="mt-1 truncate text-xs">{c.lastMessage?.content}</p>
+              <p className="mt-1 truncate text-xs">{c.lastMessage?.content || (c.lastMessage?.imageUrl ? "Đã gửi một ảnh" : "")}</p>
             </Link>
           ))}
         <Link to="/chat" className="mt-4 block text-center text-sm text-teal">

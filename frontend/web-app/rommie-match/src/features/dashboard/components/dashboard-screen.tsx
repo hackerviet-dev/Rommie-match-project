@@ -251,7 +251,7 @@ export function DashboardScreen() {
                           {c.partner.displayName}
                         </p>
                         <p className="truncate text-xs text-muted-foreground">
-                          {c.lastMessage?.content}
+                          {c.lastMessage?.content || (c.lastMessage?.imageUrl ? "Đã gửi một ảnh" : "")}
                         </p>
                         <time className="text-xs text-muted-foreground">
                           {new Date(c.lastMessage!.createdAt).toLocaleString(

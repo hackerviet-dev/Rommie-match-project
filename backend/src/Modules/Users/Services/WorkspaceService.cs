@@ -19,6 +19,8 @@ public sealed record DisputeReviewRequest([Required,RegularExpression("^(investi
 // JSON projections explicitly whitelist fields; credentials and private chat history never leave this service.
 public sealed class WorkspaceService(IDbConnectionFactory factory)
 {
+    // Matches the pair room policy: one owner plus one roommate.
+    public const int GroupMemberLimit = 2;
     private static void Text(string value,int min,int max)
     {
         if(value.Trim().Length<min || value.Trim().Length>max)throw new WorkspaceException(400,$"Nội dung phải có từ {min} đến {max} ký tự sau khi bỏ khoảng trắng.");
@@ -134,7 +136,7 @@ public sealed class WorkspaceService(IDbConnectionFactory factory)
     {
         await using var c=await factory.OpenConnectionAsync(ct);if(!staff)await GroupPermission(c,null,group,user,ct);
         var rows=await Rows(c,"""
-          SELECT jsonb_build_object('id',g.id,'name',g.name,'roomId',g.room_id,'members',coalesce((SELECT jsonb_agg(jsonb_build_object('userId',m.user_id,'displayName',p.display_name,'avatarUrl',p.avatar_url,'role',m.role,'status',m.status) ORDER BY m.joined_at) FROM housing_group_members m LEFT JOIN profiles p ON p.user_id=m.user_id WHERE m.group_id=g.id),'[]'::jsonb))::text FROM housing_groups g WHERE g.id=@g
+          SELECT jsonb_build_object('id',g.id,'name',g.name,'roomId',g.room_id,'memberLimit',2,'members',coalesce((SELECT jsonb_agg(jsonb_build_object('userId',m.user_id,'displayName',p.display_name,'avatarUrl',p.avatar_url,'role',m.role,'status',m.status) ORDER BY m.joined_at) FROM housing_group_members m LEFT JOIN profiles p ON p.user_id=m.user_id WHERE m.group_id=g.id),'[]'::jsonb))::text FROM housing_groups g WHERE g.id=@g
           """,ct,("g",group));return rows.Count==0?throw new WorkspaceException(404,"Không tìm thấy nhóm."):rows[0];
     }
     public async Task<Guid> CreateGroup(Guid user,GroupCreateRequest req,CancellationToken ct)
@@ -149,7 +151,10 @@ public sealed class WorkspaceService(IDbConnectionFactory factory)
     public async Task Invite(Guid group,Guid actor,string email,CancellationToken ct)
     {
         await using var c=await factory.OpenConnectionAsync(ct);await using var tx=await c.BeginTransactionAsync(ct);
+        await Write(c,tx,"SELECT id FROM housing_groups WHERE id=@g FOR UPDATE",ct,("g",group));
         var role=await GroupPermission(c,tx,group,actor,ct);if(role=="member")throw new WorkspaceException(403,"Chỉ chủ nhóm/người quản lý được mời thành viên.");
+        // Pair policy: a group is at most two people, pending invitations included (trigger 024 enforces it too).
+        await using(var size=c.CreateCommand()){size.Transaction=tx;size.CommandText="SELECT count(*) FROM housing_group_members WHERE group_id=@g";size.AddParameter("g",group);if((long)(await size.ExecuteScalarAsync(ct))!>=GroupMemberLimit)throw new WorkspaceException(409,"Nhóm ở ghép chỉ gồm tối đa 2 người, tính cả lời mời đang chờ.");}
         await using var find=c.CreateCommand();find.Transaction=tx;find.CommandText="SELECT id FROM users WHERE lower(email)=lower(@email) AND is_active";find.AddParameter("email",email.Trim());var target=await find.ExecuteScalarAsync(ct);if(target is null)throw new WorkspaceException(404,"Không tìm thấy tài khoản đang hoạt động với email này.");
         var n=await Write(c,tx,"INSERT INTO housing_group_members(group_id,user_id,role,status) VALUES(@g,@u,'member','invited') ON CONFLICT DO NOTHING",ct,("g",group),("u",target));if(n==0)throw new WorkspaceException(409,"Tài khoản đã ở trong nhóm hoặc đang được mời.");await tx.CommitAsync(ct);
     }

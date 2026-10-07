@@ -1,6 +1,7 @@
 using System.Data.Common;
 using Microsoft.AspNetCore.SignalR;
 using RoomieMatch.Modules.Chat.Hubs;
+using RoomieMatch.Shared.Contracts;
 using RoomieMatch.Shared.Data;
 using RoomieMatch.Shared.Paging;
 
@@ -8,9 +9,10 @@ namespace RoomieMatch.Modules.Chat.Services;
 
 public sealed class ChatService(
     IDbConnectionFactory connectionFactory,
-    IHubContext<ChatHub, IChatClient> hubContext) : IChatService
+    IHubContext<ChatHub, IChatClient> hubContext,
+    IUploadedImageVerifier uploadedImages) : IChatService
 {
-    private const string MessageColumns = "id, conversation_id, sender_id, content, created_at, read_at";
+    private const string MessageColumns = "id, conversation_id, sender_id, content, image_url, created_at, read_at";
 
     // The caller's side of each conversation (me) joined to the other member. A partner
     // whose account was removed takes their membership row with them, so such
@@ -30,7 +32,7 @@ public sealed class ChatService(
 
     private const string ConversationSelect = """
         SELECT c.id, c.updated_at, other.user_id, op.display_name, op.avatar_url, op.is_verified,
-               lm.id, lm.conversation_id, lm.sender_id, lm.content, lm.created_at, lm.read_at,
+               lm.id, lm.conversation_id, lm.sender_id, lm.content, lm.image_url, lm.created_at, lm.read_at,
                (SELECT count(*)::int
                 FROM messages um
                 WHERE um.conversation_id = c.id
@@ -45,7 +47,7 @@ public sealed class ChatService(
 
     private const string LastMessageJoin = """
         LEFT JOIN LATERAL (
-            SELECT m.id, m.conversation_id, m.sender_id, m.content, m.created_at, m.read_at
+            SELECT m.id, m.conversation_id, m.sender_id, m.content, m.image_url, m.created_at, m.read_at
             FROM messages m
             WHERE m.conversation_id = c.id
             ORDER BY m.created_at DESC, m.id DESC
@@ -67,7 +69,7 @@ public sealed class ChatService(
         return new
         {
             module = "Chat",
-            features = new[] { "conversations", "messages", "read-receipts", "typing", "signalr" }
+            features = new[] { "conversations", "messages", "image-messages", "read-receipts", "typing", "signalr" }
         };
     }
 
@@ -249,13 +251,22 @@ public sealed class ChatService(
     public async Task<ChatResult<MessageDto>> SendMessageAsync(
         Guid userId,
         Guid conversationId,
-        string content,
+        string? content,
+        string? imageUrl,
         CancellationToken cancellationToken)
     {
         var text = content?.Trim() ?? string.Empty;
-        if (text.Length is 0 or > MessageRules.MaxLength)
+        var image = string.IsNullOrWhiteSpace(imageUrl) ? null : imageUrl.Trim();
+        // An image message may come without text; a text message may not be blank.
+        if (text.Length > MessageRules.MaxLength || (text.Length == 0 && image is null))
         {
             return ChatResult<MessageDto>.Failure(ChatError.InvalidContent);
+        }
+
+        // Only images the sender uploaded through /api/media for chat, never an outside link.
+        if (image is not null && !uploadedImages.IsUploadedBy(image, userId, ImagePurpose.Chat))
+        {
+            return ChatResult<MessageDto>.Failure(ChatError.InvalidImage);
         }
 
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
@@ -279,8 +290,8 @@ public sealed class ChatService(
         await using var command = connection.CreateCommand();
         command.CommandText = $"""
             WITH inserted AS (
-                INSERT INTO messages (conversation_id, sender_id, content)
-                VALUES (@conversation_id, @sender_id, @content)
+                INSERT INTO messages (conversation_id, sender_id, content, image_url)
+                VALUES (@conversation_id, @sender_id, @content, @image_url)
                 RETURNING {MessageColumns}
             ), touched AS (
                 UPDATE conversations SET updated_at = now() WHERE id = @conversation_id
@@ -290,7 +301,8 @@ public sealed class ChatService(
         command
             .AddParameter("conversation_id", conversationId)
             .AddParameter("sender_id", userId)
-            .AddParameter("content", text);
+            .AddParameter("content", text)
+            .AddParameter("image_url", image);
 
         MessageDto message;
         await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
@@ -434,8 +446,8 @@ public sealed class ChatService(
                 reader.IsDBNull(4) ? null : reader.GetString(4),
                 reader.GetBoolean(5)),
             reader.IsDBNull(6) ? null : ReadMessage(reader, 6),
-            reader.GetInt32(12),
-            reader.GetBoolean(13),
+            reader.GetInt32(13),
+            reader.GetBoolean(14),
             reader.GetFieldValue<DateTimeOffset>(1));
     }
 
@@ -446,8 +458,9 @@ public sealed class ChatService(
             reader.GetGuid(offset + 1),
             reader.GetGuid(offset + 2),
             reader.GetString(offset + 3),
-            reader.GetFieldValue<DateTimeOffset>(offset + 4),
-            reader.IsDBNull(offset + 5) ? null : reader.GetFieldValue<DateTimeOffset>(offset + 5));
+            reader.IsDBNull(offset + 4) ? null : reader.GetString(offset + 4),
+            reader.GetFieldValue<DateTimeOffset>(offset + 5),
+            reader.IsDBNull(offset + 6) ? null : reader.GetFieldValue<DateTimeOffset>(offset + 6));
     }
 
     // Same format as the 009 backfill: "<smaller uuid>:<larger uuid>", compared as

@@ -21,10 +21,10 @@ export const chatApi = {
       `/api/chat/conversations/${id}/messages?limit=30${beforeId ? `&beforeId=${beforeId}` : ""}`,
       { authenticated: true },
     ),
-  send: (id: string, content: string) =>
+  send: (id: string, content: string, imageUrl?: string) =>
     apiClient<Message>(`/api/chat/conversations/${id}/messages`, {
       method: "POST",
-      body: { content },
+      body: { content, imageUrl: imageUrl ?? null },
       authenticated: true,
     }),
   read: (id: string) =>

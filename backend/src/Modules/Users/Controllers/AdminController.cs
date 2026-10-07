@@ -63,7 +63,7 @@ public sealed class AdminController(AdminService service) : ControllerBase
     }
 
     [EndpointSummary("Duyệt hoặc từ chối xác minh")]
-    [EndpointDescription("Cần role admin hoặc moderator. Gửi status=approved hoặc rejected; rejectionReason bắt buộc khi rejected, tối đa 2000 ký tự. 204: xử lý thành công; 400: dữ liệu sai; 404: không có hồ sơ pending để xử lý.")]
+    [EndpointDescription("Cần role admin hoặc moderator. Gửi status=approved hoặc rejected; rejectionReason bắt buộc khi rejected, tối đa 2000 ký tự. 204: xử lý thành công, thành viên nhận thông báo type=verification; 400: dữ liệu sai; 404: không có hồ sơ pending để xử lý hoặc hồ sơ là của chính người duyệt.")]
     [ProducesResponseType(400, Description = "Dữ liệu đầu vào không hợp lệ; xem chi tiết lỗi và các trường trong response.")]
     [ProducesResponseType(404, Description = "Không tìm thấy dữ liệu hoặc không được phép xem dữ liệu này.")]
     [ProducesResponseType(204, Description = "Thành công; không có body.")]
