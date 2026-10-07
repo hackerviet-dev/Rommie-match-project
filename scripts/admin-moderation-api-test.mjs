@@ -406,9 +406,13 @@ async function run() {
   assert.equal(reason2000.status, 204, `reject with a 2000-char reason returned ${reason2000.status}`);
   assert.equal(verificationRow(VID(3)), `rejected|2000|${admin.id}|SET`, `V3 DB row is ${verificationRow(VID(3))}`);
 
-  // Admin approves V4.
-  const approve4 = await call('POST', `/api/admin/verifications/${VID(4)}/review`, {
+  // V4 belongs to the admin: reviewing one's own submission is refused, a moderator approves it.
+  const selfApprove = await call('POST', `/api/admin/verifications/${VID(4)}/review`, {
     token: admin.token, body: { status: 'approved' },
+  });
+  assert.equal(selfApprove.status, 404, `self-approving V4 returned ${selfApprove.status}`);
+  const approve4 = await call('POST', `/api/admin/verifications/${VID(4)}/review`, {
+    token: moderator.token, body: { status: 'approved' },
   });
   assert.equal(approve4.status, 204, `approve V4 returned ${approve4.status}`);
   assert.equal(profileVerified(ownerIds[3]), 'true', 'approving V4 must verify its profile');

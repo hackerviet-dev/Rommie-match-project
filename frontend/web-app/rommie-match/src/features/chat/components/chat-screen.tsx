@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { QueryState } from "@/components/common/query-state";
 import { useAuthStore } from "@/features/auth";
+import { cloudinaryImage, mediaApi, validateImageFile, ACCEPTED_IMAGE_TYPES } from "@/features/media";
 import { chatApi } from "../services/chat-api";
 import { useChatRealtime } from "../hooks/use-chat-realtime";
 import { ChatContactPanel } from "./chat-contact-panel";
@@ -63,13 +64,22 @@ export function ChatScreen() {
       client.invalidateQueries({ queryKey: ["chat", "conversations"] }),
   });
   const send = useMutation({
-    mutationFn: ({
+    // An image is uploaded first (purpose=chat), then sent with the draft as its caption.
+    mutationFn: async ({
       conversationId,
       content,
+      image,
     }: {
       conversationId: string;
       content: string;
-    }) => chatApi.send(conversationId, content),
+      image?: File;
+    }) => {
+      if (!image) return chatApi.send(conversationId, content);
+      const invalid = validateImageFile(image);
+      if (invalid) throw new Error(invalid);
+      const uploaded = await mediaApi.uploadImage(image, "chat");
+      return chatApi.send(conversationId, content, uploaded.url);
+    },
     onSuccess: (_, vars) => {
       setDrafts((d) => ({ ...d, [vars.conversationId]: "" }));
       void client.invalidateQueries({ queryKey: ["chat"] });
@@ -89,6 +99,7 @@ export function ChatScreen() {
     ).values(),
   ].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const messagesRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const lastMessageId = rows.at(-1)?.id;
   useEffect(() => {
     const container = messagesRef.current;
@@ -99,6 +110,10 @@ export function ChatScreen() {
     if (draft.trim() && !send.isPending && !active.data?.isBlocked)
       send.mutate({ conversationId: id, content: draft.trim() });
   };
+  function handleImagePicked(file: File | undefined) {
+    if (file && !send.isPending && !active.data?.isBlocked)
+      send.mutate({ conversationId: id, content: draft.trim(), image: file });
+  }
   const visible =
     list.data?.items.filter(
       (c) =>
@@ -191,7 +206,10 @@ export function ChatScreen() {
                     </span>
                   </div>
                   <p className="mt-1 truncate text-xs text-muted-foreground">
-                    {c.lastMessage?.content ?? "Chưa có tin nhắn"}
+                    {c.lastMessage
+                      ? c.lastMessage.content ||
+                        (c.lastMessage.imageUrl ? "Đã gửi một ảnh" : "")
+                      : "Chưa có tin nhắn"}
                   </p>
                 </div>
                 {c.unreadCount > 0 && (
@@ -387,11 +405,28 @@ export function ChatScreen() {
                         />
                       )}
                       <div className="max-w-[85%] sm:max-w-[72%]">
-                        <p
-                          className={`whitespace-pre-wrap break-words rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${m.senderId === me ? "rounded-br-md bg-navy text-white" : "rounded-bl-md bg-white text-foreground shadow-sm"}`}
-                        >
-                          {m.content}
-                        </p>
+                        {m.imageUrl && (
+                          <a
+                            href={m.imageUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={`mb-1 block w-fit overflow-hidden rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal ${m.senderId === me ? "ml-auto" : ""}`}
+                          >
+                            <img
+                              src={cloudinaryImage(m.imageUrl, { width: 480 })}
+                              alt={m.content || "Ảnh trong tin nhắn"}
+                              loading="lazy"
+                              className="max-h-80 max-w-full bg-muted object-contain"
+                            />
+                          </a>
+                        )}
+                        {m.content && (
+                          <p
+                            className={`whitespace-pre-wrap break-words rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${m.senderId === me ? "rounded-br-md bg-navy text-white" : "rounded-bl-md bg-white text-foreground shadow-sm"}`}
+                          >
+                            {m.content}
+                          </p>
+                        )}
                         <p
                           className={`mt-1 px-1 text-[10px] text-muted-foreground ${m.senderId === me ? "text-right" : ""}`}
                         >
@@ -432,14 +467,29 @@ export function ChatScreen() {
                   }}
                   className="flex items-end gap-2"
                 >
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept={ACCEPTED_IMAGE_TYPES.join(",")}
+                    className="hidden"
+                    tabIndex={-1}
+                    aria-hidden="true"
+                    onChange={(e) => {
+                      handleImagePicked(e.target.files?.[0]);
+                      e.target.value = "";
+                    }}
+                  />
                   <Button
                     type="button"
-                    disabled
+                    disabled={
+                      !partner || active.data?.isBlocked || send.isPending
+                    }
                     variant="ghost"
                     size="icon"
-                    aria-label="Đính kèm · Sắp có"
-                    title="Đính kèm · Sắp có"
+                    aria-label="Gửi ảnh (JPG, PNG, WebP, tối đa 5 MB)"
+                    title="Gửi ảnh (JPG, PNG, WebP, tối đa 5 MB)"
                     className="h-10 w-10 shrink-0"
+                    onClick={() => imageInputRef.current?.click()}
                   >
                     <Paperclip />
                   </Button>
@@ -482,6 +532,11 @@ export function ChatScreen() {
                     <Send className="h-4 w-4" />
                   </Button>
                 </form>
+                {send.isPending && send.variables?.image && (
+                  <p role="status" className="mt-2 text-sm text-muted-foreground">
+                    Đang tải ảnh lên…
+                  </p>
+                )}
                 {send.isError && (
                   <p role="alert" className="mt-2 text-sm text-destructive">
                     {send.error.message}

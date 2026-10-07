@@ -15,7 +15,14 @@ public sealed class ChatHub(IChatService chatService) : Hub<IChatClient>
     // and the caller's other connections get it through MessageReceived.
     public async Task<MessageDto> SendMessage(Guid conversationId, string content)
     {
-        return Unwrap(await chatService.SendMessageAsync(CallerId, conversationId, content, Context.ConnectionAborted));
+        return Unwrap(await chatService.SendMessageAsync(CallerId, conversationId, content, null, Context.ConnectionAborted));
+    }
+
+    // SignalR does not overload hub methods by argument count, so images get their own name.
+    // imageUrl comes from POST /api/media/images with purpose=chat; caption may be null.
+    public async Task<MessageDto> SendImageMessage(Guid conversationId, string imageUrl, string? caption)
+    {
+        return Unwrap(await chatService.SendMessageAsync(CallerId, conversationId, caption, imageUrl, Context.ConnectionAborted));
     }
 
     public async Task<ReadReceiptDto> MarkRead(Guid conversationId)

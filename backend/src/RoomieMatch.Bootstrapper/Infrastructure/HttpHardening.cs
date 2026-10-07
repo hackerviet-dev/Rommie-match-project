@@ -25,6 +25,8 @@ public sealed class RateLimitSettings
     public int CredentialsWindowSeconds { get; set; } = 60;
     public int GlobalPermitLimit { get; set; } = 300;
     public int GlobalWindowSeconds { get; set; } = 60;
+    public int UploadsPermitLimit { get; set; } = 20;
+    public int UploadsWindowSeconds { get; set; } = 60;
 }
 
 public sealed class ReverseProxySettings
@@ -89,6 +91,16 @@ public static class HttpHardeningExtensions
                     {
                         PermitLimit = limits.CredentialsPermitLimit,
                         Window = TimeSpan.FromSeconds(limits.CredentialsWindowSeconds),
+                        QueueLimit = 0
+                    }));
+
+            options.AddPolicy(RateLimitPolicies.Uploads, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    context.User.GetUserId() is { } userId ? $"user:{userId}" : $"ip:{ClientIp(context)}",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = limits.UploadsPermitLimit,
+                        Window = TimeSpan.FromSeconds(limits.UploadsWindowSeconds),
                         QueueLimit = 0
                     }));
         });

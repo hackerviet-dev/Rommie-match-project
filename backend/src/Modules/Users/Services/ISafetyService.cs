@@ -19,6 +19,13 @@ public interface ISafetyService
         Guid targetId,
         CreateUserReportRequest request,
         CancellationToken cancellationToken);
+
+    // Reports a room listing; the reported member is the room owner and the report keeps room_id.
+    Task<SafetyResult<UserReportDto>> ReportRoomAsync(
+        Guid userId,
+        Guid roomId,
+        CreateUserReportRequest request,
+        CancellationToken cancellationToken);
 }
 
 public enum SafetyError
@@ -29,8 +36,10 @@ public enum SafetyError
     Self,
     // Staff accounts cannot be blocked: members must still be reachable by moderation.
     StaffTarget,
-    // The caller already has an open report against this member.
-    ReportAlreadyOpen
+    // The caller already has an open report against this member (or this room).
+    ReportAlreadyOpen,
+    // A room id with no live listing behind it.
+    RoomNotFound
 }
 
 public sealed record SafetyResult<T>(SafetyError Error, T? Value)
@@ -48,7 +57,8 @@ public sealed record UserReportDto(
     string Reason,
     string? Details,
     string Status,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    [property: Description("UUID phòng bị báo cáo; null khi báo cáo thành viên nói chung.")] Guid? RoomId = null);
 
 public sealed record CreateUserReportRequest(
     [Required, AllowedValues(ReportReasons.Fake, ReportReasons.Scam, ReportReasons.Harass, ReportReasons.Sexual,

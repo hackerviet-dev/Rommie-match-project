@@ -10,7 +10,8 @@ public static class ChatErrors
             ChatError.NotFound => "Không tìm thấy cuộc trò chuyện.",
             ChatError.InvalidRecipient => "Không thể nhắn tin với người dùng này.",
             ChatError.Blocked => "Không thể nhắn tin vì một trong hai bên đã chặn người kia.",
-            ChatError.InvalidContent => $"Tin nhắn phải có từ 1 đến {MessageRules.MaxLength} ký tự.",
+            ChatError.InvalidContent => $"Tin nhắn phải có ảnh hoặc từ 1 đến {MessageRules.MaxLength} ký tự.",
+            ChatError.InvalidImage => "Ảnh không hợp lệ. Hãy tải ảnh lên qua RoomieMatch rồi gửi lại.",
             _ => throw new ArgumentOutOfRangeException(nameof(error), error, null)
         };
     }

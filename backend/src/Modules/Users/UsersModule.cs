@@ -39,6 +39,7 @@ public static class UsersModuleExtensions
         services.AddScoped<WorkspaceService>();
         services.AddScoped<OnboardingService>();
         services.AddScoped<ISafetyService, SafetyService>();
+        services.AddScoped<IdentityVerificationService>();
         services.AddScoped<ISavedProfileService, SavedProfileService>();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

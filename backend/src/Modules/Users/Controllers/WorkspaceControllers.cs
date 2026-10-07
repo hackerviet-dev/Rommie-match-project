@@ -14,6 +14,8 @@ public sealed class WorkspaceErrorFilter : IExceptionFilter
     public void OnException(ExceptionContext context)
     {
         if(context.Exception is WorkspaceException e){context.Result=new ObjectResult(new ProblemDetails{Status=e.Status,Title="Không thể thực hiện thao tác",Detail=e.Message}){StatusCode=e.Status};context.ExceptionHandled=true;}
+        // Trigger 024 backs the service-side pair limit when two invites race.
+        else if(context.Exception is System.Data.Common.DbException g && g.SqlState=="23514" && g.Message.Contains("housing group")) {context.Result=new ConflictObjectResult(new ProblemDetails{Status=409,Title="Không thể thực hiện thao tác",Detail="Nhóm ở ghép chỉ gồm tối đa 2 người, tính cả lời mời đang chờ."});context.ExceptionHandled=true;}
         else if(context.Exception is System.Data.Common.DbException p && p.SqlState is "23505" or "23503") {context.Result=new ConflictObjectResult(new ProblemDetails{Status=409,Title="Dữ liệu đã thay đổi",Detail="Dữ liệu liên quan đã thay đổi hoặc bị trùng. Tải lại và thử lại."});context.ExceptionHandled=true;}
     }
 }

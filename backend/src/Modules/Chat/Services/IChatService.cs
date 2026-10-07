@@ -33,11 +33,13 @@ public interface IChatService
         CancellationToken cancellationToken);
 
     // Saves the message and pushes it over SignalR to every open connection of every
-    // member, the sender's other tabs included.
+    // member, the sender's other tabs included. imageUrl must be a chat image the sender
+    // uploaded through /api/media; content may then be empty.
     Task<ChatResult<MessageDto>> SendMessageAsync(
         Guid userId,
         Guid conversationId,
-        string content,
+        string? content,
+        string? imageUrl,
         CancellationToken cancellationToken);
 
     // Marks everything the other side sent so far as read and tells them.
@@ -58,7 +60,9 @@ public enum ChatError
     InvalidRecipient,
     // A block exists in either direction; history stays readable, sending does not.
     Blocked,
-    InvalidContent
+    InvalidContent,
+    // Not an image this sender uploaded for chat through /api/media.
+    InvalidImage
 }
 
 public sealed record ChatResult<T>(ChatError Error, T? Value)
@@ -74,7 +78,9 @@ public sealed record MessageDto(
     Guid Id,
     Guid ConversationId,
     Guid SenderId,
+    // Empty for an image sent without a caption.
     string Content,
+    string? ImageUrl,
     DateTimeOffset CreatedAt,
     DateTimeOffset? ReadAt);
 
@@ -109,10 +115,15 @@ public sealed class MessagePageQuery
 
 public sealed record StartConversationRequest([Required] [property: Description("UUID thành viên muốn bắt đầu trò chuyện; không phải id chính mình.")] Guid? UserId);
 
-public sealed record SendMessageRequest([Required, StringLength(MessageRules.MaxLength)] [property: Description("Nội dung tin nhắn, 1-4000 ký tự sau khi bỏ khoảng trắng hai đầu.")] string Content);
+public sealed record SendMessageRequest(
+    [StringLength(MessageRules.MaxLength)] [property: Description("Nội dung tin nhắn, tối đa 4000 ký tự sau khi bỏ khoảng trắng hai đầu; bắt buộc khi không gửi ảnh.")] string? Content,
+    [StringLength(MessageRules.MaxImageUrlLength)] [property: Description("URL ảnh lấy từ POST /api/media/images với purpose=chat do chính người gửi tải lên; bỏ trống khi chỉ gửi chữ.")] string? ImageUrl = null);
 
 public static class MessageRules
 {
     // Matches the CHECK constraint on messages.content.
     public const int MaxLength = 4000;
+
+    // Matches the CHECK constraint on messages.image_url.
+    public const int MaxImageUrlLength = 500;
 }

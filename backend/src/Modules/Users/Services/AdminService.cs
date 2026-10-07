@@ -27,16 +27,18 @@ public sealed class AdminService(IDbConnectionFactory factory)
         GetPagedAsync<AdminReportDto>("""
             SELECT r.id, r.reporter_id, r.reported_user_id, r.reason, r.details, r.status,
                    r.resolution_note, r.created_at, r.reviewed_at,
-                   COALESCE(pr.display_name, ''), COALESCE(pt.display_name, '')
+                   COALESCE(pr.display_name, ''), COALESCE(pt.display_name, ''), r.room_id, room.title
             """, """
             FROM user_reports r
             LEFT JOIN profiles pr ON pr.user_id = r.reporter_id
             LEFT JOIN profiles pt ON pt.user_id = r.reported_user_id
+            LEFT JOIN rooms room ON room.id = r.room_id
             WHERE (CAST(@status AS text) IS NULL OR r.status = @status)
             """, "r", status, paging, static (r) => new AdminReportDto(
                 r.GetGuid(0), r.GetGuid(1), r.GetGuid(2), r.GetString(3), r.IsDBNull(4) ? null : r.GetString(4),
                 r.GetString(5), r.IsDBNull(6) ? null : r.GetString(6), r.GetFieldValue<DateTimeOffset>(7),
-                r.IsDBNull(8) ? null : r.GetFieldValue<DateTimeOffset>(8), r.GetString(9), r.GetString(10)), ct);
+                r.IsDBNull(8) ? null : r.GetFieldValue<DateTimeOffset>(8), r.GetString(9), r.GetString(10),
+                r.IsDBNull(11) ? null : r.GetGuid(11), r.IsDBNull(12) ? null : r.GetString(12)), ct);
 
     public Task<PagedResult<AdminVerificationDto>> GetVerificationsAsync(string? status, PageQuery paging, CancellationToken ct) =>
         GetPagedAsync<AdminVerificationDto>("""
@@ -63,7 +65,7 @@ public sealed class AdminService(IDbConnectionFactory factory)
     {
         await using var c = await factory.OpenConnectionAsync(ct); await using var tx = await c.BeginTransactionAsync(ct);
         await using var cmd = c.CreateCommand(); cmd.Transaction = tx;
-        cmd.CommandText = "UPDATE identity_verifications SET status=@status, rejection_reason=@reason, reviewed_by=@reviewer, reviewed_at=now() WHERE id=@id AND status='pending' RETURNING user_id";
+        cmd.CommandText = "UPDATE identity_verifications SET status=@status, rejection_reason=@reason, reviewed_by=@reviewer, reviewed_at=now() WHERE id=@id AND status='pending' AND user_id<>@reviewer RETURNING user_id";
         cmd.AddParameter("status", request.Status).AddParameter("reason", request.RejectionReason).AddParameter("reviewer", reviewer).AddParameter("id", id);
         var user = await cmd.ExecuteScalarAsync(ct); if (user is null) return false;
         if (request.Status == "approved")
@@ -72,6 +74,16 @@ public sealed class AdminService(IDbConnectionFactory factory)
             profile.CommandText = "UPDATE profiles SET is_verified=true WHERE user_id=@user";
             profile.AddParameter("user", user);
             await profile.ExecuteNonQueryAsync(ct);
+        }
+        // The member learns the outcome (and the reason to fix) without polling the status endpoint.
+        await using (var notice = c.CreateCommand())
+        {
+            notice.Transaction = tx;
+            notice.CommandText = "INSERT INTO notifications(user_id,type,title,body,data) VALUES(@user,'verification',@title,@body,jsonb_build_object('verificationId',@id,'status',@status))";
+            notice.AddParameter("user", user).AddParameter("id", id).AddParameter("status", request.Status)
+                .AddParameter("title", request.Status == "approved" ? "Danh tính đã được xác minh" : "Hồ sơ xác minh bị từ chối")
+                .AddParameter("body", request.Status == "approved" ? "Hồ sơ của bạn hiện có dấu xác minh." : request.RejectionReason!.Trim());
+            await notice.ExecuteNonQueryAsync(ct);
         }
         await using var audit=c.CreateCommand();audit.Transaction=tx;
         audit.CommandText="INSERT INTO staff_audit_logs(actor_id,action,target_id,note) VALUES(@actor,@action,@id,@note)";
@@ -96,7 +108,9 @@ public sealed class AdminService(IDbConnectionFactory factory)
 }
 
 public sealed record AdminStatsDto(long ActiveUsers, long OpenReports, long PendingVerifications, long VerifiedProfiles, long NewUsersLast30Days);
-public sealed record AdminReportDto(Guid Id, Guid ReporterId, Guid ReportedUserId, string Reason, string? Details, string Status, string? ResolutionNote, DateTimeOffset CreatedAt, DateTimeOffset? ReviewedAt, string ReporterName, string ReportedUserName);
+public sealed record AdminReportDto(Guid Id, Guid ReporterId, Guid ReportedUserId, string Reason, string? Details, string Status, string? ResolutionNote, DateTimeOffset CreatedAt, DateTimeOffset? ReviewedAt, string ReporterName, string ReportedUserName,
+    [property: Description("UUID tin phòng bị báo cáo; null khi báo cáo thành viên nói chung.")] Guid? RoomId,
+    [property: Description("Tiêu đề tin phòng tại thời điểm xem; null nếu không gắn phòng hoặc phòng đã bị xóa hẳn.")] string? RoomTitle);
 public sealed record AdminVerificationDto(Guid Id, Guid UserId, string DocumentType, string DocumentNumberLast4, string FrontImageUrl, string BackImageUrl, string? SelfieImageUrl, string Status, string? RejectionReason, DateTimeOffset CreatedAt, DateTimeOffset? ReviewedAt, string UserName);
 public sealed record ReviewReportRequest([property: Description("resolved hoặc dismissed.")] string Status, [property: Description("Ghi chú xử lý báo cáo, tối đa 2000 ký tự; có thể null.")] string? ResolutionNote);
 public sealed record ReviewVerificationRequest([property: Description("approved hoặc rejected.")] string Status, [property: Description("Lý do từ chối, tối đa 2000 ký tự; bắt buộc khi status=rejected.")] string? RejectionReason);

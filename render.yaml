@@ -26,6 +26,9 @@ services:
         sync: false
       - key: Jwt__Secret
         generateValue: true
+      # cloudinary://<api_key>:<api_secret>@<cloud_name>, set in the Render dashboard.
+      - key: Cloudinary__Url
+        sync: false
       - key: Cors__AllowedOrigins__0
         value: https://rommie-match.vercel.app
       - key: Cors__AllowedOrigins__1

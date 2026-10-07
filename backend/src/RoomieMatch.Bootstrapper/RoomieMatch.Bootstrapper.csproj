@@ -11,6 +11,7 @@
     <ProjectReference Include="..\Modules\Billing\RoomieMatch.Modules.Billing.csproj" />
     <ProjectReference Include="..\Shared\RoomieMatch.Shared\RoomieMatch.Shared.csproj" />
     <ProjectReference Include="..\Modules\Chat\RoomieMatch.Modules.Chat.csproj" />
+    <ProjectReference Include="..\Modules\Media\RoomieMatch.Modules.Media.csproj" />
   </ItemGroup>
 
   <ItemGroup>

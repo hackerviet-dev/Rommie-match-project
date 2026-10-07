@@ -12,6 +12,9 @@
   <Folder Name="/Modules/Matching/">
     <Project Path="Modules/Matching/RoomieMatch.Modules.Matching.csproj" />
   </Folder>
+  <Folder Name="/Modules/Media/">
+    <Project Path="Modules/Media/RoomieMatch.Modules.Media.csproj" />
+  </Folder>
   <Folder Name="/Modules/Rooms/">
     <Project Path="Modules/Rooms/RoomieMatch.Modules.Rooms.csproj" />
   </Folder>
