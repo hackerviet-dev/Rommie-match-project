@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { vietnamToday } from "@/utils/date-rules";
 import { useState } from "react";
-import { LocationPicker } from "@/features/location/components/location-picker";
 import { RoomLocationEditor } from "./room-location-editor";
 import { RoomPhotoEditor } from "./room-photo-editor";
 export function RoomEditor({ room }: { room?: Room }) {
@@ -97,13 +96,7 @@ export function RoomEditor({ room }: { room?: Room }) {
         <input type="hidden" {...form.register("maxOccupants")} />
         <input type="hidden" {...form.register("roommatesNeeded")} />
       </div>
-      <div className="sm:col-span-2"><RoomLocationEditor value={form.watch("googleMapsEmbedUrl")} onChange={value => { form.setValue("googleMapsEmbedUrl", value, { shouldDirty:true,shouldValidate:true }); form.clearErrors("googleMapsUrl"); }} onPendingChange={setIsLocationPending} error={form.formState.errors.googleMapsEmbedUrl?.message || form.formState.errors.googleMapsUrl?.message}><LocationPicker savedLink={{ value: form.watch("googleMapsUrl"), onChange: value => form.setValue("googleMapsUrl", value, { shouldDirty: true, shouldValidate: true }), error: form.formState.errors.googleMapsUrl?.message }} initialPosition={room?.latitude != null && room.longitude != null ? { latitude: room.latitude, longitude: room.longitude } : undefined} onPendingChange={setIsLocationPending} onConfirm={location => {
-        form.setValue("address", location.address, { shouldDirty: true, shouldValidate: true });
-        form.setValue("city", findRoomProvince(location.city)?.name ?? "", { shouldDirty: true, shouldValidate: true });
-        form.setValue("district", isRoomArea(location.city, location.district) ? location.district : "", { shouldDirty: true, shouldValidate: true });
-        form.setValue("latitude", String(location.latitude), { shouldDirty: true });
-        form.setValue("longitude", String(location.longitude), { shouldDirty: true });
-      }} /></RoomLocationEditor></div>
+      <div className="sm:col-span-2"><RoomLocationEditor value={form.watch("googleMapsEmbedUrl")} linkValue={form.watch("googleMapsUrl")} onChange={value => { form.setValue("googleMapsEmbedUrl", value, { shouldDirty:true,shouldValidate:true }); }} onLinkChange={value => { form.setValue("googleMapsUrl", value, { shouldDirty:true,shouldValidate:true }); form.setValue("latitude", "", { shouldDirty:true }); form.setValue("longitude", "", { shouldDirty:true }); }} onPendingChange={setIsLocationPending} error={form.formState.errors.googleMapsEmbedUrl?.message || form.formState.errors.googleMapsUrl?.message} /></div>
       {fields.map(([key, label, type, placeholder, hint]) => (
         <div key={key}>
           <Label htmlFor={key}>{label}</Label>
