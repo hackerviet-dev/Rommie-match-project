@@ -5,6 +5,18 @@ import {mkdir,readFile} from 'node:fs/promises';
 process.chdir(fileURLToPath(new URL('../',import.meta.url)));
 await mkdir('tmp/rooms',{recursive:true});
 const require=createRequire(process.cwd()+'/frontend/web-app/rommie-match/package.json');
+await require('esbuild').build({entryPoints:['frontend/web-app/rommie-match/src/features/rooms/components/room-location-editor.tsx'],bundle:true,platform:'node',format:'cjs',packages:'external',outfile:'frontend/web-app/rommie-match/node_modules/.cache/manual-location.cjs'});
+const {RoomLocationEditor}=require('.cache/manual-location.cjs');
+const {renderToStaticMarkup}=require('react-dom/server');
+const {createElement}=require('react');
+for(const [value,linkValue] of [['',''],['','https://maps.app.goo.gl/test'],['https://www.google.com/maps/embed?pb=test','']]) {
+ const html=renderToStaticMarkup(createElement(RoomLocationEditor,{value,linkValue,onChange(){},onLinkChange(){},onPendingChange(){}}));
+ assert.ok(html.includes('Link hoặc mã nhúng Google Maps'));
+ assert.ok(!html.includes('Đang kiểm tra'));
+ assert.equal(html.includes('<iframe'),Boolean(value));
+ assert.equal(html.includes('Mở vị trí phòng'),Boolean(linkValue));
+}
+console.log('PASS: manual location renders without Maps config or query provider; saved link/embed preserved.');
 await require('esbuild').build({entryPoints:['frontend/web-app/rommie-match/src/features/rooms/schemas/room-schema.ts'],bundle:true,platform:'node',format:'cjs',outfile:'tmp/rooms/schema.cjs'});
 const {roomSchema}=require(process.cwd()+'/tmp/rooms/schema.cjs');
 const valid={googleMapsEmbedUrl:'',googleMapsUrl:'https://maps.app.goo.gl/qa',title:'Phòng QA',address:'123 QA Street',city:'TP.HCM',district:'Phường Phú Nhuận',description:'Phòng sạch thoáng',monthlyRent:3000000,deposit:0,maxOccupants:2,roommatesNeeded:'1',pairOccupancyConfirmed:true,accuracyAndResidenceConfirmed:true,availableFrom:new Date(Date.now()+86400000).toISOString().slice(0,10),propertyType:'studio',bedrooms:'1',areaM2:'25',latitude:'',longitude:'',amenities:'Wi-Fi',isActive:true,photoUrls:['https://res.cloudinary.com/qa/photo.jpg']};

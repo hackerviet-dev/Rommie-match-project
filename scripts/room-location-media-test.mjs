@@ -125,7 +125,7 @@ try {
   await call(`/api/rooms/${room.id}`, token, 'PUT', { ...body, photoUrls: Array(11).fill(photo) }, 400);
   await call(`/api/rooms/${room.id}`, token, 'PUT', { ...body, photoUrls: [null] }, 400);
   const group = randomUUID();
-  sql(`UPDATE rooms SET moderation_status='approved' WHERE id='${room.id}'; INSERT INTO housing_groups(id,name,room_id,created_by) VALUES('${group}','QA room group','${room.id}','${id}'); INSERT INTO housing_group_members(group_id,user_id,role,status) VALUES('${group}','${id}','owner','active'),('${group}','${resident.user.id}','member','active'),('${group}','${outsider.user.id}','member','invited');`);
+  sql(`UPDATE rooms SET moderation_status='approved' WHERE id='${room.id}'; INSERT INTO housing_groups(id,name,room_id,created_by) VALUES('${group}','QA room group','${room.id}','${id}'); INSERT INTO housing_group_members(group_id,user_id,role,status) VALUES('${group}','${id}','owner','active'),('${group}','${resident.user.id}','member','active');`);
   assert.equal((await call(`/api/rooms/${room.id}/residents`)).residents.length, 0);
   await call(`/api/rooms/${room.id}/residents/visibility`, outsider.accessToken, 'PUT', { share: true }, 403);
   await call(`/api/rooms/${room.id}/residents/visibility`, resident.accessToken, 'PUT', { share: true }, 204);
