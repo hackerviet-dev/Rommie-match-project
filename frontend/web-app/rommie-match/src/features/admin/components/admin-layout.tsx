@@ -3,6 +3,7 @@ import { useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
+  ChartNoAxesCombined,
   Users,
   Building2,
   Flag,
@@ -24,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { useStaffQueueCounts } from "../hooks/use-staff-queue-counts";
 const navigation = [
   { path: "/admin", label: "Tổng quan", icon: LayoutDashboard },
+  { path: "/admin/analytics", label: "Google Analytics", icon: ChartNoAxesCombined },
   { path: "/admin/users", label: "Thành viên", icon: Users },
   { path: "/admin/rooms", label: "Kiểm duyệt tin đăng", icon: Building2 },
   { path: "/admin/groups", label: "Nhóm ở ghép", icon: UsersRound },

@@ -1,4 +1,5 @@
 import { AuthGuard } from "./auth-guard";
+import { usePageAnalytics } from "@/hooks/use-page-analytics";
 import { ActorEntry } from "./actor-entry";
 import { OnboardingGate } from "@/features/onboarding";
 import { useAuthSession } from "@/features/auth";
@@ -33,6 +34,7 @@ import GroupsPage from "@/pages/groups-page";
 import DisputesPage from "@/pages/disputes-page";
 
 export function AppRouter() {
+  usePageAnalytics();
   useAuthSession();
   const { pathname } = useLocation();
   return (
