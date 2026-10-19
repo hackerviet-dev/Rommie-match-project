@@ -26,6 +26,7 @@ export function useStaffQueueCounts() {
     disputes: stats?.openDisputes ?? 0,
     reports: stats?.openReports ?? 0,
     verifications: stats?.pendingVerifications ?? 0,
+    feedback: stats?.newFeedback ?? 0,
     refunds: refunds.isError ? 0 : (refunds.data?.totalCount ?? 0),
   };
 }

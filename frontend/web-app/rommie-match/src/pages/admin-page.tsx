@@ -8,6 +8,7 @@ import {
   Scale,
   Flag,
   ShieldCheck,
+  MessageSquareHeart,
   UsersRound,
   ArrowUpRight,
 } from "lucide-react";
@@ -25,6 +26,7 @@ import {
   Refunds,
 } from "@/features/admin/components/review-queues";
 import { ServiceManager } from "@/features/admin/components/service-manager";
+import { FeedbackQueue } from "@/features/feedback";
 import { GroupsPanel } from "@/features/workspaces/components/groups-panel";
 import { DisputesPanel } from "@/features/workspaces/components/disputes-panel";
 import { staffApi } from "@/features/admin/services/staff-api";
@@ -81,6 +83,13 @@ function Overview() {
       icon: ShieldCheck,
       color: "text-emerald-600 bg-emerald-50",
     },
+    {
+      label: "Góp ý chưa xem",
+      value: query.data?.newFeedback,
+      path: "feedback",
+      icon: MessageSquareHeart,
+      color: "text-amber-600 bg-amber-50",
+    },
   ];
   return (
     <div>
@@ -98,7 +107,7 @@ function Overview() {
         </span>
       </div>
       <QueryState query={query} />
-      <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
         {cards.map((c) => (
           <Link key={c.path} to={`${staffPath}/${c.path}`}>
             <Card className="h-full rounded-2xl border-slate-200 p-6 shadow-none transition-shadow hover:shadow-sm">
@@ -289,6 +298,14 @@ export default function AdminPage() {
           element={
             <Queue title="Báo cáo vi phạm">
               <Reports />
+            </Queue>
+          }
+        />
+        <Route
+          path="feedback"
+          element={
+            <Queue title="Góp ý người dùng">
+              <FeedbackQueue />
             </Queue>
           }
         />

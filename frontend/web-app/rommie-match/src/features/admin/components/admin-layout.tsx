@@ -7,6 +7,7 @@ import {
   Users,
   Building2,
   Flag,
+  MessageSquareHeart,
   ShieldCheck,
   Scale,
   UsersRound,
@@ -31,6 +32,7 @@ const navigation = [
   { path: "/admin/groups", label: "Nhóm ở ghép", icon: UsersRound },
   { path: "/admin/disputes", label: "Tranh chấp", icon: Scale },
   { path: "/admin/reports", label: "Báo cáo vi phạm", icon: Flag },
+  { path: "/admin/feedback", label: "Góp ý người dùng", icon: MessageSquareHeart },
   {
     path: "/admin/verifications",
     label: "Xác minh danh tính",

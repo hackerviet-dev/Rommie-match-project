@@ -20,6 +20,7 @@ export const staffApi = {
       groups: number;
       openReports: number;
       pendingVerifications: number;
+      newFeedback: number;
     }>("/api/admin/workspace-stats", { authenticated: true }),
   users: (q = "", role = "", page = 1) =>
     apiClient<Page<StaffUser>>(
