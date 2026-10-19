@@ -4,18 +4,20 @@ const PRODUCTION_HOST = "rommie-match.vercel.app";
 
 type AnalyticsWindow = Window & { dataLayer?: unknown[] };
 let lastPath: string | undefined;
+let lastVisitedPath: string | undefined;
 
 export function trackPageView(pathname: string) {
   if (!import.meta.env.PROD || window.location.hostname !== PRODUCTION_HOST) return;
   // Keep staff activity and private conversation/account URLs out of Analytics.
   if (/^\/(admin|moderator|chat|profile|settings|groups|disputes)(\/|$)/.test(pathname)) {
     lastPath = undefined;
+    lastVisitedPath = undefined;
     return;
   }
   const path = pathname.replace(/\/[^/]+(?=\/|$)/g, (segment) =>
     /^\/(?:[0-9a-f]{8}-[0-9a-f-]{27}|\d+)$/i.test(segment) ? "/:id" : segment,
   );
-  if (lastPath === path) return;
+  if (lastVisitedPath === pathname) return;
   const analyticsWindow = window as AnalyticsWindow;
   const dataLayer = analyticsWindow.dataLayer ??= [];
   // gtag reads arguments objects from dataLayer, rather than plain arrays.
@@ -44,4 +46,5 @@ export function trackPageView(pathname: string) {
     page_referrer: lastPath ? `https://${PRODUCTION_HOST}${lastPath}` : "",
   });
   lastPath = path;
+  lastVisitedPath = pathname;
 }

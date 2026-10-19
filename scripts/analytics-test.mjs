@@ -35,6 +35,7 @@ app.track('/');
 app.track('/');
 app.track('/rooms/123');
 app.track('/rooms/123');
+app.track('/rooms/456');
 app.track('/moderator/analytics');
 app.track('/chat/private-conversation');
 app.track('/profile/private-user');
@@ -51,8 +52,9 @@ assert.deepEqual(views.map(([, , data]) => data.page_location), [
   'https://rommie-match.vercel.app/',
   'https://rommie-match.vercel.app/rooms/:id',
   'https://rommie-match.vercel.app/rooms/:id',
+  'https://rommie-match.vercel.app/rooms/:id',
   'https://rommie-match.vercel.app/services',
 ]);
-assert.equal(views[2][2].page_referrer, '', 'Private routes are not sent as referrers');
+assert.equal(views[3][2].page_referrer, '', 'Private routes are not sent as referrers');
 assert.ok(!JSON.stringify(calls).includes('private-'));
 console.log('GA4 checks passed: production scope, initialization, deduplication, private routes, ID redaction.');
