@@ -1,4 +1,5 @@
 import { BlockedUsers } from "./blocked-users";
+import { FeedbackForm } from "@/features/feedback";
 import { OnboardingStatus } from "@/features/onboarding";
 import { QuizHistory } from "@/features/quiz";
 import { useQuery } from "@tanstack/react-query";
@@ -327,6 +328,7 @@ export function SettingsScreen() {
         )}
         {section === "settings" && (
           <div className="grid lg:grid-cols-2 gap-5">
+            <FeedbackForm className="lg:col-span-2" />
             <BlockedUsers />
             <Section
               icon={Bell}

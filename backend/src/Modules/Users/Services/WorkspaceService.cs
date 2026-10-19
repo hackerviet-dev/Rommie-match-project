@@ -55,7 +55,7 @@ public sealed class WorkspaceService(IDbConnectionFactory factory)
     public async Task<JsonElement> Overview(CancellationToken ct)
     {
         await using var c=await factory.OpenConnectionAsync(ct);
-        return (await Rows(c,"SELECT jsonb_build_object('pendingRooms',(SELECT count(*) FROM rooms WHERE deleted_at IS NULL AND moderation_status='pending'),'openDisputes',(SELECT count(*) FROM disputes WHERE status IN ('open','investigating')),'groups',(SELECT count(*) FROM housing_groups),'openReports',(SELECT count(*) FROM user_reports WHERE status='open'),'pendingVerifications',(SELECT count(*) FROM identity_verifications WHERE status='pending'))::text",ct))[0];
+        return (await Rows(c,"SELECT jsonb_build_object('pendingRooms',(SELECT count(*) FROM rooms WHERE deleted_at IS NULL AND moderation_status='pending'),'openDisputes',(SELECT count(*) FROM disputes WHERE status IN ('open','investigating')),'groups',(SELECT count(*) FROM housing_groups),'openReports',(SELECT count(*) FROM user_reports WHERE status='open'),'pendingVerifications',(SELECT count(*) FROM identity_verifications WHERE status='pending'),'newFeedback',(SELECT count(*) FROM user_feedback WHERE status='new'))::text",ct))[0];
     }
     public async Task<JsonElement> User(Guid id,CancellationToken ct)
     {
