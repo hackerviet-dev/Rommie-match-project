@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/features/auth";
 import { AdminLayout } from "@/features/admin/components/admin-layout";
+import { GoogleAnalyticsPanel } from "@/features/admin/components/google-analytics-panel";
 import {
   StaffUsers,
   StaffUserDetail,
@@ -327,6 +328,7 @@ export default function AdminPage() {
             </AdminOnly>
           }
         />
+        <Route path="analytics" element={<GoogleAnalyticsPanel />} />
         <Route path="*" element={<Navigate to={staffPath} replace />} />
       </Routes>
     </AdminLayout>
