@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
+using RoomieMatch.Modules.Users.Analytics;
 using RoomieMatch.Modules.Users.Authentication;
 using RoomieMatch.Modules.Users.Services;
 using RoomieMatch.Shared.Contracts;
@@ -42,6 +43,20 @@ public static class UsersModuleExtensions
         services.AddScoped<FeedbackService>();
         services.AddScoped<IdentityVerificationService>();
         services.AddScoped<ISavedProfileService, SavedProfileService>();
+
+        var analytics = configuration.GetSection(GoogleAnalyticsOptions.SectionName).Get<GoogleAnalyticsOptions>()
+            ?? new GoogleAnalyticsOptions();
+        analytics.ApplyServiceAccountJson();
+        if (analytics.TokenUri.Length == 0)
+        {
+            analytics.TokenUri = "https://oauth2.googleapis.com/token";
+        }
+
+        // Missing credentials do not stop the API: the analytics report answers 503 until they are set.
+        services.AddSingleton(analytics);
+        services.AddMemoryCache();
+        services.AddHttpClient(GoogleAnalyticsService.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(30));
+        services.AddSingleton<GoogleAnalyticsService>();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
