@@ -68,6 +68,8 @@ services:
       # Cloudinary for uploaded images (avatars, chat photos). Put the dashboard's
       # "API environment variable" in .env; uploads answer 503 while it is empty.
       Cloudinary__Url: ${CLOUDINARY_URL:-}
+      # GA4 service account key for the staff analytics dashboard; it answers 503 while empty.
+      GoogleAnalytics__ServiceAccountJson: ${GA_SERVICE_ACCOUNT_JSON:-}
       # Browsers only; the web container proxies /api, so it is same-origin and needs no entry.
       Cors__AllowedOrigins__0: ${CORS_ORIGIN:-http://localhost:5173}
       # Leave false while port ${API_PORT:-5000} below is published: a direct caller could

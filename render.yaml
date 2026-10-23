@@ -29,6 +29,9 @@ services:
       # cloudinary://<api_key>:<api_secret>@<cloud_name>, set in the Render dashboard.
       - key: Cloudinary__Url
         sync: false
+      # GA4 service account key JSON (or its base64) for the staff analytics dashboard.
+      - key: GoogleAnalytics__ServiceAccountJson
+        sync: false
       - key: Cors__AllowedOrigins__0
         value: https://rommie-match.vercel.app
       - key: Cors__AllowedOrigins__1
