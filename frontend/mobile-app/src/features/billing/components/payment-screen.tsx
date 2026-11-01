@@ -10,6 +10,7 @@ import { Button, ButtonText } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FormError } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { PREMIUM_PURCHASE_ENABLED } from "@/constants/features";
 import { useAuthStore } from "@/features/auth";
 import { colors } from "@/theme/colors";
 import { canRequestRefund, formatVnd, paymentStatus, refundStatusLabel } from "../labels";
@@ -62,13 +63,17 @@ export function PaymentScreen({ id }: { id: string }) {
           ? {
               icon: <Clock color="#d97706" size={40} />,
               title: "Đang chờ xác nhận",
-              text: "Hoàn tất thanh toán trên trang payOS rồi quay lại đây. Màn hình tự cập nhật.",
+              text: PREMIUM_PURCHASE_ENABLED
+                ? "Hoàn tất thanh toán trên trang payOS rồi quay lại đây. Màn hình tự cập nhật."
+                : "Giao dịch đang chờ xác nhận. Màn hình tự cập nhật.",
             }
           : status
             ? {
                 icon: <XCircle color="#dc2626" size={40} />,
                 title: "Chưa thanh toán",
-                text: "Đơn chưa được thanh toán. Bạn có thể thử lại từ trang Premium.",
+                text: PREMIUM_PURCHASE_ENABLED
+                  ? "Đơn chưa được thanh toán. Bạn có thể thử lại từ trang Premium."
+                  : "Đơn chưa được thanh toán.",
               }
             : null;
   const badge = payment ? paymentStatus(payment.status) : null;
@@ -157,9 +162,11 @@ export function PaymentScreen({ id }: { id: string }) {
               Đã gửi yêu cầu. Xem trạng thái hoàn tiền phía trên.
             </Text>
           ) : null}
-          <Button action="primary" className="h-12" onPress={() => goToTab("/premium")}>
-            <ButtonText>Về trang Premium</ButtonText>
-          </Button>
+          {PREMIUM_PURCHASE_ENABLED ? (
+            <Button action="primary" className="h-12" onPress={() => goToTab("/premium")}>
+              <ButtonText>Về trang Premium</ButtonText>
+            </Button>
+          ) : null}
         </View>
       ) : null}
     </FormScreen>

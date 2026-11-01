@@ -2,6 +2,7 @@ import type { BottomTabBarProps } from "expo-router/tabs";
 import { Heart, House, type LucideIcon, MessageCircle, Sparkles, Store } from "lucide-react-native";
 import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { PREMIUM_PURCHASE_ENABLED } from "@/constants/features";
 import { useConversations } from "@/features/chat";
 import { cn } from "@/lib/cn";
 import { colors } from "@/theme/colors";
@@ -24,7 +25,7 @@ export function BottomTabs({ state, navigation }: BottomTabBarProps) {
       <View className="mt-2 flex-row rounded-3xl border border-slate-100 bg-white p-1.5">
         {state.routes.map((route, index) => {
           const tab = tabs[route.name];
-          if (!tab) return null;
+          if (!tab || (route.name === "premium" && !PREMIUM_PURCHASE_ENABLED)) return null;
           const Icon = tab.icon;
           const active = state.index === index;
           return (

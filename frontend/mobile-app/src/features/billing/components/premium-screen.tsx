@@ -7,6 +7,7 @@ import { QueryState } from "@/components/query-state";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FormError } from "@/components/ui/form-field";
+import { PREMIUM_PURCHASE_ENABLED } from "@/constants/features";
 import { useAuthStore } from "@/features/auth";
 import { cn } from "@/lib/cn";
 import { colors } from "@/theme/colors";
@@ -18,6 +19,55 @@ export const openPayment = (id: string) =>
   router.push({ pathname: "/payments/[id]", params: { id } });
 
 export function PremiumScreen() {
+  return PREMIUM_PURCHASE_ENABLED ? <PremiumPlans /> : <MembershipStatus />;
+}
+
+const TransactionsLink = () => (
+  <Pressable
+    accessibilityRole="button"
+    onPress={() => router.push("/payments")}
+    className="flex-row items-center justify-center gap-2 py-2"
+  >
+    <Receipt color={colors.teal} size={16} />
+    <Text className="text-sm font-semibold text-teal">Lịch sử giao dịch</Text>
+  </Pressable>
+);
+
+// Bản cài từ store (xem constants/features): chỉ hiện gói hiện tại, không bảng giá hay nút mua.
+function MembershipStatus() {
+  const me = useAuthStore((state) => state.user?.id);
+  const subscription = useQuery({
+    queryKey: ["subscription", "me", me],
+    queryFn: billingApi.subscription,
+  });
+  const current = subscription.data;
+  return (
+    <View className="gap-4">
+      <Card className="items-center gap-2 border-0 bg-navy px-5 py-6">
+        <View className="h-12 w-12 items-center justify-center rounded-full bg-mint/20">
+          <Sparkles color={colors.mint} size={24} />
+        </View>
+        <Text className="mt-2 text-center text-sm text-slate-200">Gói của bạn</Text>
+        {current ? (
+          <>
+            <Text className="text-center text-3xl font-bold text-white">
+              {current.isPremium ? "Premium" : "Miễn phí"}
+            </Text>
+            {current.endsAt ? (
+              <Text className="text-center text-sm text-mint">
+                Đến {new Date(current.endsAt).toLocaleDateString("vi-VN")}
+              </Text>
+            ) : null}
+          </>
+        ) : null}
+      </Card>
+      <QueryState query={subscription} />
+      <TransactionsLink />
+    </View>
+  );
+}
+
+function PremiumPlans() {
   const me = useAuthStore((state) => state.user?.id);
   const client = useQueryClient();
   const plans = useQuery({ queryKey: ["billing", "plans"], queryFn: billingApi.plans });
@@ -136,14 +186,7 @@ export function PremiumScreen() {
           Cổng thanh toán chưa sẵn sàng trên máy chủ này.
         </Text>
       ) : null}
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.push("/payments")}
-        className="flex-row items-center justify-center gap-2 py-2"
-      >
-        <Receipt color={colors.teal} size={16} />
-        <Text className="text-sm font-semibold text-teal">Lịch sử giao dịch</Text>
-      </Pressable>
+      <TransactionsLink />
       <View className="flex-row items-center justify-center gap-2">
         <ShieldCheck color={colors.teal} size={16} />
         <Text className="text-xs text-slate-500">
