@@ -480,14 +480,17 @@ export function LandingScreen() {
               <li><a href="#how" className="hover:text-mint">Cách hoạt động</a></li>
               <li><a href="#faq" className="hover:text-mint">Hỏi đáp</a></li>
               <li><Link to="/community-guidelines" className="hover:text-mint">Quy tắc cộng đồng</Link></li>
-              <li><Link to="/delete-account" className="hover:text-mint">Xóa tài khoản</Link></li>
+              <li><Link to="/privacy" className="hover:text-mint">Chính sách bảo mật</Link></li>
               <li><Link to="/delete-account" className="hover:text-mint">Xóa tài khoản</Link></li>
             </ul>
           </div>
         </div>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 mt-10 pt-6 border-t border-border/60 flex justify-between text-xs text-muted-foreground">
           <span>© 2026 RoomieMatch. Made in Vietnam.</span>
-          <Link to="/community-guidelines" className="hover:text-foreground">Quy tắc cộng đồng</Link>
+          <span className="flex gap-4">
+            <Link to="/community-guidelines" className="hover:text-foreground">Quy tắc cộng đồng</Link>
+            <Link to="/privacy" className="hover:text-foreground">Chính sách bảo mật</Link>
+          </span>
           <span>v2.0</span>
         </div>
         <div className="landing-wordmark" aria-hidden="true">RoomieMatch</div>
