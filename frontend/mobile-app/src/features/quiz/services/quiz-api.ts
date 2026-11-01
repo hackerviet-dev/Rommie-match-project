@@ -6,7 +6,13 @@ export const quizApi = {
   get: () => apiClient<Quiz>("/api/matching/quiz", { authenticated: true }),
   getMine: async () => {
     try {
-      return await apiClient<QuizResult>("/api/matching/me/quiz", { authenticated: true });
+      // 204 = tài khoản chưa làm khảo sát; apiClient trả undefined nên đổi thành null
+      // (React Query không nhận dữ liệu undefined).
+      return (
+        (await apiClient<QuizResult | undefined>("/api/matching/me/quiz", {
+          authenticated: true,
+        })) ?? null
+      );
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) return null;
       throw error;
