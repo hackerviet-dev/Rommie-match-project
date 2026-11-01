@@ -23,6 +23,7 @@ import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormError } from "@/components/ui/form-field";
 import { UserAvatar } from "@/components/user-avatar";
+import { PREMIUM_PURCHASE_ENABLED } from "@/constants/features";
 import { useAuthStore } from "@/features/auth";
 import { useStartChat } from "@/features/chat";
 import { BreakdownBars } from "@/features/matching/components/breakdown-bars";
@@ -265,12 +266,18 @@ export function ProfileScreen({ id }: { id: string }) {
               {detail.data.comparisonLocked ? (
                 <View className="flex-row items-center gap-2 rounded-xl bg-mint/20 p-3">
                   <Lock color={colors.navy} size={16} />
-                  <Text className="flex-1 text-sm text-navy">
-                    <Text className="font-bold underline" onPress={() => goToTab("/premium")}>
-                      Premium
-                    </Text>{" "}
-                    mở so sánh chi tiết hai hồ sơ.
-                  </Text>
+                  {PREMIUM_PURCHASE_ENABLED ? (
+                    <Text className="flex-1 text-sm text-navy">
+                      <Text className="font-bold underline" onPress={() => goToTab("/premium")}>
+                        Premium
+                      </Text>{" "}
+                      mở so sánh chi tiết hai hồ sơ.
+                    </Text>
+                  ) : (
+                    <Text className="flex-1 text-sm text-navy">
+                      So sánh chi tiết hai hồ sơ dành cho tài khoản Premium.
+                    </Text>
+                  )}
                 </View>
               ) : detail.data.comparison?.length ? (
                 <View className="overflow-hidden rounded-xl border border-slate-100">

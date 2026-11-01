@@ -5,6 +5,7 @@ import { QueryState } from "@/components/query-state";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FormError } from "@/components/ui/form-field";
+import { PREMIUM_PURCHASE_ENABLED } from "@/constants/features";
 import { useAuthStore } from "@/features/auth";
 import { colors } from "@/theme/colors";
 import { matchingApi } from "../services/matching-api";
@@ -59,7 +60,7 @@ export function MatchingRefresh({ openResults = false }: { openResults?: boolean
       >
         <ButtonText>{refresh.isPending ? "Đang tìm…" : "Tìm / cập nhật người phù hợp"}</ButtonText>
       </Button>
-      {outOfScans ? (
+      {outOfScans && PREMIUM_PURCHASE_ENABLED ? (
         <Button
           action="primary"
           variant="outline"
