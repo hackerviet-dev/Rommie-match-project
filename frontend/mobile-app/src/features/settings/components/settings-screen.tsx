@@ -1,7 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Constants from "expo-constants";
 import { router } from "expo-router";
-import { BookOpen, ChevronRight, LogOut, MonitorSmartphone, UserX } from "lucide-react-native";
+import {
+  BookOpen,
+  ChevronRight,
+  LogOut,
+  MonitorSmartphone,
+  ShieldCheck,
+  UserX,
+} from "lucide-react-native";
 import { Pressable, Text, View } from "react-native";
 import { FormScreen } from "@/components/form-screen";
 import { QueryState } from "@/components/query-state";
@@ -9,6 +16,7 @@ import { StackHeader } from "@/components/stack-header";
 import { Button, ButtonIcon, ButtonText } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FormError } from "@/components/ui/form-field";
+import { openWebPage, PRIVACY_POLICY_URL } from "@/constants/links";
 import { useAuthStore, useSignOut } from "@/features/auth";
 import { safetyApi } from "@/features/profile";
 import { API_BASE_URL } from "@/services/api-client";
@@ -71,6 +79,14 @@ export function SettingsScreen() {
           ) : null}
           <FormError message={unblock.error?.message} />
         </Card>
+
+        <Pressable accessibilityRole="button" onPress={() => void openWebPage(PRIVACY_POLICY_URL)}>
+          <Card className="flex-row items-center gap-3">
+            <ShieldCheck color={colors.navy} size={18} />
+            <Text className="flex-1 text-base font-semibold text-ink">Chính sách bảo mật</Text>
+            <ChevronRight color={colors.teal} size={18} />
+          </Card>
+        </Pressable>
 
         <Pressable accessibilityRole="button" onPress={() => router.push("/guidelines")}>
           <Card className="flex-row items-center gap-3">

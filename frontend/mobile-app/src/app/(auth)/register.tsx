@@ -12,6 +12,7 @@ import { FormError, FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { PendingHint } from "@/components/ui/pending-hint";
 import { SelectSheet } from "@/components/ui/select-sheet";
+import { openWebPage, PRIVACY_POLICY_URL } from "@/constants/links";
 import { VN_LOCATIONS } from "@/constants/locations";
 import { authApi, registerSchema, useAuthStore } from "@/features/auth";
 
@@ -151,7 +152,15 @@ export default function RegisterScreen() {
           </Text>
         ) : null}
         <Text className="text-center text-xs text-slate-500">
-          Khi đăng ký, bạn đồng ý với Điều khoản và Chính sách bảo mật.
+          Khi đăng ký, bạn đồng ý với Quy tắc cộng đồng và{" "}
+          <Text
+            accessibilityRole="link"
+            className="font-semibold text-teal underline"
+            onPress={() => void openWebPage(PRIVACY_POLICY_URL)}
+          >
+            Chính sách bảo mật
+          </Text>
+          .
         </Text>
       </View>
 

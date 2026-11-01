@@ -3,7 +3,7 @@
     "name": "RoomieMatch",
     "slug": "roomiematch-mobile",
     "scheme": "roomiematch",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -20,9 +20,16 @@
     "android": {
       "package": "vn.roomiematch.mobile",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F7FBFC"
-      }
+      },
+      "permissions": [],
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -37,6 +44,7 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "description": "Tìm bạn cùng phòng hợp lối sống, tìm phòng và dịch vụ quanh nhà."
   }
 }
