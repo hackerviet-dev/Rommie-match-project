@@ -22,4 +22,10 @@ export const authApi = {
   logout: (refreshToken: string) =>
     apiClient<void>("/api/auth/logout", { method: "POST", body: { refreshToken } }),
   me: () => apiClient<AuthenticatedUser>("/api/auth/me", { authenticated: true }),
+  deleteAccount: (request: { confirmEmail: string; password: string | null }) =>
+    apiClient<void>("/api/auth/delete-account", {
+      method: "POST",
+      body: request,
+      authenticated: true,
+    }),
 };

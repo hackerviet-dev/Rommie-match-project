@@ -333,7 +333,7 @@ public sealed class MatchingService(
             INNER JOIN users u ON u.id = lp.user_id
             INNER JOIN profiles p ON p.user_id = lp.user_id
             INNER JOIN quiz_responses qr ON qr.user_id = lp.user_id AND qr.quiz_code = @quiz_code AND qr.completed_at IS NOT NULL
-            WHERE u.is_active = true
+            WHERE u.is_active = true AND u.deleted_at IS NULL
               AND coalesce(p.onboarding_data->>'roomPosterType','') <> 'landlord_agent'
               AND (NOT p.has_room OR p.onboarding_data->>'roomPosterType' = 'resident')
               -- A lifestyle_preferences row may carry only the onboarding housing-need fields
@@ -527,7 +527,7 @@ public sealed class MatchingService(
                 LIMIT 1
             ) boost ON true
             WHERE ms.user_id = @user_id
-              AND u.is_active = true
+              AND u.is_active = true AND u.deleted_at IS NULL
               AND u.role = 'member'
               AND p.is_public = true
               AND coalesce(p.onboarding_data->>'roomPosterType','') <> 'landlord_agent'

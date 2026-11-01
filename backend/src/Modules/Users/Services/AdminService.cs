@@ -12,11 +12,11 @@ public sealed class AdminService(IDbConnectionFactory factory)
         await using var connection = await factory.OpenConnectionAsync(ct);
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT (SELECT count(*) FROM users WHERE is_active),
+            SELECT (SELECT count(*) FROM users WHERE is_active AND deleted_at IS NULL),
                    (SELECT count(*) FROM user_reports WHERE status = 'open'),
                    (SELECT count(*) FROM identity_verifications WHERE status = 'pending'),
                    (SELECT count(*) FROM profiles WHERE is_verified),
-                   (SELECT count(*) FROM users WHERE created_at >= now() - interval '30 days')
+                   (SELECT count(*) FROM users WHERE deleted_at IS NULL AND created_at >= now() - interval '30 days')
             """;
         await using var reader = await command.ExecuteReaderAsync(ct);
         await reader.ReadAsync(ct);

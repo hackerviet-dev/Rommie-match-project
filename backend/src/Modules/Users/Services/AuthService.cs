@@ -86,7 +86,7 @@ public sealed partial class AuthService(
     public async Task<AuthResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken)
     {
         const string sql = """
-            SELECT u.id, u.email, u.role, u.password_hash, u.is_active,
+            SELECT u.id, u.email, u.role, u.password_hash, u.is_active AND u.deleted_at IS NULL,
                    p.display_name, p.avatar_url, p.city, p.district, p.profile_completion,
                    u.token_version
             FROM users u
@@ -152,7 +152,7 @@ public sealed partial class AuthService(
         // its revoke statement never sees.
         const string selectSql = """
             SELECT t.user_id, t.expires_at, t.revoked_at,
-                   u.email, u.role, u.is_active,
+                   u.email, u.role, u.is_active AND u.deleted_at IS NULL,
                    p.display_name, p.avatar_url, p.city, p.district, p.profile_completion,
                    u.token_version
             FROM refresh_tokens t
@@ -265,7 +265,7 @@ public sealed partial class AuthService(
                    p.display_name, p.avatar_url, p.city, p.district, p.profile_completion
             FROM users u
             INNER JOIN profiles p ON p.user_id = u.id
-            WHERE u.id = @user_id AND u.is_active = true
+            WHERE u.id = @user_id AND u.is_active = true AND u.deleted_at IS NULL
             """;
 
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);

@@ -15,15 +15,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { QueryState, Pagination } from "@/components/common/query-state";
 import { ConfirmAction } from "@/components/common/confirm-action";
+import { AccountDeletion } from "./account-deletion";
 export function StaffUsers({ team = false }: { team?: boolean }) {
   const staffPath = useStaffPath();
   const [q, setQ] = useState(""),
     [page, setPage] = useState(1),
     [role, setRole] = useState(team ? "staff" : ""),
+    [status, setStatus] = useState(""),
     me = useAuthStore((s) => s.user?.id);
   const query = useQuery({
-    queryKey: ["staff", "users", me, q, role, page],
-    queryFn: () => staffApi.users(q, role, page),
+    queryKey: ["staff", "users", me, q, role, status, page],
+    queryFn: () => staffApi.users(q, role, page, status),
   });
   return (
     <div>
@@ -67,6 +69,20 @@ export function StaffUsers({ team = false }: { team?: boolean }) {
             <option value="moderator">Kiểm duyệt viên</option>
             <option value="admin">Quản trị viên</option>
           </select>
+          <select
+            aria-label="Lọc trạng thái tài khoản"
+            className="rounded-xl border bg-white p-3 text-sm"
+            value={status}
+            onChange={(e) => {
+              setStatus(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="">Mọi trạng thái</option>
+            <option value="active">Hoạt động</option>
+            <option value="locked">Đã khóa</option>
+            <option value="deleted">Đã xóa mềm</option>
+          </select>
         </div>
         <QueryState query={query} />
         <div className="overflow-x-auto">
@@ -105,9 +121,13 @@ export function StaffUsers({ team = false }: { team?: boolean }) {
                   </td>
                   <td className="p-4">
                     <span
-                      className={`rounded-full px-2 py-1 text-xs ${u.isActive ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}
+                      className={`rounded-full px-2 py-1 text-xs ${u.deletedAt ? "bg-slate-200 text-slate-600" : u.isActive ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}
                     >
-                      {u.isActive ? "Hoạt động" : "Đã khóa"}
+                      {u.deletedAt
+                        ? "Đã xóa"
+                        : u.isActive
+                          ? "Hoạt động"
+                          : "Đã khóa"}
                     </span>
                   </td>
                   <td className="p-4">
@@ -192,7 +212,11 @@ export function StaffUserDetail() {
                 ["Vai trò hệ thống", query.data.role],
                 [
                   "Tài khoản",
-                  query.data.isActive ? "Đang hoạt động" : "Đã khóa",
+                  query.data.deletedAt
+                    ? "Đã xóa mềm"
+                    : query.data.isActive
+                      ? "Đang hoạt động"
+                      : "Đã khóa",
                 ],
                 [
                   "Gói thành viên",
@@ -269,57 +293,66 @@ export function StaffUserDetail() {
               </>
             )}
           </Card>
-          <Card className="rounded-2xl border-slate-200 p-6 shadow-none">
-            <h2 className="flex items-center gap-2 font-semibold">
-              <ShieldCheck className="h-5 w-5 text-indigo-500" />
-              Quyền & trạng thái
-            </h2>
-            {me?.role !== "admin" ? (
-              <p className="mt-4 text-sm text-slate-500">
-                Chỉ Admin được thay đổi quyền hệ thống và khóa/mở tài khoản.
-              </p>
-            ) : id === me.id ? (
-              <p className="mt-4 text-sm text-slate-500">
-                Bạn đang xem tài khoản của mình. Không thể tự thay đổi quyền
-                hoặc tự khóa phiên đang sử dụng.
-              </p>
-            ) : (
-              <form
-                className="mt-5 space-y-4"
-                onSubmit={form.handleSubmit(setPending)}
-              >
-                <label className="block text-sm">
-                  Vai trò
-                  <select
-                    className="mt-2 w-full rounded-xl border bg-white p-3"
-                    {...form.register("role")}
-                  >
-                    <option value="member">Member</option>
-                    <option value="moderator">Moderator</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" {...form.register("isActive")} />
-                  Tài khoản hoạt động
-                </label>
-                <label className="block text-sm">
-                  Lý do thay đổi
-                  <textarea
-                    className="mt-2 min-h-24 w-full rounded-xl border p-3"
-                    maxLength={2000}
-                    {...form.register("note")}
-                  />
-                  <p className="mt-1 text-xs text-destructive">
-                    {form.formState.errors.note?.message}
-                  </p>
-                </label>
-                <Button className="w-full" disabled={save.isPending}>
-                  Kiểm tra thay đổi
-                </Button>
-              </form>
+          <div className="space-y-6">
+            <Card className="rounded-2xl border-slate-200 p-6 shadow-none">
+              <h2 className="flex items-center gap-2 font-semibold">
+                <ShieldCheck className="h-5 w-5 text-indigo-500" />
+                Quyền & trạng thái
+              </h2>
+              {me?.role !== "admin" ? (
+                <p className="mt-4 text-sm text-slate-500">
+                  Chỉ Admin được thay đổi quyền hệ thống và khóa/mở tài khoản.
+                </p>
+              ) : id === me.id ? (
+                <p className="mt-4 text-sm text-slate-500">
+                  Bạn đang xem tài khoản của mình. Không thể tự thay đổi quyền
+                  hoặc tự khóa phiên đang sử dụng.
+                </p>
+              ) : query.data.deletedAt ? (
+                <p className="mt-4 text-sm text-slate-500">
+                  Tài khoản đã bị xóa mềm. Khôi phục trước khi đổi quyền.
+                </p>
+              ) : (
+                <form
+                  className="mt-5 space-y-4"
+                  onSubmit={form.handleSubmit(setPending)}
+                >
+                  <label className="block text-sm">
+                    Vai trò
+                    <select
+                      className="mt-2 w-full rounded-xl border bg-white p-3"
+                      {...form.register("role")}
+                    >
+                      <option value="member">Member</option>
+                      <option value="moderator">Moderator</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" {...form.register("isActive")} />
+                    Tài khoản hoạt động
+                  </label>
+                  <label className="block text-sm">
+                    Lý do thay đổi
+                    <textarea
+                      className="mt-2 min-h-24 w-full rounded-xl border p-3"
+                      maxLength={2000}
+                      {...form.register("note")}
+                    />
+                    <p className="mt-1 text-xs text-destructive">
+                      {form.formState.errors.note?.message}
+                    </p>
+                  </label>
+                  <Button className="w-full" disabled={save.isPending}>
+                    Kiểm tra thay đổi
+                  </Button>
+                </form>
+              )}
+            </Card>
+            {me?.role === "admin" && id !== me.id && (
+              <AccountDeletion user={query.data} />
             )}
-          </Card>
+          </div>
         </div>
       )}
       <ConfirmAction

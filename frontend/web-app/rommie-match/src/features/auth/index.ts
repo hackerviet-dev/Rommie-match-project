@@ -11,6 +11,7 @@ export type {
 export { useAuthSession } from "./hooks/use-auth-session";
 export { AccountMenu } from "./components/account-menu";
 export { useSignOut } from "./hooks/use-sign-out";
+export { useDeleteAccount } from "./hooks/use-delete-account";
 
 export { loginSchema, registerSchema } from "./schemas/auth-schema";
 export { getActorHome, getLoginDestination } from "./utils/actor-home";

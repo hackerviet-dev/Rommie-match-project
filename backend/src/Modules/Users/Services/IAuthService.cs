@@ -15,6 +15,9 @@ public interface IAuthService
     /// Revokes every refresh token and every access token already issued to the user.
     Task LogoutEverywhereAsync(Guid userId, CancellationToken cancellationToken);
     Task<AuthenticatedUserDto?> GetAuthenticatedUserAsync(Guid userId, CancellationToken cancellationToken);
+
+    /// Soft deletes the caller's member account after checking the typed email (and password when the account has one).
+    Task<AuthError> DeleteOwnAccountAsync(Guid userId, DeleteAccountRequest request, CancellationToken cancellationToken);
 }
 
 public enum AuthError
@@ -28,7 +31,10 @@ public enum AuthError
     PasswordLoginUnavailable,
     InvalidGoogleToken,
     GoogleUnavailable,
-    GoogleLinkRequired
+    GoogleLinkRequired,
+    StaffSelfDeleteForbidden,
+    DeletionEmailMismatch,
+    DeletionPasswordInvalid
 }
 
 public sealed record AuthResult(AuthError Error, AuthSessionDto? Session)
@@ -54,6 +60,10 @@ public sealed record LoginRequest(
 
 public sealed record RefreshRequest(
     [Required, StringLength(500)] [property: Description("Refresh token từ phiên đăng nhập; khi refresh thành công phải thay bằng token mới.")] string RefreshToken);
+
+public sealed record DeleteAccountRequest(
+    [Required, EmailAddress, StringLength(320)] [property: Description("Email của tài khoản, nhập lại để xác nhận xóa.")] string ConfirmEmail,
+    [StringLength(200)] [property: Description("Mật khẩu hiện tại; bắt buộc nếu tài khoản có mật khẩu, bỏ trống với tài khoản chỉ đăng nhập Google.")] string? Password);
 
 public sealed record GoogleLoginRequest(
     [Required, StringLength(10000)] string Credential,

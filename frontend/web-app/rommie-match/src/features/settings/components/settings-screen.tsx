@@ -55,6 +55,7 @@ import { AccountWorkspace } from "./account-workspace";
 import { AccountPreviewPanels } from "./account-preview-panels";
 import { SettingsProfileEditor } from "./settings-profile-editor";
 import { AvatarUploader } from "./avatar-uploader";
+import { DeleteAccountCard } from "./delete-account-card";
 
 function Section({
   icon: Icon,
@@ -95,6 +96,7 @@ export function SettingsScreen() {
   const handleLogout = () => signOut.mutate(true);
   const [dark, setDark] = useState(false);
   const userId = useAuthStore((state) => state.user?.id);
+  const isMember = useAuthStore((state) => state.user?.role === "member");
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const profile = useQuery({
     queryKey: ["profile", "me", userId],
@@ -484,6 +486,8 @@ export function SettingsScreen() {
                 </SelectContent>
               </Select>
             </Section>
+
+            {isMember && <DeleteAccountCard />}
           </div>
         )}
       </AccountWorkspace>

@@ -3,6 +3,7 @@ export type StaffUser = {
   email: string;
   role: string;
   isActive: boolean;
+  deletedAt: string | null;
   displayName: string;
   avatarUrl: string | null;
   city: string | null;
@@ -14,6 +15,7 @@ export type StaffUserDetail = Omit<
   "displayName" | "avatarUrl" | "city" | "isVerified"
 > & {
   createdAt: string;
+  deletedBySelf?: boolean;
   roomCount: number;
   reportCount: number;
   profile: {

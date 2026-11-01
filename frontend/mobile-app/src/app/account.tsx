@@ -73,7 +73,7 @@ const MENU: {
   {
     href: "/settings",
     label: "Cài đặt & bảo mật",
-    hint: "Người đã chặn, đăng xuất",
+    hint: "Người đã chặn, đăng xuất, xoá tài khoản",
     icon: Settings,
   },
 ];

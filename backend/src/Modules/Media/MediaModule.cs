@@ -35,6 +35,7 @@ public static class MediaModuleExtensions
         services.AddSingleton<CloudinaryImageService>();
         services.AddSingleton<IImageUploadService>(provider => provider.GetRequiredService<CloudinaryImageService>());
         services.AddSingleton<IUploadedImageVerifier>(provider => provider.GetRequiredService<CloudinaryImageService>());
+        services.AddSingleton<IUserMediaEraser>(provider => provider.GetRequiredService<CloudinaryImageService>());
         return services;
     }
 }
