@@ -12,6 +12,7 @@ export const ROUTES = {
   premium: "/premium",
   communityGuidelines: "/community-guidelines",
   deleteAccount: "/delete-account",
+  privacy: "/privacy",
   settings: "/settings",
   admin: "/admin",
   moderator: "/moderator",

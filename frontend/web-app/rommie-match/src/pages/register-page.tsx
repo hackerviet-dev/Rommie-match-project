@@ -111,7 +111,7 @@ export default function RegisterPage() {
             </p>
           )}
           <p className="text-center text-xs text-muted-foreground">
-            Khi đăng ký, bạn đồng ý với Điều khoản và Chính sách bảo mật.
+            Khi đăng ký, bạn đồng ý với <Link to="/community-guidelines" className="underline hover:text-foreground">Quy tắc cộng đồng</Link> và <Link to="/privacy" className="underline hover:text-foreground">Chính sách bảo mật</Link>, bao gồm việc đo lường truy cập bằng Google Analytics.
           </p>
         </form>
         <GoogleSignIn />
