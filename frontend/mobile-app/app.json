@@ -45,6 +45,13 @@
     "experiments": {
       "typedRoutes": true
     },
-    "description": "Tìm bạn cùng phòng hợp lối sống, tìm phòng và dịch vụ quanh nhà."
+    "description": "Tìm bạn cùng phòng hợp lối sống, tìm phòng và dịch vụ quanh nhà.",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5c92a3d8-4c7c-4c86-bf81-b2791bf64009"
+      }
+    },
+    "owner": "roomiematch-vn"
   }
 }
