@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tải RoomieMatch</title>
+    <meta
+      name="description"
+      content="Tải và cài bản thử nghiệm ứng dụng RoomieMatch cho Android (file APK)."
+    />
+    <meta name="theme-color" content="#0B3B6E" />
+    <link rel="icon" href="../logo-mark.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* Trang tĩnh, không phụ thuộc mã nguồn web app. Khi có bản build preview mới trên EAS,
+         cập nhật 3 chỗ giữa các comment BAN-BUILD: mã QR, link tải và dòng phiên bản. */
+      :root {
+        --navy: #0b3b6e;
+        --teal: #087f8c;
+        --mint: #8fd3c1;
+        --bg: #f7fbfc;
+        --surface: #ffffff;
+        --ink: #17243a;
+        --muted: #5b6b80;
+        --line: #e3ecf1;
+        --accent: #087f8c;
+        --accent-ink: #ffffff;
+        --warn-bg: #fff7e6;
+        --warn-ink: #8a5a00;
+        --shadow: 0 1px 2px rgb(15 40 70 / 6%), 0 8px 24px rgb(15 40 70 / 8%);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #0d1724;
+          --surface: #142133;
+          --ink: #e8f0f7;
+          --muted: #9fb0c3;
+          --line: #22344b;
+          --accent: #2fb3a6;
+          --accent-ink: #062027;
+          --warn-bg: #2b2412;
+          --warn-ink: #f2cf7c;
+          --shadow: none;
+        }
+      }
+      :root[data-theme="dark"] {
+        --bg: #0d1724;
+        --surface: #142133;
+        --ink: #e8f0f7;
+        --muted: #9fb0c3;
+        --line: #22344b;
+        --accent: #2fb3a6;
+        --accent-ink: #062027;
+        --warn-bg: #2b2412;
+        --warn-ink: #f2cf7c;
+        --shadow: none;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+      .page {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 32px 16px 48px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      header img {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        background: #ffffff;
+      }
+      .eyebrow {
+        margin: 0;
+        color: var(--accent);
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 2px 0 0;
+        font-size: clamp(24px, 4vw, 32px);
+        line-height: 1.2;
+        text-wrap: balance;
+      }
+      .lead {
+        margin: 16px 0 0;
+        color: var(--muted);
+        max-width: 60ch;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+        gap: 20px;
+        margin-top: 28px;
+        align-items: start;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        box-shadow: var(--shadow);
+        padding: 24px;
+      }
+      .download {
+        text-align: center;
+      }
+      .qr {
+        width: min(100%, 260px);
+        margin: 0 auto;
+        padding: 10px;
+        background: #ffffff;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+      }
+      .qr svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      .hint {
+        margin: 12px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        min-height: 52px;
+        margin-top: 18px;
+        border-radius: 14px;
+        background: var(--accent);
+        color: var(--accent-ink);
+        font-weight: 700;
+        font-size: 16px;
+        text-decoration: none;
+      }
+      .btn:focus-visible,
+      .link-btn:focus-visible {
+        outline: 3px solid var(--mint);
+        outline-offset: 2px;
+      }
+      .link-btn {
+        margin-top: 10px;
+        padding: 6px 8px;
+        border: 0;
+        background: none;
+        color: var(--accent);
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .meta {
+        margin: 16px 0 0;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 14px;
+        font-variant-numeric: tabular-nums;
+      }
+      .meta strong {
+        color: var(--ink);
+      }
+      .notice {
+        margin-top: 20px;
+        padding: 14px 16px;
+        border-radius: 14px;
+        background: var(--warn-bg);
+        color: var(--warn-ink);
+        font-size: 14px;
+      }
+      .notice[hidden] {
+        display: none;
+      }
+      h2 {
+        margin: 0 0 4px;
+        font-size: 20px;
+      }
+      ol.steps {
+        list-style: none;
+        counter-reset: step;
+        margin: 16px 0 0;
+        padding: 0;
+        display: grid;
+        gap: 16px;
+      }
+      ol.steps li {
+        counter-increment: step;
+        display: grid;
+        grid-template-columns: 32px 1fr;
+        gap: 12px;
+      }
+      ol.steps li::before {
+        content: counter(step);
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: color-mix(in srgb, var(--mint) 35%, transparent);
+        color: var(--ink);
+        font-weight: 700;
+      }
+      ol.steps p {
+        margin: 2px 0 0;
+        color: var(--muted);
+        font-size: 15px;
+      }
+      ol.steps b {
+        color: var(--ink);
+      }
+      .extra {
+        margin-top: 20px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+      }
+      .extra h3 {
+        margin: 0;
+        font-size: 16px;
+      }
+      .extra p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 15px;
+      }
+      footer {
+        margin-top: 28px;
+        color: var(--muted);
+        font-size: 13px;
+        text-align: center;
+      }
+      @media (max-width: 760px) {
+        .page {
+          padding-top: 24px;
+        }
+        .grid,
+        .extra {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        body.is-android .qr-block {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header>
+        <img src="../logo-mark.png" alt="" onerror="this.remove()" />
+        <div>
+          <p class="eyebrow">Bản thử nghiệm Android</p>
+          <h1>Tải RoomieMatch về điện thoại</h1>
+        </div>
+      </header>
+      <p class="lead">
+        Ứng dụng tìm bạn cùng phòng hợp lối sống, tìm phòng và dịch vụ quanh nhà. App chưa có trên
+        CH Play, nên bạn cài trực tiếp bằng file APK theo các bước bên dưới.
+      </p>
+
+      <p class="notice" id="ios-notice" hidden>
+        Bản này chỉ chạy trên điện thoại <b>Android</b>. iPhone hiện chưa được hỗ trợ.
+      </p>
+      <p class="notice" id="inapp-notice" hidden>
+        Bạn đang mở trang trong Zalo/Messenger/Facebook. Trình duyệt trong các app này thường chặn
+        tải file: bấm dấu <b>⋮</b> hoặc <b>…</b> ở góc trên, chọn <b>Mở bằng trình duyệt</b>
+        (Chrome) rồi tải lại.
+      </p>
+
+      <div class="grid">
+        <section class="card download" aria-labelledby="download-title">
+          <h2 id="download-title">Tải file APK</h2>
+          <div class="qr-block">
+            <div class="qr">
+              <!-- BAN-BUILD:QR --><svg role="img" aria-label="Mã QR tải ứng dụng RoomieMatch" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 49 49" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h49v49H0z"/><path stroke="#0B3B6E" d="M2 2.5h7m1 0h3m4 0h1m3 0h1m1 0h3m5 0h2m5 0h1m1 0h7M2 3.5h1m5 0h1m1 0h3m2 0h1m2 0h1m1 0h1m1 0h2m3 0h1m1 0h1m1 0h4m2 0h1m2 0h1m5 0h1M2 4.5h1m1 0h3m1 0h1m2 0h1m1 0h1m2 0h2m1 0h1m3 0h2m2 0h1m1 0h1m2 0h3m2 0h1m2 0h1m1 0h3m1 0h1M2 5.5h1m1 0h3m1 0h1m1 0h5m1 0h1m3 0h1m1 0h6m5 0h1m3 0h2m1 0h1m1 0h3m1 0h1M2 6.5h1m1 0h3m1 0h1m2 0h1m1 0h1m2 0h2m2 0h7m1 0h3m3 0h5m1 0h1m1 0h3m1 0h1M2 7.5h1m5 0h1m2 0h2m1 0h1m3 0h5m3 0h2m1 0h1m2 0h1m7 0h1m5 0h1M2 8.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M10 9.5h1m2 0h3m1 0h1m1 0h4m3 0h1m1 0h1m1 0h1m1 0h1m2 0h1m1 0h1M2 10.5h1m1 0h2m1 0h3m1 0h1m2 0h3m2 0h2m1 0h5m1 0h6m1 0h4m1 0h1m2 0h1m1 0h2M2 11.5h1m1 0h4m5 0h1m3 0h2m1 0h3m2 0h3m2 0h5m2 0h2m3 0h5M6 12.5h3m2 0h1m2 0h1m5 0h6m5 0h2m1 0h6m5 0h2M3 13.5h1m3 0h1m2 0h1m3 0h1m3 0h4m2 0h2m1 0h1m3 0h1m1 0h3m3 0h1m1 0h1m1 0h1m1 0h1M2 14.5h8m1 0h1m1 0h2m4 0h3m2 0h1m1 0h1m1 0h1m2 0h3m1 0h2m2 0h3m4 0h1M2 15.5h4m1 0h1m1 0h3m1 0h1m1 0h1m2 0h3m1 0h3m1 0h3m1 0h1m2 0h1m5 0h3m2 0h2M2 16.5h1m2 0h4m1 0h1m1 0h1m1 0h1m2 0h2m2 0h2m4 0h2m1 0h1m1 0h1m1 0h1m3 0h3m2 0h1m1 0h1M9 17.5h1m2 0h2m1 0h3m1 0h1m4 0h4m1 0h4m1 0h1m2 0h8M3 18.5h3m2 0h3m3 0h1m1 0h1m9 0h1m1 0h2m3 0h3m1 0h2m1 0h2m1 0h4M4 19.5h4m2 0h4m1 0h3m2 0h1m3 0h1m1 0h2m2 0h2m1 0h5m3 0h2m2 0h2M2 20.5h1m2 0h2m1 0h1m4 0h2m2 0h1m1 0h4m1 0h8m1 0h5m2 0h4m1 0h1M2 21.5h1m3 0h2m1 0h1m1 0h2m1 0h6m1 0h2m4 0h1m2 0h1m4 0h1m2 0h1m1 0h1m1 0h2m1 0h2M3 22.5h10m3 0h2m4 0h7m1 0h2m5 0h6m1 0h1m1 0h1M4 23.5h1m1 0h1m3 0h1m1 0h2m3 0h3m2 0h1m3 0h3m1 0h6m1 0h2m3 0h3m1 0h1M4 24.5h1m1 0h1m1 0h1m1 0h2m1 0h1m2 0h4m2 0h1m1 0h1m1 0h1m1 0h1m2 0h2m1 0h5m1 0h1m1 0h2m1 0h2M2 25.5h2m2 0h1m3 0h2m1 0h1m1 0h1m1 0h3m1 0h2m3 0h1m1 0h1m5 0h1m3 0h1m3 0h2M3 26.5h2m1 0h5m3 0h1m3 0h1m1 0h1m1 0h7m2 0h3m1 0h1m1 0h7m2 0h1M2 27.5h1m3 0h2m3 0h1m2 0h1m1 0h1m4 0h1m2 0h1m1 0h4m4 0h2m1 0h5m2 0h1M3 28.5h6m1 0h1m1 0h1m3 0h1m4 0h1m1 0h4m1 0h1m1 0h1m1 0h1m2 0h1m1 0h1m1 0h1m2 0h2M2 29.5h1m4 0h1m1 0h1m5 0h3m3 0h1m3 0h8m1 0h1m1 0h2m1 0h2m2 0h2M2 30.5h3m1 0h3m1 0h3m2 0h1m2 0h3m1 0h2m1 0h3m1 0h1m3 0h6m2 0h4m1 0h1M2 31.5h6m1 0h2m1 0h1m1 0h1m1 0h3m2 0h2m2 0h2m4 0h1m1 0h12m1 0h1M3 32.5h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h2m1 0h1m2 0h1m1 0h1m7 0h2m3 0h1m1 0h1M2 33.5h1m1 0h4m1 0h2m1 0h3m2 0h1m1 0h1m1 0h1m1 0h1m2 0h1m1 0h3m5 0h1m1 0h1m6 0h2M2 34.5h4m2 0h3m2 0h1m1 0h1m3 0h2m3 0h1m1 0h1m1 0h1m1 0h1m1 0h2m1 0h2m1 0h4m2 0h1M2 35.5h4m3 0h3m1 0h1m1 0h1m4 0h3m1 0h2m3 0h1m2 0h3m6 0h1m1 0h1m2 0h1M6 36.5h1m1 0h1m1 0h1m5 0h1m1 0h2m5 0h3m3 0h3m2 0h1m3 0h1m1 0h1m3 0h1M3 37.5h4m2 0h3m1 0h3m1 0h5m1 0h2m2 0h1m1 0h1m4 0h4m1 0h2m1 0h2m1 0h1M2 38.5h1m2 0h2m1 0h2m1 0h1m2 0h1m2 0h3m1 0h7m3 0h1m3 0h1m2 0h5m3 0h1M10 39.5h1m1 0h4m1 0h2m1 0h1m1 0h1m3 0h1m1 0h1m5 0h1m3 0h1m3 0h1M2 40.5h7m1 0h2m3 0h1m3 0h2m1 0h1m1 0h1m1 0h1m2 0h5m1 0h1m1 0h2m1 0h1m1 0h1M2 41.5h1m5 0h1m1 0h1m2 0h6m2 0h2m3 0h2m1 0h2m1 0h1m1 0h2m1 0h2m3 0h4M2 42.5h1m1 0h3m1 0h1m2 0h1m2 0h3m2 0h2m1 0h8m2 0h3m3 0h5m1 0h2M2 43.5h1m1 0h3m1 0h1m1 0h5m1 0h2m6 0h2m3 0h1m3 0h1m1 0h2m1 0h1m7 0h1M2 44.5h1m1 0h3m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m3 0h2m5 0h1m1 0h2m1 0h4m1 0h2m3 0h3M2 45.5h1m5 0h1m4 0h1m1 0h4m1 0h2m1 0h5m1 0h2m2 0h1m3 0h1m2 0h1m1 0h1m3 0h1M2 46.5h7m1 0h1m5 0h1m2 0h2m2 0h1m1 0h1m2 0h1m1 0h1m5 0h1m2 0h2m1 0h3"/></svg>
+<!-- /BAN-BUILD:QR -->
+
+            </div>
+            <p class="hint">Mở camera điện thoại Android và quét mã để tải.</p>
+          </div>
+          <a class="btn" id="download" href="https://expo.dev/accounts/roomiematch-vn/projects/roomiematch-mobile/builds/ac08e439-719f-4543-b910-2f403deed6ba">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M12 3v12m0 0 5-5m-5 5-5-5M5 21h14"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Tải RoomieMatch cho Android
+          </a>
+          <button class="link-btn" id="copy" type="button">Sao chép link tải</button>
+          <!-- BAN-BUILD:META --><p class="meta">Phiên bản <strong>1.0.0 (build 1)</strong> · cập nhật <strong>01/11/2026</strong></p><!-- /BAN-BUILD:META -->
+        </section>
+
+        <section class="card" aria-labelledby="steps-title">
+          <h2 id="steps-title">Cài đặt trong 1 phút</h2>
+          <ol class="steps">
+            <li>
+              <div>
+                <b>Tải file</b>
+                <p>
+                  Trên điện thoại Android, quét mã QR hoặc bấm <b>Tải RoomieMatch cho Android</b>.
+                  Nếu mở ra trang Expo, bấm <b>Install</b>. Máy hỏi có giữ file không thì chọn
+                  <b>Vẫn tải xuống</b>.
+                </p>
+              </div>
+            </li>
+            <li>
+              <div>
+                <b>Mở file vừa tải</b>
+                <p>
+                  Bấm vào thông báo tải xuống, hoặc mở app <b>Files / Quản lý tệp</b> → thư mục
+                  <b>Download</b> → <b>RoomieMatch.apk</b>.
+                </p>
+              </div>
+            </li>
+            <li>
+              <div>
+                <b>Cho phép cài đặt</b>
+                <p>
+                  Nếu máy báo chặn cài ứng dụng không rõ nguồn: bấm <b>Cài đặt</b> → bật
+                  <b>Cho phép từ nguồn này</b> → quay lại và bấm <b>Cài đặt</b>.
+                </p>
+              </div>
+            </li>
+            <li>
+              <div>
+                <b>Bỏ qua cảnh báo Play Protect</b>
+                <p>
+                  Google cảnh báo vì app chưa lên CH Play. Bấm <b>Thêm chi tiết</b> →
+                  <b>Vẫn cài đặt</b>.
+                </p>
+              </div>
+            </li>
+            <li>
+              <div>
+                <b>Mở app và đăng ký</b>
+                <p>
+                  Lần mở đầu tiên có thể chờ tới khoảng 1 phút vì máy chủ đang khởi động. Các lần
+                  sau sẽ nhanh.
+                </p>
+              </div>
+            </li>
+          </ol>
+        </section>
+      </div>
+
+      <div class="extra">
+        <section class="card">
+          <h3>Có bản mới thì sao?</h3>
+          <p>
+            Nhóm sẽ cập nhật mã QR ở trang này mỗi khi có bản mới (xem dòng phiên bản dưới nút
+            tải). Tải lại và cài đè lên app cũ, tài khoản và dữ liệu vẫn giữ nguyên.
+          </p>
+        </section>
+        <section class="card">
+          <h3>Không cài được?</h3>
+          <p>
+            Nếu máy báo “Ứng dụng chưa được cài đặt”, hãy gỡ bản RoomieMatch cũ rồi cài lại. Còn
+            lỗi khác, chụp màn hình gửi nhóm phát triển.
+          </p>
+        </section>
+      </div>
+
+      <footer>Bản thử nghiệm dành cho người được mời test. Vui lòng không chia sẻ công khai.</footer>
+    </main>
+
+    <script>
+      (() => {
+        const APK = document.getElementById("download").href;
+        const ua = navigator.userAgent;
+        if (/android/i.test(ua)) document.body.classList.add("is-android");
+        if (/iphone|ipad|ipod/i.test(ua)) document.getElementById("ios-notice").hidden = false;
+        if (/zalo|fban|fbav|fb_iab|messenger|instagram/i.test(ua))
+          document.getElementById("inapp-notice").hidden = false;
+
+        const copy = document.getElementById("copy");
+        copy.addEventListener("click", async () => {
+          try {
+            await navigator.clipboard.writeText(APK);
+            copy.textContent = "Đã sao chép link";
+          } catch {
+            window.prompt("Sao chép link tải:", APK);
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>
