@@ -121,6 +121,26 @@ public sealed class AuthController(IAuthService authService, IUserService userSe
     }
 
     [Authorize]
+    [EnableRateLimiting(RateLimitPolicies.Credentials)]
+    [EndpointSummary("Thành viên tự xóa tài khoản")]
+    [EndpointDescription("Cần Bearer access token, chỉ role member. Gửi confirmEmail trùng email tài khoản và password nếu tài khoản có mật khẩu. 204: tài khoản bị xóa mềm ngay (đăng xuất mọi thiết bị, ẩn hồ sơ và tin phòng) và tự xóa vĩnh viễn sau 30 ngày; 400 code email_mismatch hoặc incorrect_password; 409 code staff_self_delete với tài khoản quản trị.")]
+    [ProducesResponseType(400, Description = "Email hoặc mật khẩu xác nhận không đúng.")]
+    [ProducesResponseType(401, Description = "Thông tin đăng nhập/token không hợp lệ hoặc đã hết hạn.")]
+    [ProducesResponseType(409, Description = "Tài khoản quản trị không thể tự xóa.")]
+    [ProducesResponseType(204, Description = "Thành công; không có body.")]
+    [HttpPost("delete-account")]
+    public async Task<IActionResult> DeleteAccount([Description("JSON theo schema bên dưới; tên trường dùng camelCase.")] DeleteAccountRequest request, CancellationToken cancellationToken)
+    {
+        if (User.GetUserId() is not { } userId)
+        {
+            return Unauthorized();
+        }
+
+        var error = await authService.DeleteOwnAccountAsync(userId, request, cancellationToken);
+        return error == AuthError.None ? NoContent() : Failure(error);
+    }
+
+    [Authorize]
     [EndpointSummary("Lấy tài khoản đang đăng nhập")]
     [EndpointDescription("Cần Bearer access token. Không có parameter hoặc body. 200 trả AuthenticatedUserDto; 401: phiên không hợp lệ.")]
     [ProducesResponseType(401, Description = "Thông tin đăng nhập/token không hợp lệ hoặc đã hết hạn.")]
@@ -163,6 +183,19 @@ public sealed class AuthController(IAuthService authService, IUserService userSe
             AuthError.AccountDisabled => Problem(
                 "Tài khoản đã bị vô hiệu hoá.",
                 statusCode: StatusCodes.Status403Forbidden),
+            // 400 rather than 401 so clients do not mistake a wrong confirmation for an expired session.
+            AuthError.DeletionPasswordInvalid => Problem(
+                "Mật khẩu không đúng. Vui lòng kiểm tra và thử lại.",
+                statusCode: StatusCodes.Status400BadRequest,
+                extensions: new Dictionary<string, object?> { ["code"] = "incorrect_password" }),
+            AuthError.DeletionEmailMismatch => Problem(
+                "Email xác nhận không khớp với tài khoản.",
+                statusCode: StatusCodes.Status400BadRequest,
+                extensions: new Dictionary<string, object?> { ["code"] = "email_mismatch" }),
+            AuthError.StaffSelfDeleteForbidden => Problem(
+                "Tài khoản quản trị không thể tự xóa. Hãy nhờ một quản trị viên khác.",
+                statusCode: StatusCodes.Status409Conflict,
+                extensions: new Dictionary<string, object?> { ["code"] = "staff_self_delete" }),
             AuthError.InvalidRefreshToken => Problem(
                 "Refresh token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.",
                 statusCode: StatusCodes.Status401Unauthorized),

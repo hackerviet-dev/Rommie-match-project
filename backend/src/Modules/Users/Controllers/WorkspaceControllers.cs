@@ -26,11 +26,17 @@ public sealed class StaffWorkspaceController(WorkspaceService service) : Control
     [HttpGet("workspace-stats")]
     public Task<JsonElement> Overview(CancellationToken ct)=>service.Overview(ct);
     [HttpGet("users")]
-    public Task<PagedResult<JsonElement>> Users([FromQuery]PageQuery p,[FromQuery,StringLength(120)]string? q,[FromQuery,RegularExpression("^(member|moderator|admin|staff)$")]string? role,CancellationToken ct)=>service.Users(q,role,p,ct);
+    public Task<PagedResult<JsonElement>> Users([FromQuery]PageQuery p,[FromQuery,StringLength(120)]string? q,[FromQuery,RegularExpression("^(member|moderator|admin|staff)$")]string? role,[FromQuery,RegularExpression("^(active|locked|deleted)$")]string? status,CancellationToken ct)=>service.Users(q,role,status,p,ct);
     [HttpGet("users/{id:guid}")]
     public Task<JsonElement> UserDetail(Guid id,CancellationToken ct)=>service.User(id,ct);
     [HttpPut("users/{id:guid}/access"),Authorize(Roles="admin")]
     public async Task<IActionResult> Access(Guid id,AccountAccessRequest req,CancellationToken ct){await service.Access(User.GetUserId()!.Value,id,req,ct);return NoContent();}
+    [HttpPost("users/{id:guid}/delete"),Authorize(Roles="admin")]
+    public async Task<IActionResult> SoftDelete(Guid id,AccountDeleteRequest req,CancellationToken ct){await service.SoftDelete(User.GetUserId()!.Value,id,req,ct);return NoContent();}
+    [HttpPost("users/{id:guid}/restore"),Authorize(Roles="admin")]
+    public async Task<IActionResult> Restore(Guid id,AccountDeleteRequest req,CancellationToken ct){await service.Restore(User.GetUserId()!.Value,id,req,ct);return NoContent();}
+    [HttpPost("users/{id:guid}/purge"),Authorize(Roles="admin")]
+    public async Task<IActionResult> Purge(Guid id,AccountPurgeRequest req,CancellationToken ct){await service.Purge(User.GetUserId()!.Value,id,req,ct);return NoContent();}
     [HttpGet("rooms")]
     public Task<PagedResult<JsonElement>> Rooms([FromQuery]PageQuery p,[FromQuery,RegularExpression("^(pending|approved|rejected)$")]string? status,[FromQuery]Guid? id,CancellationToken ct)=>service.Rooms(status,id,p,ct);
     [HttpPost("rooms/{id:guid}/review")]

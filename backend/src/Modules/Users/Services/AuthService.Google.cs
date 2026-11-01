@@ -23,7 +23,7 @@ public sealed partial class AuthService
         command.AddParameter("subject", identity.Subject);
         await command.ExecuteNonQueryAsync(cancellationToken);
         command.CommandText = """
-            SELECT u.id, u.email, u.role, u.password_hash, u.is_active, u.google_subject,
+            SELECT u.id, u.email, u.role, u.password_hash, u.is_active AND u.deleted_at IS NULL, u.google_subject,
                    p.display_name, p.avatar_url, p.city, p.district, p.profile_completion, u.token_version
             FROM users u JOIN profiles p ON p.user_id = u.id
             WHERE u.google_subject = @subject OR u.email = @email

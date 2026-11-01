@@ -22,9 +22,9 @@ export const staffApi = {
       pendingVerifications: number;
       newFeedback: number;
     }>("/api/admin/workspace-stats", { authenticated: true }),
-  users: (q = "", role = "", page = 1) =>
+  users: (q = "", role = "", page = 1, status = "") =>
     apiClient<Page<StaffUser>>(
-      `/api/admin/users?q=${encodeURIComponent(q)}${role ? `&role=${role}` : ""}&page=${page}`,
+      `/api/admin/users?q=${encodeURIComponent(q)}${role ? `&role=${role}` : ""}${status ? `&status=${status}` : ""}&page=${page}`,
       { authenticated: true },
     ),
   user: (id: string) =>
@@ -38,6 +38,24 @@ export const staffApi = {
     apiClient<void>(`/api/admin/users/${id}/access`, {
       method: "PUT",
       body,
+      authenticated: true,
+    }),
+  deleteUser: (id: string, note: string) =>
+    apiClient<void>(`/api/admin/users/${id}/delete`, {
+      method: "POST",
+      body: { note },
+      authenticated: true,
+    }),
+  restoreUser: (id: string, note: string) =>
+    apiClient<void>(`/api/admin/users/${id}/restore`, {
+      method: "POST",
+      body: { note },
+      authenticated: true,
+    }),
+  purgeUser: (id: string, note: string, confirmEmail: string) =>
+    apiClient<void>(`/api/admin/users/${id}/purge`, {
+      method: "POST",
+      body: { note, confirmEmail },
       authenticated: true,
     }),
   rooms: (status = "pending", page = 1, id = "") =>

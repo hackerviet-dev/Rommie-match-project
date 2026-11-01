@@ -1,6 +1,7 @@
 using System.Data.Common;
 using System.Text.Json;
 using System.ComponentModel.DataAnnotations;
+using RoomieMatch.Shared.Contracts;
 using RoomieMatch.Shared.Data;
 using RoomieMatch.Shared.Paging;
 
@@ -8,6 +9,8 @@ namespace RoomieMatch.Modules.Users.Services;
 
 public sealed class WorkspaceException(int status, string message) : Exception(message) { public int Status { get; } = status; }
 public sealed record AccountAccessRequest([Required, RegularExpression("^(member|moderator|admin)$")] string Role, bool IsActive, [Required, StringLength(2000, MinimumLength=5)] string Note);
+public sealed record AccountDeleteRequest([Required, StringLength(2000, MinimumLength=5)] string Note);
+public sealed record AccountPurgeRequest([Required, StringLength(2000, MinimumLength=5)] string Note, [Required, EmailAddress, StringLength(320)] string ConfirmEmail);
 public sealed record RoomReviewRequest([Required, RegularExpression("^(approved|rejected)$")] string Status, [StringLength(2000)] string? Note, [Required] DateTimeOffset? ExpectedUpdatedAt, [StringLength(2000)] string? Message = null);
 public sealed record GroupCreateRequest([Required, StringLength(160, MinimumLength=3)] string Name, Guid? RoomId);
 public sealed record GroupInviteRequest([Required, EmailAddress] string Email);
@@ -17,7 +20,7 @@ public sealed record DisputeMessageRequest([Required,StringLength(4000, MinimumL
 public sealed record DisputeReviewRequest([Required,RegularExpression("^(investigating|resolved|dismissed)$")] string Status, [Required,StringLength(2000, MinimumLength=5)] string Note);
 
 // JSON projections explicitly whitelist fields; credentials and private chat history never leave this service.
-public sealed class WorkspaceService(IDbConnectionFactory factory)
+public sealed class WorkspaceService(IDbConnectionFactory factory, IUserMediaEraser mediaEraser)
 {
     // Matches the pair room policy: one owner plus one roommate.
     public const int GroupMemberLimit = 2;
@@ -48,10 +51,10 @@ public sealed class WorkspaceService(IDbConnectionFactory factory)
         var rows=await Rows(c,"SELECT row_to_json(x)::text FROM ("+select+" "+from+" ORDER BY created_at DESC,id DESC LIMIT @limit OFFSET @offset) x",ct,[..args,("limit",p.PageSize),("offset",p.Offset)]);
         return new(rows,p.Page,p.PageSize,total);
     }
-    public Task<PagedResult<JsonElement>> Users(string? q,string? role,PageQuery p,CancellationToken ct)=>Page("""
-        SELECT u.id,u.email,u.role,u.is_active AS "isActive",u.created_at,p.display_name AS "displayName",p.avatar_url AS "avatarUrl",p.city,p.is_verified AS "isVerified",
+    public Task<PagedResult<JsonElement>> Users(string? q,string? role,string? status,PageQuery p,CancellationToken ct)=>Page("""
+        SELECT u.id,u.email,u.role,u.is_active AS "isActive",u.deleted_at AS "deletedAt",u.created_at,p.display_name AS "displayName",p.avatar_url AS "avatarUrl",p.city,p.is_verified AS "isVerified",
           EXISTS(SELECT 1 FROM subscriptions s WHERE s.user_id=u.id AND s.plan='premium' AND s.status='active' AND s.ends_at>now()) AS "isPremium"
-        ""","FROM users u LEFT JOIN profiles p ON p.user_id=u.id WHERE (CAST(@role AS text) IS NULL OR u.role=@role OR (@role='staff' AND u.role IN ('admin','moderator'))) AND (CAST(@q AS text) IS NULL OR position(lower(@q) in lower(u.email||' '||coalesce(p.display_name,'')))>0)",p,ct,("q",string.IsNullOrWhiteSpace(q)?null:q.Trim()),("role",role));
+        ""","FROM users u LEFT JOIN profiles p ON p.user_id=u.id WHERE (CAST(@role AS text) IS NULL OR u.role=@role OR (@role='staff' AND u.role IN ('admin','moderator'))) AND (CAST(@q AS text) IS NULL OR position(lower(@q) in lower(u.email||' '||coalesce(p.display_name,'')))>0) AND (CAST(@status AS text) IS NULL OR (@status='deleted' AND u.deleted_at IS NOT NULL) OR (@status='active' AND u.deleted_at IS NULL AND u.is_active) OR (@status='locked' AND u.deleted_at IS NULL AND NOT u.is_active))",p,ct,("q",string.IsNullOrWhiteSpace(q)?null:q.Trim()),("role",role),("status",status));
     public async Task<JsonElement> Overview(CancellationToken ct)
     {
         await using var c=await factory.OpenConnectionAsync(ct);
@@ -61,7 +64,7 @@ public sealed class WorkspaceService(IDbConnectionFactory factory)
     {
         await using var c=await factory.OpenConnectionAsync(ct);
         var rows=await Rows(c,"""
-          SELECT jsonb_build_object('id',u.id,'email',u.email,'role',u.role,'isActive',u.is_active,'createdAt',u.created_at,'profile',to_jsonb(p),'lifestyle',to_jsonb(l),'roomCount',(SELECT count(*) FROM rooms WHERE owner_user_id=u.id AND deleted_at IS NULL),'reportCount',(SELECT count(*) FROM user_reports WHERE reported_user_id=u.id),'isPremium',EXISTS(SELECT 1 FROM subscriptions s WHERE s.user_id=u.id AND s.plan='premium' AND s.status='active' AND s.ends_at>now()))::text
+          SELECT jsonb_build_object('id',u.id,'email',u.email,'role',u.role,'isActive',u.is_active,'deletedAt',u.deleted_at,'deletedBySelf',u.deleted_by IS NOT NULL AND u.deleted_by=u.id,'createdAt',u.created_at,'profile',to_jsonb(p),'lifestyle',to_jsonb(l),'roomCount',(SELECT count(*) FROM rooms WHERE owner_user_id=u.id AND deleted_at IS NULL),'reportCount',(SELECT count(*) FROM user_reports WHERE reported_user_id=u.id),'isPremium',EXISTS(SELECT 1 FROM subscriptions s WHERE s.user_id=u.id AND s.plan='premium' AND s.status='active' AND s.ends_at>now()))::text
           FROM users u LEFT JOIN profiles p ON p.user_id=u.id LEFT JOIN lifestyle_preferences l ON l.user_id=u.id WHERE u.id=@id
           """,ct,("id",id));
         return rows.FirstOrDefault().ValueKind==JsonValueKind.Undefined?throw new WorkspaceException(404,"Không tìm thấy thành viên."):rows[0];
@@ -73,13 +76,65 @@ public sealed class WorkspaceService(IDbConnectionFactory factory)
         await using var c=await factory.OpenConnectionAsync(ct); await using var tx=await c.BeginTransactionAsync(ct);
         await Write(c,tx,"SELECT pg_advisory_xact_lock(704123982)",ct);
         await using var cmd=c.CreateCommand(); cmd.Transaction=tx;
-        cmd.CommandText="SELECT role,is_active,(SELECT count(*) FROM users WHERE role='admin' AND is_active) FROM users WHERE id=@id FOR UPDATE";cmd.AddParameter("id",id);
+        cmd.CommandText="SELECT role,is_active,(SELECT count(*) FROM users WHERE role='admin' AND is_active AND deleted_at IS NULL),deleted_at IS NOT NULL FROM users WHERE id=@id FOR UPDATE";cmd.AddParameter("id",id);
         string oldRole;bool active;long admins;
-        await using(var r=await cmd.ExecuteReaderAsync(ct)){if(!await r.ReadAsync(ct))throw new WorkspaceException(404,"Không tìm thấy thành viên.");oldRole=r.GetString(0);active=r.GetBoolean(1);admins=r.GetInt64(2);}
+        await using(var r=await cmd.ExecuteReaderAsync(ct)){if(!await r.ReadAsync(ct))throw new WorkspaceException(404,"Không tìm thấy thành viên.");oldRole=r.GetString(0);active=r.GetBoolean(1);admins=r.GetInt64(2);if(r.GetBoolean(3))throw new WorkspaceException(409,"Tài khoản đã bị xóa. Khôi phục trước khi đổi quyền.");}
         if(oldRole=="admin"&&active&&admins<=1&&(req.Role!="admin"||!req.IsActive))throw new WorkspaceException(409,"Phải giữ ít nhất một quản trị viên đang hoạt động.");
         if(oldRole==req.Role&&active==req.IsActive)throw new WorkspaceException(409,"Quyền và trạng thái chưa thay đổi.");
         await Write(c,tx,"UPDATE users SET role=@role,is_active=@active,token_version=token_version+1,updated_at=now() WHERE id=@id; UPDATE refresh_tokens SET revoked_at=now() WHERE user_id=@id AND revoked_at IS NULL",ct,("role",req.Role),("active",req.IsActive),("id",id));
         await Audit(c,tx,actor,"account.access",id,$"{oldRole}/{active} → {req.Role}/{req.IsActive}. {req.Note}",ct);await tx.CommitAsync(ct);
+    }
+    // Soft delete: the account drops out of sign-in, discovery, chat and room search, but the row
+    // stays so staff can restore it. The member's live rooms are stamped with the same
+    // transaction timestamp, which lets Restore bring back exactly those and not rooms the
+    // member had already deleted on their own.
+    public async Task SoftDelete(Guid actor,Guid id,AccountDeleteRequest req,CancellationToken ct)
+    {
+        Text(req.Note,5,2000);
+        if(actor==id)throw new WorkspaceException(409,"Không thể tự xóa tài khoản đang sử dụng.");
+        await using var c=await factory.OpenConnectionAsync(ct); await using var tx=await c.BeginTransactionAsync(ct);
+        await Write(c,tx,"SELECT pg_advisory_xact_lock(704123982)",ct);
+        await using(var cmd=c.CreateCommand())
+        {
+            cmd.Transaction=tx;
+            cmd.CommandText="SELECT role,is_active,deleted_at IS NOT NULL,(SELECT count(*) FROM users WHERE role='admin' AND is_active AND deleted_at IS NULL) FROM users WHERE id=@id FOR UPDATE";cmd.AddParameter("id",id);
+            await using var r=await cmd.ExecuteReaderAsync(ct);
+            if(!await r.ReadAsync(ct))throw new WorkspaceException(404,"Không tìm thấy thành viên.");
+            if(r.GetBoolean(2))throw new WorkspaceException(409,"Tài khoản đã được xóa mềm trước đó.");
+            if(r.GetString(0)=="admin"&&r.GetBoolean(1)&&r.GetInt64(3)<=1)throw new WorkspaceException(409,"Phải giữ ít nhất một quản trị viên đang hoạt động.");
+        }
+        await Write(c,tx,"UPDATE users SET deleted_at=now(),deleted_by=@actor,token_version=token_version+1,updated_at=now() WHERE id=@id; UPDATE refresh_tokens SET revoked_at=now() WHERE user_id=@id AND revoked_at IS NULL; UPDATE rooms SET deleted_at=now() WHERE owner_user_id=@id AND deleted_at IS NULL",ct,("actor",actor),("id",id));
+        await Audit(c,tx,actor,"account.delete",id,req.Note,ct);await tx.CommitAsync(ct);
+    }
+    public async Task Restore(Guid actor,Guid id,AccountDeleteRequest req,CancellationToken ct)
+    {
+        Text(req.Note,5,2000);
+        await using var c=await factory.OpenConnectionAsync(ct); await using var tx=await c.BeginTransactionAsync(ct);
+        await Write(c,tx,"UPDATE rooms r SET deleted_at=NULL FROM users u WHERE u.id=@id AND u.deleted_at IS NOT NULL AND r.owner_user_id=u.id AND r.deleted_at=u.deleted_at",ct,("id",id));
+        if(await Write(c,tx,"UPDATE users SET deleted_at=NULL,deleted_by=NULL,updated_at=now() WHERE id=@id AND deleted_at IS NOT NULL",ct,("id",id))==0)
+            throw new WorkspaceException(404,"Không có tài khoản đã xóa mềm để khôi phục.");
+        await Audit(c,tx,actor,"account.restore",id,req.Note,ct);await tx.CommitAsync(ct);
+    }
+    // Hard delete is only allowed after a soft delete and needs the email typed back. The row and
+    // everything cascading from it are gone afterwards; the audit entry keeps only the id and note.
+    public async Task Purge(Guid actor,Guid id,AccountPurgeRequest req,CancellationToken ct)
+    {
+        Text(req.Note,5,2000);
+        if(actor==id)throw new WorkspaceException(409,"Không thể tự xóa tài khoản đang sử dụng.");
+        await using var c=await factory.OpenConnectionAsync(ct); await using var tx=await c.BeginTransactionAsync(ct);
+        await using(var cmd=c.CreateCommand())
+        {
+            cmd.Transaction=tx;
+            cmd.CommandText="SELECT email,deleted_at IS NOT NULL FROM users WHERE id=@id FOR UPDATE";cmd.AddParameter("id",id);
+            await using var r=await cmd.ExecuteReaderAsync(ct);
+            if(!await r.ReadAsync(ct))throw new WorkspaceException(404,"Không tìm thấy thành viên.");
+            if(!r.GetBoolean(1))throw new WorkspaceException(409,"Phải xóa mềm tài khoản trước khi xóa vĩnh viễn.");
+            if(!string.Equals(r.GetString(0),req.ConfirmEmail.Trim(),StringComparison.OrdinalIgnoreCase))throw new WorkspaceException(400,"Email xác nhận không khớp với tài khoản.");
+        }
+        // Images first: if storage fails the row stays soft deleted and the purge can be retried.
+        if(!await mediaEraser.DeleteAllForUserAsync(id,ct))throw new WorkspaceException(502,"Chưa xóa được ảnh của tài khoản trên kho lưu trữ. Vui lòng thử lại.");
+        await Write(c,tx,"DELETE FROM users WHERE id=@id AND deleted_at IS NOT NULL",ct,("id",id));
+        await Audit(c,tx,actor,"account.purge",id,req.Note,ct);await tx.CommitAsync(ct);
     }
     public Task<PagedResult<JsonElement>> Rooms(string? status,Guid? id,PageQuery p,CancellationToken ct)=>Page("SELECT r.id,r.title,r.description,r.address,r.city,r.district,r.monthly_rent AS \"monthlyRent\",r.deposit,r.property_type AS \"propertyType\",r.bedrooms,r.area_m2 AS \"areaM2\",r.max_occupants AS \"maxOccupants\",r.roommates_needed AS \"roommatesNeeded\",r.available_from AS \"availableFrom\",r.amenities,r.photo_urls AS \"photoUrls\",r.latitude,r.longitude,r.is_active AS \"isActive\",r.owner_user_id AS \"ownerUserId\",p.display_name AS \"ownerName\",r.moderation_status AS status,r.moderation_note AS note,r.updated_at AS \"updatedAt\",r.created_at","FROM rooms r LEFT JOIN profiles p ON p.user_id=r.owner_user_id WHERE r.deleted_at IS NULL AND (CAST(@status AS text) IS NULL OR r.moderation_status=@status) AND (CAST(@id AS uuid) IS NULL OR r.id=@id)",p,ct,("status",status),("id",id));
     public async Task ReviewRoom(Guid actor,Guid id,RoomReviewRequest req,CancellationToken ct)
@@ -155,7 +210,7 @@ public sealed class WorkspaceService(IDbConnectionFactory factory)
         var role=await GroupPermission(c,tx,group,actor,ct);if(role=="member")throw new WorkspaceException(403,"Chỉ chủ nhóm/người quản lý được mời thành viên.");
         // Pair policy: a group is at most two people, pending invitations included (trigger 024 enforces it too).
         await using(var size=c.CreateCommand()){size.Transaction=tx;size.CommandText="SELECT count(*) FROM housing_group_members WHERE group_id=@g";size.AddParameter("g",group);if((long)(await size.ExecuteScalarAsync(ct))!>=GroupMemberLimit)throw new WorkspaceException(409,"Nhóm ở ghép chỉ gồm tối đa 2 người, tính cả lời mời đang chờ.");}
-        await using var find=c.CreateCommand();find.Transaction=tx;find.CommandText="SELECT id FROM users WHERE lower(email)=lower(@email) AND is_active";find.AddParameter("email",email.Trim());var target=await find.ExecuteScalarAsync(ct);if(target is null)throw new WorkspaceException(404,"Không tìm thấy tài khoản đang hoạt động với email này.");
+        await using var find=c.CreateCommand();find.Transaction=tx;find.CommandText="SELECT id FROM users WHERE lower(email)=lower(@email) AND is_active AND deleted_at IS NULL";find.AddParameter("email",email.Trim());var target=await find.ExecuteScalarAsync(ct);if(target is null)throw new WorkspaceException(404,"Không tìm thấy tài khoản đang hoạt động với email này.");
         var n=await Write(c,tx,"INSERT INTO housing_group_members(group_id,user_id,role,status) VALUES(@g,@u,'member','invited') ON CONFLICT DO NOTHING",ct,("g",group),("u",target));if(n==0)throw new WorkspaceException(409,"Tài khoản đã ở trong nhóm hoặc đang được mời.");await tx.CommitAsync(ct);
     }
     public async Task RespondInvite(Guid group,Guid user,bool accept,CancellationToken ct)
@@ -190,7 +245,7 @@ public sealed class WorkspaceService(IDbConnectionFactory factory)
         Text(req.Title,5,180);Text(req.Details,20,5000);
         if(user==req.RespondentId)throw new WorkspaceException(400,"Không thể tạo tranh chấp với chính mình.");
         await using var c=await factory.OpenConnectionAsync(ct);await using var tx=await c.BeginTransactionAsync(ct);
-        await using(var check=c.CreateCommand()){check.Transaction=tx;check.CommandText="SELECT 1 FROM users WHERE id=@id AND is_active";check.AddParameter("id",req.RespondentId);if(await check.ExecuteScalarAsync(ct) is null)throw new WorkspaceException(404,"Không tìm thấy bên liên quan.");}
+        await using(var check=c.CreateCommand()){check.Transaction=tx;check.CommandText="SELECT 1 FROM users WHERE id=@id AND is_active AND deleted_at IS NULL";check.AddParameter("id",req.RespondentId);if(await check.ExecuteScalarAsync(ct) is null)throw new WorkspaceException(404,"Không tìm thấy bên liên quan.");}
         if(req.GroupId is {} g){await GroupPermission(c,tx,g,user,ct);await GroupPermission(c,tx,g,req.RespondentId,ct);}
         if(req.RoomId is {} room){await using var check=c.CreateCommand();check.Transaction=tx;check.CommandText="SELECT 1 FROM rooms WHERE id=@r AND deleted_at IS NULL AND owner_user_id IN (@u,@v)";check.AddParameter("r",room).AddParameter("u",user).AddParameter("v",req.RespondentId);if(await check.ExecuteScalarAsync(ct) is null)throw new WorkspaceException(400,"Phòng không liên quan đến hai bên tranh chấp.");}
         var id=Guid.NewGuid();await Write(c,tx,"INSERT INTO disputes(id,complainant_id,respondent_id,room_id,group_id,title,details) VALUES(@id,@u,@v,@r,@g,@title,@details)",ct,("id",id),("u",user),("v",req.RespondentId),("r",req.RoomId),("g",req.GroupId),("title",req.Title.Trim()),("details",req.Details.Trim()));await tx.CommitAsync(ct);return id;

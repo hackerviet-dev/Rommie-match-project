@@ -142,7 +142,7 @@ public sealed class ChatService(
 
         const string recipientSql = """
             SELECT
-                u.is_active AND u.role = 'member' AND p.is_public,
+                u.is_active AND u.deleted_at IS NULL AND u.role = 'member' AND p.is_public,
                 EXISTS (
                     SELECT 1 FROM user_blocks b
                     WHERE b.deleted_at IS NULL
@@ -378,7 +378,7 @@ public sealed class ChatService(
         CancellationToken cancellationToken)
     {
         const string sql = """
-            SELECT cm.user_id, u.is_active,
+            SELECT cm.user_id, u.is_active AND u.deleted_at IS NULL,
                    EXISTS (
                        SELECT 1 FROM user_blocks b
                        WHERE b.deleted_at IS NULL

@@ -9,7 +9,7 @@ public sealed class SavedProfileService(IDbConnectionFactory connectionFactory) 
     // public member profile that neither side has blocked. Saved rows whose profile later
     // turns hidden stay in the table and come back once the profile is visible again.
     private const string VisibleTarget = """
-        u.is_active = true
+        u.is_active = true AND u.deleted_at IS NULL
         AND u.role = 'member'
         AND p.is_public = true
         AND NOT EXISTS (

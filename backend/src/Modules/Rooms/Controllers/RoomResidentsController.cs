@@ -23,7 +23,7 @@ public sealed class RoomResidentsController(IRoomService rooms, IDbConnectionFac
         cmd.CommandText = """
             SELECT coalesce((SELECT jsonb_agg(x) FROM (SELECT DISTINCT p.user_id AS "userId",p.display_name AS "displayName",p.avatar_url AS "avatarUrl"
             FROM housing_groups g JOIN housing_group_members m ON m.group_id=g.id JOIN profiles p ON p.user_id=m.user_id
-            JOIN users u ON u.id=m.user_id WHERE g.room_id=@room AND m.status='active' AND m.share_room_profile AND u.is_active AND p.is_public
+            JOIN users u ON u.id=m.user_id WHERE g.room_id=@room AND m.status='active' AND m.share_room_profile AND u.is_active AND u.deleted_at IS NULL AND p.is_public
             AND NOT EXISTS(SELECT 1 FROM user_blocks b WHERE (b.blocker_id=@user AND b.blocked_id=m.user_id) OR (b.blocker_id=m.user_id AND b.blocked_id=@user))) x),'[]'::jsonb)::text,
             EXISTS(SELECT 1 FROM housing_groups g JOIN housing_group_members m ON m.group_id=g.id WHERE g.room_id=@room AND m.user_id=@user AND m.status='active'),
             EXISTS(SELECT 1 FROM housing_groups g JOIN housing_group_members m ON m.group_id=g.id WHERE g.room_id=@room AND m.user_id=@user AND m.status='active' AND m.share_room_profile)

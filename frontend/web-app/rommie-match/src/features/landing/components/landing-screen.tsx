@@ -480,6 +480,8 @@ export function LandingScreen() {
               <li><a href="#how" className="hover:text-mint">Cách hoạt động</a></li>
               <li><a href="#faq" className="hover:text-mint">Hỏi đáp</a></li>
               <li><Link to="/community-guidelines" className="hover:text-mint">Quy tắc cộng đồng</Link></li>
+              <li><Link to="/delete-account" className="hover:text-mint">Xóa tài khoản</Link></li>
+              <li><Link to="/delete-account" className="hover:text-mint">Xóa tài khoản</Link></li>
             </ul>
           </div>
         </div>

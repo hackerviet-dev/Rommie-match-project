@@ -12,6 +12,7 @@ import AdminPage from "@/pages/admin-page";
 import ChatPage from "@/pages/chat-page";
 import CommunityGuidelinesPage from "@/pages/community-guidelines-page";
 import DashboardPage from "@/pages/dashboard-page";
+import DeleteAccountPage from "@/pages/delete-account-page";
 import LandingPage from "@/pages/landing-page";
 import LoginPage from "@/pages/login-page";
 import MatchesPage from "@/pages/matches-page";
@@ -147,6 +148,7 @@ export function AppRouter() {
             path={ROUTES.communityGuidelines}
             element={<CommunityGuidelinesPage />}
           />
+          <Route path={ROUTES.deleteAccount} element={<DeleteAccountPage />} />
           <Route
             path={ROUTES.settings}
             element={

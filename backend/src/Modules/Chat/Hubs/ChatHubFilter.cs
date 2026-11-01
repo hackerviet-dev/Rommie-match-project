@@ -69,7 +69,7 @@ public sealed class ChatHubFilter : IHubFilter, IDisposable
 
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT token_version FROM users WHERE id = @user_id AND is_active = true";
+        command.CommandText = "SELECT token_version FROM users WHERE id = @user_id AND is_active = true AND deleted_at IS NULL";
         command.AddParameter("user_id", userId);
 
         return await command.ExecuteScalarAsync(cancellationToken) is int currentVersion

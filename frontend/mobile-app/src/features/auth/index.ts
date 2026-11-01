@@ -1,4 +1,5 @@
 export { useAuthSession } from "./hooks/use-auth-session";
+export { useDeleteAccount } from "./hooks/use-delete-account";
 export { useSignOut } from "./hooks/use-sign-out";
 export { loginSchema, registerSchema } from "./schemas/auth-schema";
 export { authApi } from "./services/auth-api";

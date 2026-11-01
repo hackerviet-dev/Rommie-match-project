@@ -13,11 +13,13 @@ import { useAuthStore, useSignOut } from "@/features/auth";
 import { safetyApi } from "@/features/profile";
 import { API_BASE_URL } from "@/services/api-client";
 import { colors } from "@/theme/colors";
+import { DeleteAccountCard } from "./delete-account-card";
 
 // "Cài đặt & bảo mật" của web, bỏ các mục web còn ghi "Sắp có" (thông báo, quyền riêng tư,
 // đổi mật khẩu, ngôn ngữ).
 export function SettingsScreen() {
   const me = useAuthStore((state) => state.user?.id);
+  const isMember = useAuthStore((state) => state.user?.role === "member");
   const client = useQueryClient();
   const signOut = useSignOut();
   const blocks = useQuery({ queryKey: ["blocks", me], queryFn: () => safetyApi.blocks(1) });
@@ -108,6 +110,8 @@ export function SettingsScreen() {
             <ButtonText className="text-red-600">Đăng xuất khỏi mọi thiết bị</ButtonText>
           </Button>
         </Card>
+
+        {isMember ? <DeleteAccountCard /> : null}
 
         <View className="items-center gap-1 py-2">
           <Text className="text-xs text-slate-400">

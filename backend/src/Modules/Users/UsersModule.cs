@@ -43,6 +43,7 @@ public static class UsersModuleExtensions
         services.AddScoped<FeedbackService>();
         services.AddScoped<IdentityVerificationService>();
         services.AddScoped<ISavedProfileService, SavedProfileService>();
+        services.AddHostedService<DeletedAccountPurgeService>();
 
         var analytics = configuration.GetSection(GoogleAnalyticsOptions.SectionName).Get<GoogleAnalyticsOptions>()
             ?? new GoogleAnalyticsOptions();

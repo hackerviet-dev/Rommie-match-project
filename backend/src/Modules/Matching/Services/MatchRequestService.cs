@@ -57,7 +57,7 @@ public sealed class MatchRequestService(IDbConnectionFactory connectionFactory) 
                 SELECT 1
                 FROM users u
                 INNER JOIN profiles p ON p.user_id = u.id
-                WHERE u.id = @other_id AND u.is_active AND u.role = 'member' AND p.is_public
+                WHERE u.id = @other_id AND u.is_active AND u.deleted_at IS NULL AND u.role = 'member' AND p.is_public
                   AND coalesce(p.onboarding_data->>'roomPosterType','') <> 'landlord_agent'
                   AND (NOT p.has_room OR p.onboarding_data->>'roomPosterType'='resident')
                   AND EXISTS (SELECT 1 FROM quiz_responses qr WHERE qr.user_id=p.user_id AND qr.quiz_code='lifestyle_v1' AND qr.completed_at IS NOT NULL)

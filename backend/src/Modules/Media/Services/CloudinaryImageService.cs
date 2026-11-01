@@ -15,7 +15,7 @@ namespace RoomieMatch.Modules.Media.Services;
 public sealed class CloudinaryImageService(
     IHttpClientFactory httpClientFactory,
     CloudinaryOptions options,
-    ILogger<CloudinaryImageService> logger) : IImageUploadService, IUploadedImageVerifier
+    ILogger<CloudinaryImageService> logger) : IImageUploadService, IUploadedImageVerifier, IUserMediaEraser
 {
     public const string HttpClientName = "cloudinary";
 
@@ -135,6 +135,64 @@ public sealed class CloudinaryImageService(
             && match.Groups["user"].Value == userId.ToString();
     }
 
+    // Deletes every image under the user's folders through the Admin API, which removes at most
+    // 1000 per call and reports partial=true while more remain under the prefix.
+    public async Task<bool> DeleteAllForUserAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        if (!options.IsConfigured)
+        {
+            return true;
+        }
+
+        var prefixes = new[] { ImagePurpose.Avatar, ImagePurpose.Chat, ImagePurpose.Verification }
+            .Select(purpose => $"{options.Folder}/{FolderName(purpose)}/{userId}/")
+            // RoomPhotoService names room photos roomiematch/rooms/<owner without dashes>/<id>.
+            .Append($"roomiematch/rooms/{userId:N}/");
+        var client = httpClientFactory.CreateClient(HttpClientName);
+        var credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{options.ApiKey}:{options.ApiSecret}"));
+        foreach (var prefix in prefixes)
+        {
+            for (var round = 0; round < 20; round++)
+            {
+                using var request = new HttpRequestMessage(
+                    HttpMethod.Delete,
+                    $"{options.ApiBaseUrl.TrimEnd('/')}/v1_1/{Uri.EscapeDataString(options.CloudName)}/resources/image/upload?prefix={Uri.EscapeDataString(prefix)}");
+                request.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
+                try
+                {
+                    using var response = await client.SendAsync(request, cancellationToken);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        logger.LogWarning(
+                            "Cloudinary delete under {Prefix} failed with {Status}: {Body}",
+                            prefix,
+                            (int)response.StatusCode,
+                            await response.Content.ReadAsStringAsync(cancellationToken));
+                        return false;
+                    }
+
+                    var result = await response.Content.ReadFromJsonAsync<CloudinaryDeleteResponse>(cancellationToken);
+                    if (result?.Partial != true)
+                    {
+                        break;
+                    }
+                }
+                catch (HttpRequestException exception)
+                {
+                    logger.LogWarning(exception, "Cloudinary delete request failed.");
+                    return false;
+                }
+
+                if (round == 19)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     // Cloudinary's signature: the signed parameters as sorted "key=value" pairs joined by '&',
     // followed by the API secret, hashed with SHA-1.
     internal static string Sign(IEnumerable<KeyValuePair<string, string>> parameters, string apiSecret)
@@ -175,6 +233,8 @@ public sealed class CloudinaryImageService(
     }
 
     private sealed record ImageFormat(string Extension, string MimeType);
+
+    private sealed record CloudinaryDeleteResponse([property: JsonPropertyName("partial")] bool Partial);
 
     private sealed record CloudinaryUploadResponse(
         [property: JsonPropertyName("secure_url")] string? SecureUrl,

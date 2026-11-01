@@ -11,6 +11,7 @@ export const ROUTES = {
   services: "/services",
   premium: "/premium",
   communityGuidelines: "/community-guidelines",
+  deleteAccount: "/delete-account",
   settings: "/settings",
   admin: "/admin",
   moderator: "/moderator",

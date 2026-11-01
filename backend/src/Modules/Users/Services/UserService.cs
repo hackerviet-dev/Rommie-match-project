@@ -41,7 +41,7 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
         const string fromWhere = """
             FROM users u
             INNER JOIN profiles p ON p.user_id = u.id
-            WHERE u.is_active = true
+            WHERE u.is_active = true AND u.deleted_at IS NULL
               AND u.role = 'member'
               AND p.is_public = true
               AND u.id <> @viewer_id
@@ -354,7 +354,7 @@ public sealed class UserService(IDbConnectionFactory connectionFactory) : IUserS
                 CASE WHEN @owner THEN p.onboarding_data::text END
             FROM profiles p
             INNER JOIN users u ON u.id = p.user_id
-            WHERE p.user_id = @user_id AND u.is_active = true
+            WHERE p.user_id = @user_id AND u.is_active = true AND u.deleted_at IS NULL
             {(publicOnly ? "AND p.is_public = true" : "")}
             {blockClause}
             """;

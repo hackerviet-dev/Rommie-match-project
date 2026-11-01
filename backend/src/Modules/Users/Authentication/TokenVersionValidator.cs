@@ -27,7 +27,7 @@ internal static class TokenVersionValidator
             return;
         }
 
-        const string sql = "SELECT token_version, role FROM users WHERE id = @user_id AND is_active = true";
+        const string sql = "SELECT token_version, role FROM users WHERE id = @user_id AND is_active = true AND deleted_at IS NULL";
 
         var connectionFactory = context.HttpContext.RequestServices.GetRequiredService<IDbConnectionFactory>();
         var cancellationToken = context.HttpContext.RequestAborted;
