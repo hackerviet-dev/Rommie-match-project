@@ -1,0 +1,31 @@
+# EAS Build (Expo) chỉ đọc .easignore ở thư mục gốc repo (nơi có .git). Khi có file này,
+# EAS bỏ qua mọi .gitignore lúc tải mã lên, nên phải tự liệt kê đủ những gì cần loại.
+
+# Chỉ gửi app mobile: bỏ backend, web, database, scripts, tài liệu...
+/*
+!/.git
+!/frontend
+/frontend/*
+!/frontend/mobile-app
+
+# android/ và ios/ là thư mục native cũ từ thời React Native CLI (mã gói com.roomiematchmobile).
+# Bỏ chúng để EAS tự sinh lại (prebuild) từ app.json với mã gói vn.roomiematch.mobile.
+/frontend/mobile-app/android
+/frontend/mobile-app/ios
+/frontend/mobile-app/Gemfile
+/frontend/mobile-app/index.js
+
+# Giống các .gitignore (không gửi file bí mật, file sinh ra khi build)
+node_modules/
+.expo/
+dist/
+web-build/
+build/
+.gradle/
+.cxx/
+expo-env.d.ts
+.metro-health-check*
+*.tsbuildinfo
+*.log
+.env
+.env.*
