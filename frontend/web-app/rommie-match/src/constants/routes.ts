@@ -13,6 +13,7 @@ export const ROUTES = {
   communityGuidelines: "/community-guidelines",
   deleteAccount: "/delete-account",
   privacy: "/privacy",
+  childSafety: "/child-safety",
   settings: "/settings",
   admin: "/admin",
   moderator: "/moderator",
