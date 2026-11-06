@@ -12,6 +12,7 @@ import AdminPage from "@/pages/admin-page";
 import ChatPage from "@/pages/chat-page";
 import CommunityGuidelinesPage from "@/pages/community-guidelines-page";
 import PrivacyPolicyPage from "@/pages/privacy-policy-page";
+import ChildSafetyPage from "@/pages/child-safety-page";
 import DashboardPage from "@/pages/dashboard-page";
 import DeleteAccountPage from "@/pages/delete-account-page";
 import LandingPage from "@/pages/landing-page";
@@ -151,6 +152,7 @@ export function AppRouter() {
           />
           <Route path={ROUTES.deleteAccount} element={<DeleteAccountPage />} />
           <Route path={ROUTES.privacy} element={<PrivacyPolicyPage />} />
+          <Route path={ROUTES.childSafety} element={<ChildSafetyPage />} />
           <Route
             path={ROUTES.settings}
             element={
