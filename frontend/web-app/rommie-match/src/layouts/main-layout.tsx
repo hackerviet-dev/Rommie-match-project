@@ -19,6 +19,7 @@ import {
   TrendingUp,
   Crown,
   House,
+  MessageSquareHeart,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
@@ -34,6 +35,7 @@ import { AccountMenu, getActorHome, useAuthStore } from "@/features/auth";
 import { HeaderSearch } from "@/components/common/header-search";
 import { tokenStorage } from "@/services/token-storage";
 import { useNotifications } from "@/features/notifications";
+import { FeedbackDialog } from "@/features/feedback";
 
 function NotificationBell() {
   const { query: notifications, read, readVisible } = useNotifications();
@@ -192,6 +194,7 @@ export function AppShell({
 }) {
   const path = useLocation().pathname;
   const [open, setOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isInitialized = useAuthStore((s) => s.isInitialized);
@@ -298,6 +301,18 @@ export function AppShell({
                         />
                       </Link>
                     </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsFeedbackOpen(true)}
+                      aria-label="Gửi góp ý"
+                      title="Gửi góp ý"
+                      className="hidden h-9 gap-1.5 rounded-full border-mint/60 bg-mint/15 px-3 text-navy hover:bg-mint/30 sm:inline-flex"
+                    >
+                      <MessageSquareHeart className="h-4 w-4" />
+                      <span className="hidden md:inline">Góp ý</span>
+                    </Button>
                     <NotificationBell />
                     <AccountMenu />
                   </>
@@ -356,6 +371,18 @@ export function AppShell({
                           <Settings className="h-4 w-4" /> Cài đặt
                         </Link>
                       )}
+                      {isMember && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpen(false);
+                            setIsFeedbackOpen(true);
+                          }}
+                          className="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium hover:bg-muted"
+                        >
+                          <MessageSquareHeart className="h-4 w-4" /> Gửi góp ý
+                        </button>
+                      )}
                     </div>
                   </SheetContent>
                 </Sheet>
@@ -407,6 +434,13 @@ export function AppShell({
       >
         {children}
       </main>
+
+      {isMember && (
+        <FeedbackDialog
+          open={isFeedbackOpen}
+          onOpenChange={setIsFeedbackOpen}
+        />
+      )}
 
       {!hideHeader && showNavigation && !fullHeight && (
         <nav
