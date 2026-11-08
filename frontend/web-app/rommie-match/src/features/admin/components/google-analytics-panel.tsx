@@ -59,8 +59,8 @@ const LABELS: Record<string, string> = {
 };
 
 const chartConfig = {
-  activeUsers: { label: "Người dùng", color: "#4f46e5" },
-  newUsers: { label: "Người dùng mới", color: "#10b981" },
+  activeUsers: { label: "Người truy cập", color: "#4f46e5" },
+  newUsers: { label: "Người truy cập mới", color: "#10b981" },
 } satisfies ChartConfig;
 
 const number = new Intl.NumberFormat("vi-VN");
@@ -92,7 +92,7 @@ export function GoogleAnalyticsPanel() {
             Google Analytics
           </h1>
           <p className="mt-2 text-sm text-slate-600">
-            Theo dõi lượt truy cập và cách người dùng sử dụng RoomieMatch.
+            Theo dõi lượt truy cập và cách khách tương tác với RoomieMatch.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -161,8 +161,8 @@ function Dashboard({ report }: { report: AnalyticsReport }) {
     format: (value: number) => string;
     color: string;
   }[] = [
-    { label: "Người dùng", key: "activeUsers", icon: Users, format: number.format, color: "text-indigo-600 bg-indigo-50" },
-    { label: "Người dùng mới", key: "newUsers", icon: UserPlus, format: number.format, color: "text-emerald-600 bg-emerald-50" },
+    { label: "Người truy cập", key: "activeUsers", icon: Users, format: number.format, color: "text-indigo-600 bg-indigo-50" },
+    { label: "Người truy cập mới", key: "newUsers", icon: UserPlus, format: number.format, color: "text-emerald-600 bg-emerald-50" },
     { label: "Lượt xem trang", key: "pageViews", icon: Eye, format: number.format, color: "text-sky-600 bg-sky-50" },
     {
       label: "Tỉ lệ tương tác",
@@ -198,7 +198,7 @@ function Dashboard({ report }: { report: AnalyticsReport }) {
       )}
 
       <Card className="mt-6 rounded-2xl border-slate-200 p-6 shadow-none">
-        <h2 className="font-semibold">Người dùng theo ngày</h2>
+        <h2 className="font-semibold">Người truy cập theo ngày</h2>
         <ChartContainer config={chartConfig} className="mt-4 aspect-auto h-72 w-full">
           <AreaChart data={report.daily} margin={{ left: 0, right: 8, top: 8 }}>
             <defs>
@@ -234,7 +234,7 @@ function Dashboard({ report }: { report: AnalyticsReport }) {
                   <tr className="border-b border-slate-200 text-left text-slate-500">
                     <th scope="col" className="py-2 pr-4 font-medium">Đường dẫn</th>
                     <th scope="col" className="py-2 pr-4 text-right font-medium">Lượt xem</th>
-                    <th scope="col" className="py-2 text-right font-medium">Người dùng</th>
+                    <th scope="col" className="py-2 text-right font-medium">Người truy cập</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -252,9 +252,9 @@ function Dashboard({ report }: { report: AnalyticsReport }) {
             </div>
           )}
         </Card>
-        <Breakdown title="Thiết bị" unit="người dùng" slices={report.devices} color="bg-sky-500" />
+        <Breakdown title="Thiết bị" unit="người truy cập" slices={report.devices} color="bg-sky-500" />
         <Breakdown title="Nguồn truy cập" unit="phiên" slices={report.channels} color="bg-indigo-500" />
-        <Breakdown title="Thành phố" unit="người dùng" slices={report.cities} color="bg-emerald-500" />
+        <Breakdown title="Thành phố" unit="người truy cập" slices={report.cities} color="bg-emerald-500" />
         <Card className="rounded-2xl border-slate-200 p-6 shadow-none">
           <h2 className="font-semibold">Phiên truy cập</h2>
           <p className="mt-4 text-3xl font-semibold tabular-nums">{number.format(current.sessions)}</p>
