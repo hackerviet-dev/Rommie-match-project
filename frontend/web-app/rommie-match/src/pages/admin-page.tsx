@@ -26,6 +26,7 @@ import {
   Refunds,
 } from "@/features/admin/components/review-queues";
 import { ServiceManager } from "@/features/admin/components/service-manager";
+import { PaymentsPanel } from "@/features/admin/components/payments-panel";
 import { FeedbackQueue } from "@/features/feedback";
 import { GroupsPanel } from "@/features/workspaces/components/groups-panel";
 import { DisputesPanel } from "@/features/workspaces/components/disputes-panel";
@@ -327,6 +328,7 @@ export default function AdminPage() {
             </AdminOnly>
           }
         />
+        <Route path="payments" element={<PaymentsPanel />} />
         <Route
           path="refunds"
           element={

@@ -26,7 +26,7 @@ public sealed class StaffWorkspaceController(WorkspaceService service) : Control
     [HttpGet("workspace-stats")]
     public Task<JsonElement> Overview(CancellationToken ct)=>service.Overview(ct);
     [HttpGet("users")]
-    public Task<PagedResult<JsonElement>> Users([FromQuery]PageQuery p,[FromQuery,StringLength(120)]string? q,[FromQuery,RegularExpression("^(member|moderator|admin|staff)$")]string? role,[FromQuery,RegularExpression("^(active|locked|deleted)$")]string? status,CancellationToken ct)=>service.Users(q,role,status,p,ct);
+    public Task<PagedResult<JsonElement>> Users([FromQuery]PageQuery p,[FromQuery,StringLength(120)]string? q,[FromQuery,RegularExpression("^(member|moderator|admin|staff)$")]string? role,[FromQuery,RegularExpression("^(active|locked|deleted)$")]string? status,[FromQuery,RegularExpression("^(premium|free)$")]string? plan,CancellationToken ct)=>service.Users(q,role,status,plan,p,ct);
     [HttpGet("users/{id:guid}")]
     public Task<JsonElement> UserDetail(Guid id,CancellationToken ct)=>service.User(id,ct);
     [HttpPut("users/{id:guid}/access"),Authorize(Roles="admin")]
