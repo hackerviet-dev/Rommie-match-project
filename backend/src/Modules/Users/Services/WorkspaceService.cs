@@ -51,10 +51,10 @@ public sealed class WorkspaceService(IDbConnectionFactory factory, IUserMediaEra
         var rows=await Rows(c,"SELECT row_to_json(x)::text FROM ("+select+" "+from+" ORDER BY created_at DESC,id DESC LIMIT @limit OFFSET @offset) x",ct,[..args,("limit",p.PageSize),("offset",p.Offset)]);
         return new(rows,p.Page,p.PageSize,total);
     }
-    public Task<PagedResult<JsonElement>> Users(string? q,string? role,string? status,PageQuery p,CancellationToken ct)=>Page("""
+    public Task<PagedResult<JsonElement>> Users(string? q,string? role,string? status,string? plan,PageQuery p,CancellationToken ct)=>Page("""
         SELECT u.id,u.email,u.role,u.is_active AS "isActive",u.deleted_at AS "deletedAt",u.created_at,p.display_name AS "displayName",p.avatar_url AS "avatarUrl",p.city,p.is_verified AS "isVerified",
           EXISTS(SELECT 1 FROM subscriptions s WHERE s.user_id=u.id AND s.plan='premium' AND s.status='active' AND s.ends_at>now()) AS "isPremium"
-        ""","FROM users u LEFT JOIN profiles p ON p.user_id=u.id WHERE (CAST(@role AS text) IS NULL OR u.role=@role OR (@role='staff' AND u.role IN ('admin','moderator'))) AND (CAST(@q AS text) IS NULL OR position(lower(@q) in lower(u.email||' '||coalesce(p.display_name,'')))>0) AND (CAST(@status AS text) IS NULL OR (@status='deleted' AND u.deleted_at IS NOT NULL) OR (@status='active' AND u.deleted_at IS NULL AND u.is_active) OR (@status='locked' AND u.deleted_at IS NULL AND NOT u.is_active))",p,ct,("q",string.IsNullOrWhiteSpace(q)?null:q.Trim()),("role",role),("status",status));
+        ""","FROM users u LEFT JOIN profiles p ON p.user_id=u.id WHERE (CAST(@role AS text) IS NULL OR u.role=@role OR (@role='staff' AND u.role IN ('admin','moderator'))) AND (CAST(@q AS text) IS NULL OR position(lower(@q) in lower(u.email||' '||coalesce(p.display_name,'')))>0) AND (CAST(@status AS text) IS NULL OR (@status='deleted' AND u.deleted_at IS NOT NULL) OR (@status='active' AND u.deleted_at IS NULL AND u.is_active) OR (@status='locked' AND u.deleted_at IS NULL AND NOT u.is_active)) AND (CAST(@plan AS text) IS NULL OR (@plan='premium')=EXISTS(SELECT 1 FROM subscriptions s WHERE s.user_id=u.id AND s.plan='premium' AND s.status='active' AND s.ends_at>now()))",p,ct,("q",string.IsNullOrWhiteSpace(q)?null:q.Trim()),("role",role),("status",status),("plan",plan));
     public async Task<JsonElement> Overview(CancellationToken ct)
     {
         await using var c=await factory.OpenConnectionAsync(ct);

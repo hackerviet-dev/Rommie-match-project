@@ -13,6 +13,7 @@ import {
   UsersRound,
   Store,
   Receipt,
+  Wallet,
   ScrollText,
   Shield,
   Menu,
@@ -45,6 +46,7 @@ const navigation = [
     admin: true,
   },
   { path: "/admin/services", label: "Dịch vụ", icon: Store, admin: true },
+  { path: "/admin/payments", label: "Doanh thu & thanh toán", icon: Wallet },
   {
     path: "/admin/refunds",
     label: "Yêu cầu hoàn tiền",

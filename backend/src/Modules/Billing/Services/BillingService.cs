@@ -500,6 +500,130 @@ public sealed class BillingService(
         return new PagedResult<AdminRefundRequestDto>(items, paging.Page, paging.PageSize, totalCount);
     }
 
+    public async Task<PagedResult<AdminPaymentDto>> GetAdminPaymentsAsync(
+        string? status,
+        string? q,
+        PageQuery paging,
+        CancellationToken cancellationToken)
+    {
+        const string from = """
+            FROM payments p
+            JOIN users u ON u.id = p.user_id
+            LEFT JOIN profiles pr ON pr.user_id = p.user_id
+            WHERE (CAST(@status AS text) IS NULL OR p.status = @status)
+              AND (CAST(@q AS text) IS NULL
+                   OR position(lower(@q) in lower(u.email || ' ' || COALESCE(pr.display_name, ''))) > 0)
+            """;
+        var query = NormalizeText(q);
+
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        int totalCount;
+        await using (var count = connection.CreateCommand())
+        {
+            count.CommandText = $"SELECT count(*) {from}";
+            count.AddParameter("status", status);
+            count.AddParameter("q", query);
+            totalCount = checked((int)(long)(await count.ExecuteScalarAsync(cancellationToken))!);
+        }
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"""
+            SELECT p.id, p.user_id, u.email, COALESCE(pr.display_name, ''), p.plan_code, p.amount,
+                   p.currency, p.provider, p.status, p.provider_order_code, p.provider_transaction_id,
+                   p.created_at, p.paid_at, p.refunded_at
+            {from}
+            ORDER BY p.created_at DESC, p.id DESC LIMIT @limit OFFSET @offset
+            """;
+        command.AddParameter("status", status);
+        command.AddParameter("q", query);
+        command.AddParameter("limit", paging.PageSize);
+        command.AddParameter("offset", paging.Offset);
+
+        var items = new List<AdminPaymentDto>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            items.Add(new AdminPaymentDto(
+                reader.GetGuid(0),
+                reader.GetGuid(1),
+                reader.GetString(2),
+                reader.GetString(3),
+                reader.GetString(4),
+                reader.GetInt32(5),
+                reader.GetString(6),
+                reader.GetString(7),
+                reader.GetString(8),
+                reader.IsDBNull(9) ? null : reader.GetInt64(9),
+                reader.IsDBNull(10) ? null : reader.GetString(10),
+                reader.GetFieldValue<DateTimeOffset>(11),
+                reader.IsDBNull(12) ? null : reader.GetFieldValue<DateTimeOffset>(12),
+                reader.IsDBNull(13) ? null : reader.GetFieldValue<DateTimeOffset>(13)));
+        }
+
+        return new PagedResult<AdminPaymentDto>(items, paging.Page, paging.PageSize, totalCount);
+    }
+
+    public async Task<RevenueSummaryDto> GetRevenueSummaryAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        long total, thisMonth, refunded;
+        int paidOrders, refundedOrders, pending, premiumUsers;
+        await using (var totals = connection.CreateCommand())
+        {
+            totals.CommandText = """
+                SELECT
+                  COALESCE(sum(amount) FILTER (WHERE status = 'paid'), 0)::bigint,
+                  COALESCE(sum(amount) FILTER (WHERE status = 'paid'
+                    AND date_trunc('month', paid_at AT TIME ZONE 'Asia/Ho_Chi_Minh')
+                        = date_trunc('month', now() AT TIME ZONE 'Asia/Ho_Chi_Minh')), 0)::bigint,
+                  (count(*) FILTER (WHERE status = 'paid'))::int,
+                  COALESCE(sum(amount) FILTER (WHERE status = 'refunded'), 0)::bigint,
+                  (count(*) FILTER (WHERE status = 'refunded'))::int,
+                  (count(*) FILTER (WHERE status = 'pending' AND expires_at > now()))::int,
+                  (SELECT count(DISTINCT user_id) FROM subscriptions
+                     WHERE plan = 'premium' AND status = 'active' AND ends_at > now())::int
+                FROM payments
+                """;
+            await using var reader = await totals.ExecuteReaderAsync(cancellationToken);
+            await reader.ReadAsync(cancellationToken);
+            total = reader.GetInt64(0);
+            thisMonth = reader.GetInt64(1);
+            paidOrders = reader.GetInt32(2);
+            refunded = reader.GetInt64(3);
+            refundedOrders = reader.GetInt32(4);
+            pending = reader.GetInt32(5);
+            premiumUsers = reader.GetInt32(6);
+        }
+
+        var months = new List<MonthlyRevenueDto>();
+        await using (var monthly = connection.CreateCommand())
+        {
+            monthly.CommandText = """
+                WITH months AS (
+                  SELECT generate_series(
+                    date_trunc('month', now() AT TIME ZONE 'Asia/Ho_Chi_Minh') - interval '5 months',
+                    date_trunc('month', now() AT TIME ZONE 'Asia/Ho_Chi_Minh'),
+                    interval '1 month') AS m
+                )
+                SELECT to_char(months.m, 'YYYY-MM'),
+                       COALESCE(sum(p.amount), 0)::bigint,
+                       count(p.id)::int
+                FROM months
+                LEFT JOIN payments p ON p.status = 'paid'
+                  AND date_trunc('month', p.paid_at AT TIME ZONE 'Asia/Ho_Chi_Minh') = months.m
+                GROUP BY months.m
+                ORDER BY months.m
+                """;
+            await using var reader = await monthly.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                months.Add(new MonthlyRevenueDto(reader.GetString(0), reader.GetInt64(1), reader.GetInt32(2)));
+            }
+        }
+
+        return new RevenueSummaryDto(total, thisMonth, paidOrders, refunded, refundedOrders, pending, premiumUsers, months);
+    }
+
     public async Task<ResolveRefundResult> ApproveRefundRequestAsync(
         Guid requestId,
         Guid adminId,

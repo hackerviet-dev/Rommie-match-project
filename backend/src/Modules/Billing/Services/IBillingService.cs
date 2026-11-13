@@ -62,6 +62,18 @@ public interface IBillingService
         ApproveRefundRequest request,
         CancellationToken cancellationToken);
 
+    // Every order for the staff payment history, newest first. status null means all; q matches
+    // the buyer's email or display name.
+    Task<PagedResult<AdminPaymentDto>> GetAdminPaymentsAsync(
+        string? status,
+        string? q,
+        PageQuery paging,
+        CancellationToken cancellationToken);
+
+    // Revenue counts only orders still paid; refunded orders are reported apart. Months follow
+    // Vietnam time.
+    Task<RevenueSummaryDto> GetRevenueSummaryAsync(CancellationToken cancellationToken);
+
     Task<ResolveRefundResult> RejectRefundRequestAsync(
         Guid requestId,
         Guid adminId,
@@ -180,6 +192,38 @@ public sealed record AdminRefundRequestDto(
     Guid? ResolvedBy,
     DateTimeOffset CreatedAt,
     DateTimeOffset? ResolvedAt);
+
+public sealed record AdminPaymentDto(
+    Guid Id,
+    Guid UserId,
+    string UserEmail,
+    string UserName,
+    string PlanCode,
+    int Amount,
+    string Currency,
+    string Provider,
+    [property: Description("pending, paid, failed, expired hoặc refunded.")] string Status,
+    long? ProviderOrderCode,
+    string? ProviderTransactionId,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? PaidAt,
+    DateTimeOffset? RefundedAt);
+
+public sealed record MonthlyRevenueDto(
+    [property: Description("Tháng theo giờ Việt Nam, dạng yyyy-MM.")] string Month,
+    long Revenue,
+    int PaidOrders);
+
+public sealed record RevenueSummaryDto(
+    [property: Description("Tổng tiền các đơn đang ở trạng thái paid (đơn đã hoàn tiền không tính).")] long TotalRevenue,
+    [property: Description("Doanh thu tháng hiện tại theo giờ Việt Nam.")] long RevenueThisMonth,
+    int PaidOrders,
+    long RefundedAmount,
+    int RefundedOrders,
+    [property: Description("Đơn đang chờ thanh toán và chưa hết hạn.")] int PendingOrders,
+    [property: Description("Số tài khoản đang có Premium còn hạn.")] int ActivePremiumUsers,
+    [property: Description("6 tháng gần nhất, cũ trước mới sau; tháng không có đơn trả 0.")] IReadOnlyList<MonthlyRevenueDto> Months,
+    string Currency = "VND");
 
 public sealed record RefundRequest(
     [StringLength(1000)] [property: Description("Lý do hoàn tiền tùy chọn, tối đa 1000 ký tự.")] string? Reason);

@@ -33,7 +33,49 @@ export type AdminRefund = {
   reason: string | null;
   transferReference: string | null;
 };
+export type PaymentStatus =
+  | "pending"
+  | "paid"
+  | "failed"
+  | "expired"
+  | "refunded";
+export type AdminPayment = {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  planCode: string;
+  amount: number;
+  currency: string;
+  provider: string;
+  status: PaymentStatus;
+  providerOrderCode: number | null;
+  providerTransactionId: string | null;
+  createdAt: string;
+  paidAt: string | null;
+  refundedAt: string | null;
+};
+export type RevenueSummary = {
+  totalRevenue: number;
+  revenueThisMonth: number;
+  paidOrders: number;
+  refundedAmount: number;
+  refundedOrders: number;
+  pendingOrders: number;
+  activePremiumUsers: number;
+  months: { month: string; revenue: number; paidOrders: number }[];
+  currency: string;
+};
 export const adminApi = {
+  payments: (page = 1, status = "", q = "") =>
+    apiClient<Page<AdminPayment>>(
+      `/api/admin/billing/payments?page=${page}${status ? `&status=${status}` : ""}${q.trim() ? `&q=${encodeURIComponent(q.trim())}` : ""}`,
+      { authenticated: true },
+    ),
+  revenue: () =>
+    apiClient<RevenueSummary>("/api/admin/billing/revenue", {
+      authenticated: true,
+    }),
   stats: () =>
     apiClient<{
       activeUsers: number;

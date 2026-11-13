@@ -22,9 +22,9 @@ export const staffApi = {
       pendingVerifications: number;
       newFeedback: number;
     }>("/api/admin/workspace-stats", { authenticated: true }),
-  users: (q = "", role = "", page = 1, status = "") =>
+  users: (q = "", role = "", page = 1, status = "", plan = "") =>
     apiClient<Page<StaffUser>>(
-      `/api/admin/users?q=${encodeURIComponent(q)}${role ? `&role=${role}` : ""}${status ? `&status=${status}` : ""}&page=${page}`,
+      `/api/admin/users?q=${encodeURIComponent(q)}${role ? `&role=${role}` : ""}${status ? `&status=${status}` : ""}${plan ? `&plan=${plan}` : ""}&page=${page}`,
       { authenticated: true },
     ),
   user: (id: string) =>

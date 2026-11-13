@@ -22,10 +22,11 @@ export function StaffUsers({ team = false }: { team?: boolean }) {
     [page, setPage] = useState(1),
     [role, setRole] = useState(team ? "staff" : ""),
     [status, setStatus] = useState(""),
+    [plan, setPlan] = useState(""),
     me = useAuthStore((s) => s.user?.id);
   const query = useQuery({
-    queryKey: ["staff", "users", me, q, role, status, page],
-    queryFn: () => staffApi.users(q, role, page, status),
+    queryKey: ["staff", "users", me, q, role, status, plan, page],
+    queryFn: () => staffApi.users(q, role, page, status, plan),
   });
   return (
     <div>
@@ -82,6 +83,19 @@ export function StaffUsers({ team = false }: { team?: boolean }) {
             <option value="active">Hoạt động</option>
             <option value="locked">Đã khóa</option>
             <option value="deleted">Đã xóa mềm</option>
+          </select>
+          <select
+            aria-label="Lọc gói thành viên"
+            className="rounded-xl border bg-white p-3 text-sm"
+            value={plan}
+            onChange={(e) => {
+              setPlan(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="">Mọi gói</option>
+            <option value="premium">Premium còn hạn</option>
+            <option value="free">Miễn phí</option>
           </select>
         </div>
         <QueryState query={query} />
