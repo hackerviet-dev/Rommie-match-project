@@ -16,6 +16,8 @@ public sealed class OnboardingService(IDbConnectionFactory connectionFactory)
 
     public async Task SaveAsync(Guid userId, OnboardingRequest request, CancellationToken cancellationToken)
     {
+        // The published mobile client omits RoomPosterType; it only supports residents, and matching requires the value.
+        if (request.HasRoom == "yes" && string.IsNullOrEmpty(request.RoomPosterType)) request.RoomPosterType = "resident";
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         if (request.HasRoom == "yes")

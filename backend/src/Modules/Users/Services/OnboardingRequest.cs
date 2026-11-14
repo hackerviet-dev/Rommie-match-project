@@ -84,7 +84,8 @@ public sealed class OnboardingRequest : IValidatableObject
         Check(HasRoom == "yes" || string.IsNullOrEmpty(RoomAction), nameof(RoomAction));
         if (RoomPosterType == "landlord_agent")
             errors.Add(new("Hệ thống chưa hỗ trợ Chủ nhà / Môi giới.", [nameof(RoomPosterType)]));
-        else Check(HasRoom == "yes" ? RoomPosterType == "resident" : string.IsNullOrEmpty(RoomPosterType), nameof(RoomPosterType));
+        // Empty is accepted for the published mobile client, which does not send RoomPosterType.
+        else Check(HasRoom == "yes" ? RoomPosterType is "" or "resident" : string.IsNullOrEmpty(RoomPosterType), nameof(RoomPosterType));
         Check(HasRoom == "yes" || string.IsNullOrEmpty(RoomPosterType), nameof(RoomPosterType));
         if (HasRoom == "yes" && !DefersRoomDetails)
         {
