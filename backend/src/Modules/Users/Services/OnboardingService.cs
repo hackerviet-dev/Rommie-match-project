@@ -17,10 +17,12 @@ public sealed class OnboardingService(IDbConnectionFactory connectionFactory)
     public async Task SaveAsync(Guid userId, OnboardingRequest request, CancellationToken cancellationToken)
     {
         // The published mobile client omits RoomPosterType; it only supports residents, and matching requires the value.
-        if (request.HasRoom == "yes" && string.IsNullOrEmpty(request.RoomPosterType)) request.RoomPosterType = "resident";
+        // It also saves onboarding before the quiz and opens the quiz right after, so the quiz-first rule cannot apply to it.
+        var legacyMobileClient = request.HasRoom == "yes" && string.IsNullOrEmpty(request.RoomPosterType);
+        if (legacyMobileClient) request.RoomPosterType = "resident";
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
-        if (request.HasRoom == "yes")
+        if (request.HasRoom == "yes" && !legacyMobileClient)
         {
             await using var quiz = connection.CreateCommand();
             quiz.Transaction = transaction;
